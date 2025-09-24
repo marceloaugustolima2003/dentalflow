@@ -103,6 +103,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const actionAddDespesa = document.getElementById('action-add-despesa');
     const searchProducaoInput = document.getElementById('search-producao-input');
     const searchDentistasInput = document.getElementById('search-dentistas-input');
+    const toggleValuesBtn = document.getElementById('toggle-values-btn');
+    const eyeIcon = document.getElementById('eye-icon');
+    const eyeOffIcon = document.getElementById('eye-off-icon');
+
 
     // Novos elementos para funcionalidades avançadas
     const notificationsBtn = document.getElementById('notifications-btn');
@@ -777,7 +781,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <p class="text-sm text-gemini-secondary font-medium">Paciente: ${producao.nomePaciente || 'Não informado'}</p>
                             <div class="flex items-center space-x-4 mt-2">
                                 <span class="text-sm">Qtd: <span class="font-semibold">${producao.qtd}</span></span>
-                                <span class="text-sm">Valor: <span class="font-semibold text-accent-green">${formatarMoeda(valorTotal)}</span></span>
+                                <span class="text-sm whitespace-nowrap">Valor: <span class="font-semibold text-accent-green">${formatarMoeda(valorTotal)}</span></span>
                             </div>
                             <p class="text-xs text-gemini-secondary mt-1">Entrega: ${new Date(producao.entrega).toLocaleDateString('pt-BR')}</p>
                             ${producao.obs ? `<p class="text-xs text-gemini-secondary mt-1">${producao.obs}</p>` : ''}
@@ -844,7 +848,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td class="p-3 text-gemini-secondary">${producao.tipo}</td>
                 <td class="p-3 text-gemini-secondary text-sm">${producao.obs || '-'}</td>
                 <td class="p-3 font-semibold ${statusClass}">${producao.status}</td>
-                <td class="p-3 text-accent-green font-semibold">${formatarMoeda(valorTotal)}</td>
+                <td class="p-3 text-accent-green font-semibold monetary-value">${formatarMoeda(valorTotal)}</td>
             `;
             producaoDentistaTableBody.appendChild(row);
         });
@@ -956,7 +960,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <p class="text-sm font-medium">${despesa.desc}</p>
                         <p class="text-xs text-gemini-secondary">${despesa.categoria}</p>
                     </div>
-                    <span class="text-sm font-semibold text-red-400">${formatarMoeda(despesa.valor)}</span>
+                    <span class="text-sm font-semibold text-red-400 monetary-value">${formatarMoeda(despesa.valor)}</span>
                 `;
                 despesasContainer.appendChild(despesaEl);
             });
@@ -1000,8 +1004,8 @@ document.addEventListener('DOMContentLoaded', () => {
             row.innerHTML = `
                 <td class="py-3 text-gemini-primary">${nome}</td>
                 <td class="py-3 text-gemini-secondary">${dados.pecas}</td>
-                <td class="py-3 text-accent-green font-semibold">${formatarMoeda(dados.faturamento)}</td>
-                <td class="py-3 text-gemini-secondary">${formatarMoeda(ticketMedio)}</td>
+                <td class="py-3 text-accent-green font-semibold monetary-value">${formatarMoeda(dados.faturamento)}</td>
+                <td class="py-3 text-gemini-secondary monetary-value">${formatarMoeda(ticketMedio)}</td>
             `;
             dentistaSummaryTableBody.appendChild(row);
         });
@@ -1023,7 +1027,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="font-medium">${valor.tipo}</span>
                 </div>
                 <div class="flex items-center space-x-2">
-                    <span class="text-accent-green font-semibold">${formatarMoeda(valor.valor)}</span>
+                    <span class="text-accent-green font-semibold monetary-value">${formatarMoeda(valor.valor)}</span>
                     <button class="remove-valor-btn p-1 rounded hover:bg-red-700 transition-colors text-red-400" data-index="${index}">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="3,6 5,6 21,6"></polyline>
@@ -1092,7 +1096,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <p class="text-xs text-gemini-secondary mt-1">${new Date(despesa.data).toLocaleDateString('pt-BR')}</p>
                     </div>
                     <div class="flex items-center space-x-2">
-                        <span class="text-lg font-semibold text-red-400">${formatarMoeda(despesa.valor)}</span>
+                        <span class="text-lg font-semibold text-red-400 monetary-value">${formatarMoeda(despesa.valor)}</span>
                         <div class="flex space-x-1">
                             <button class="edit-despesa-btn p-1 rounded hover:bg-gray-700 transition-colors" data-id="${despesa.id}">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1227,6 +1231,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- EVENT LISTENERS ---
     
+    // Botão de ocultar/mostrar valores
+    toggleValuesBtn.addEventListener('click', () => {
+        document.body.classList.toggle('values-hidden');
+        const isHidden = document.body.classList.contains('values-hidden');
+        toggleValuesBtn.setAttribute('aria-pressed', isHidden);
+        eyeIcon.classList.toggle('hidden', isHidden);
+        eyeOffIcon.classList.toggle('hidden', !isHidden);
+    });
+
     // Notificações
     if (notificationsBtn) {
         notificationsBtn.addEventListener('click', (e) => {

@@ -220,7 +220,7 @@
                             <div class="flex items-center justify-between">
                                 <div>
                                     <p class="text-sm text-gemini-secondary">Faturamento do Mês</p>
-                                    <p id="kpi-faturamento-mes" class="text-2xl font-bold mt-2 text-accent-green">R$ 0,00</p>
+                                    <p id="kpi-faturamento-mes" class="text-2xl font-bold mt-2 text-accent-green monetary-value">R$ 0,00</p>
                                 </div>
                                 <div class="p-3 bg-accent-green bg-opacity-20 rounded-full">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-accent-green">
@@ -235,7 +235,7 @@
                             <div class="flex items-center justify-between">
                                 <div>
                                     <p class="text-sm text-gemini-secondary">Lucro do Mês</p>
-                                    <p id="kpi-lucro-mes" class="text-2xl font-bold mt-2 text-accent-blue">R$ 0,00</p>
+                                    <p id="kpi-lucro-mes" class="text-2xl font-bold mt-2 text-accent-blue monetary-value">R$ 0,00</p>
                                 </div>
                                 <div class="p-3 bg-accent-blue bg-opacity-20 rounded-full">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-accent-blue">
@@ -266,7 +266,7 @@
                             <div class="flex items-center justify-between">
                                 <div>
                                     <p class="text-sm text-gemini-secondary">Despesas do Mês</p>
-                                    <p id="kpi-despesas-mes" class="text-2xl font-bold mt-2 text-red-400">R$ 0,00</p>
+                                    <p id="kpi-despesas-mes" class="text-2xl font-bold mt-2 text-red-400 monetary-value">R$ 0,00</p>
                                 </div>
                                 <div class="p-3 bg-red-500 bg-opacity-20 rounded-full">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-400">
@@ -408,7 +408,7 @@
                                     <h3 class="font-semibold text-lg">Produção do Dia</h3>
                                     <div class="text-sm text-gemini-secondary">
                                         <span id="total-pecas-dia" class="font-bold">0</span> peças | 
-                                        <span id="total-faturamento-dia" class="font-bold">R$ 0,00</span>
+                                        <span id="total-faturamento-dia" class="font-bold monetary-value">R$ 0,00</span>
                                     </div>
                                 </div>
                                 <div id="lista-producao-dia" class="space-y-3 max-h-96 overflow-y-auto dark-scrollbar"></div>
@@ -558,15 +558,15 @@
                         </div>
                         <div class="card-enhanced p-6">
                             <p class="text-sm text-gemini-secondary">Faturamento Bruto</p>
-                            <p id="total-faturamento-mes" class="text-2xl font-bold mt-2 text-accent-green">R$ 0,00</p>
+                            <p id="total-faturamento-mes" class="text-2xl font-bold mt-2 text-accent-green monetary-value">R$ 0,00</p>
                         </div>
                         <div class="card-enhanced p-6">
                             <p class="text-sm text-gemini-secondary">Total de Despesas</p>
-                            <p id="total-despesas-mes" class="text-2xl font-bold mt-2 text-red-400">R$ 0,00</p>
+                            <p id="total-despesas-mes" class="text-2xl font-bold mt-2 text-red-400 monetary-value">R$ 0,00</p>
                         </div>
                         <div class="card-enhanced p-6">
                             <p class="text-sm text-gemini-secondary">Lucro Líquido</p>
-                            <p id="lucro-liquido-mes" class="text-2xl font-bold mt-2 text-accent-blue">R$ 0,00</p>
+                            <p id="lucro-liquido-mes" class="text-2xl font-bold mt-2 text-accent-blue monetary-value">R$ 0,00</p>
                         </div>
                     </div>
 
@@ -577,7 +577,7 @@
                                 <div>
                                     <div class="flex justify-between mb-2">
                                         <span>Faturamento</span>
-                                        <span id="faturamento-bar-label" class="font-bold">R$ 0,00</span>
+                                        <span id="faturamento-bar-label" class="font-bold monetary-value">R$ 0,00</span>
                                     </div>
                                     <div class="w-full bg-gray-700 rounded-full h-3">
                                         <div id="faturamento-bar" class="bg-accent-green h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
@@ -586,7 +586,7 @@
                                 <div>
                                     <div class="flex justify-between mb-2">
                                         <span>Despesas</span>
-                                        <span id="despesas-bar-label" class="font-bold">R$ 0,00</span>
+                                        <span id="despesas-bar-label" class="font-bold monetary-value">R$ 0,00</span>
                                     </div>
                                     <div class="w-full bg-gray-700 rounded-full h-3">
                                         <div id="despesas-bar" class="bg-red-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
