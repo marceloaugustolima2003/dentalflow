@@ -419,10 +419,17 @@
                     <div class="mt-8">
                         <section class="card-enhanced p-6">
                             <h3 class="font-semibold mb-4 text-lg">Produção por Dentista</h3>
-                            <div class="mb-4">
+                            <div class="flex items-center space-x-4 mb-4">
                                 <select id="filter-dentista-select" class="w-full md:w-1/3 p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
                                     <option value="">Selecione um dentista para ver a produção</option>
                                 </select>
+                                <button id="export-dentista-producao-pdf" class="bg-accent-purple hover:bg-accent-purple-hover text-white font-semibold py-2 px-4 rounded-lg transition-all active:scale-95 whitespace-nowrap hidden">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mr-2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14,2 14,8 20,8"></polyline>
+                                    </svg>
+                                    Exportar PDF do Dentista
+                                </button>
                             </div>
                             <div class="overflow-x-auto">
                                 <table class="w-full text-left">

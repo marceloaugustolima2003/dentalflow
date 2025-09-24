@@ -107,7 +107,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const eyeIcon = document.getElementById('eye-icon');
     const eyeOffIcon = document.getElementById('eye-off-icon');
 
-
     // Novos elementos para funcionalidades avançadas
     const notificationsBtn = document.getElementById('notifications-btn');
     const notificationCount = document.getElementById('notification-count');
@@ -121,6 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Elementos da nova funcionalidade de produção por dentista
     const filterDentistaSelect = document.getElementById('filter-dentista-select');
     const producaoDentistaTableBody = document.getElementById('producao-dentista-table-body');
+    const exportDentistaProducaoPdfBtn = document.getElementById('export-dentista-producao-pdf');
 
     // Botões de exportação
     const exportDashboardPdf = document.getElementById('export-dashboard-pdf');
@@ -570,6 +570,52 @@ document.addEventListener('DOMContentLoaded', () => {
         doc.save('producao-dentalflow.pdf');
     };
 
+    const generateProducaoDentistaPDF = () => {
+        const selectedDentistaId = filterDentistaSelect.value;
+        if (!selectedDentistaId) {
+            showToast("Por favor, selecione um dentista primeiro.");
+            return;
+        }
+
+        const dentista = (state.dentistas || []).find(d => d.id == selectedDentistaId);
+        const dentistaName = dentista ? dentista.nome : 'Desconhecido';
+
+        const producaoFiltrada = (state.producao || []).filter(p => p.dentista == selectedDentistaId);
+
+        if (producaoFiltrada.length === 0) {
+            showToast("Nenhuma produção encontrada para gerar o PDF.");
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        const tableColumns = ["PACIENTE", "TIPO DE TRABALHO", "STATUS", "QTD", "VALOR TOTAL", "DATA ENTREGA"];
+        const tableRows = [];
+
+        producaoFiltrada.forEach(p => {
+            const valor = (state.valores || []).find(v => v.tipo === p.tipo);
+            const valorTotal = valor ? valor.valor * p.qtd : 0;
+            const dataEntrega = new Date(p.entrega + 'T00:00:00').toLocaleDateString('pt-BR');
+
+            const producaoData = [
+                p.nomePaciente || '-',
+                p.tipo,
+                p.status,
+                p.qtd,
+                formatarMoeda(valorTotal),
+                dataEntrega
+            ];
+            tableRows.push(producaoData);
+        });
+
+        doc.text(`Relatório de Produção - ${dentistaName}`, 14, 15);
+        doc.autoTable(tableColumns, tableRows, { startY: 20 });
+        
+        const filename = `producao_${dentistaName.replace(/\s+/g, '_').toLowerCase()}.pdf`;
+        doc.save(filename);
+    };
+
     // --- FILTROS AVANÇADOS ---
     const getFilteredProducao = () => {
         let producaoFiltrada = [...(state.producao || [])];
@@ -781,7 +827,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <p class="text-sm text-gemini-secondary font-medium">Paciente: ${producao.nomePaciente || 'Não informado'}</p>
                             <div class="flex items-center space-x-4 mt-2">
                                 <span class="text-sm">Qtd: <span class="font-semibold">${producao.qtd}</span></span>
-                                <span class="text-sm whitespace-nowrap">Valor: <span class="font-semibold text-accent-green">${formatarMoeda(valorTotal)}</span></span>
+                                <span class="text-sm whitespace-nowrap">Valor: <span class="font-semibold text-accent-green monetary-value">${formatarMoeda(valorTotal)}</span></span>
                             </div>
                             <p class="text-xs text-gemini-secondary mt-1">Entrega: ${new Date(producao.entrega).toLocaleDateString('pt-BR')}</p>
                             ${producao.obs ? `<p class="text-xs text-gemini-secondary mt-1">${producao.obs}</p>` : ''}
@@ -819,6 +865,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!selectedDentistaId) {
             producaoDentistaTableBody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gemini-secondary">Selecione um dentista para começar.</td></tr>';
+            exportDentistaProducaoPdfBtn.classList.add('hidden'); // Oculta o botão
             return;
         }
 
@@ -826,9 +873,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (producaoFiltrada.length === 0) {
             producaoDentistaTableBody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gemini-secondary">Nenhuma produção encontrada para este dentista.</td></tr>';
+            exportDentistaProducaoPdfBtn.classList.add('hidden'); // Oculta o botão
             return;
         }
         
+        exportDentistaProducaoPdfBtn.classList.remove('hidden'); // Exibe o botão
+
         producaoFiltrada.forEach(producao => {
             const dentista = (state.dentistas || []).find(d => d.id === producao.dentista);
             const dentistaName = dentista ? dentista.nome : 'Desconhecido';
@@ -1303,6 +1353,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (exportProducaoPdf) {
         exportProducaoPdf.addEventListener('click', generateProducaoPDF);
+    }
+
+    if (exportDentistaProducaoPdfBtn) {
+        exportDentistaProducaoPdfBtn.addEventListener('click', generateProducaoDentistaPDF);
     }
     
     // Ações rápidas
