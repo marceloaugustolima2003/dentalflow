@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const formProducao = document.getElementById('form-producao');
     const producaoTipoSelect = document.getElementById('producao-tipo-select');
     const producaoDentistaSelect = document.getElementById('producao-dentista-select');
-    const producaoPacienteInput = document.getElementById('producao-paciente-input'); // NOVO ELEMENTO
+    const producaoPacienteInput = document.getElementById('producao-paciente-input');
     const producaoQtdInput = document.getElementById('producao-qtd-input');
     const producaoStatusSelect = document.getElementById('producao-status-select');
     const producaoObsInput = document.getElementById('producao-obs-input');
@@ -304,58 +304,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- GRÁFICOS ---
     const initializeCharts = () => {
-        // Gráfico de Faturamento vs Despesas
-        const faturamentoCtx = document.getElementById('faturamento-chart');
-        if (faturamentoCtx) {
-            charts.faturamento = new Chart(faturamentoCtx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Faturamento',
-                        data: [],
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }, {
-                        label: 'Despesas',
-                        data: [],
-                        borderColor: '#ef4444',
-                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            labels: {
-                                color: '#e8eaed'
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            ticks: { color: '#9aa0a6' },
-                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
-                        },
-                        y: {
-                            ticks: { 
-                                color: '#9aa0a6',
-                                callback: function(value) {
-                                    return 'R$ ' + value.toLocaleString('pt-BR');
-                                }
-                            },
-                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
-                        }
-                    }
-                }
-            });
-        }
-
+        // GRÁFICO DE FATURAMENTO REMOVIDO
+        
         // Gráfico de Status da Produção
         const statusCtx = document.getElementById('status-chart');
         if (statusCtx) {
@@ -428,51 +378,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const updateCharts = () => {
-        updateFaturamentoChart();
+        // CHAMADA PARA updateFaturamentoChart REMOVIDA
         updateStatusChart();
         updateDentistaChart();
     };
 
-    const updateFaturamentoChart = () => {
-        if (!charts.faturamento) return;
-        
-        const hoje = new Date();
-        const labels = [];
-        const faturamentoData = [];
-        const despesasData = [];
-        
-        for (let i = 5; i >= 0; i--) {
-            const mes = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
-            const proximoMes = new Date(hoje.getFullYear(), hoje.getMonth() - i + 1, 0);
-            
-            labels.push(mes.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }));
-            
-            const producaoMes = (state.producao || []).filter(p => {
-                const data = new Date(p.data + 'T00:00:00');
-                return data >= mes && data <= proximoMes;
-            });
-            
-            const despesasMes = (state.despesas || []).filter(d => {
-                const data = new Date(d.data + 'T00:00:00');
-                return data >= mes && data <= proximoMes;
-            });
-            
-            const faturamento = producaoMes.reduce((acc, p) => {
-                const valor = (state.valores || []).find(v => v.tipo === p.tipo);
-                return acc + (valor ? valor.valor * p.qtd : 0);
-            }, 0);
-            
-            const despesas = despesasMes.reduce((acc, d) => acc + d.valor, 0);
-            
-            faturamentoData.push(faturamento);
-            despesasData.push(despesas);
-        }
-        
-        charts.faturamento.data.labels = labels;
-        charts.faturamento.data.datasets[0].data = faturamentoData;
-        charts.faturamento.data.datasets[1].data = despesasData;
-        charts.faturamento.update();
-    };
+    // FUNÇÃO updateFaturamentoChart REMOVIDA
 
     const updateStatusChart = () => {
         if (!charts.status) return;
@@ -903,14 +814,14 @@ document.addEventListener('DOMContentLoaded', () => {
         producaoDentistaTableBody.innerHTML = '';
 
         if (!selectedDentistaId) {
-            producaoDentistaTableBody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gemini-secondary">Selecione um dentista para começar.</td></tr>'; // Colspan atualizado para 6
+            producaoDentistaTableBody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gemini-secondary">Selecione um dentista para começar.</td></tr>';
             return;
         }
 
         const producaoFiltrada = (state.producao || []).filter(p => p.dentista == selectedDentistaId);
 
         if (producaoFiltrada.length === 0) {
-            producaoDentistaTableBody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gemini-secondary">Nenhuma produção encontrada para este dentista.</td></tr>'; // Colspan atualizado para 6
+            producaoDentistaTableBody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gemini-secondary">Nenhuma produção encontrada para este dentista.</td></tr>';
             return;
         }
         
@@ -927,7 +838,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const row = document.createElement('tr');
             row.className = 'border-b border-gemini-border hover:bg-gray-700/50 transition-colors';
-            // LINHA DA TABELA ATUALIZADA ABAIXO
             row.innerHTML = `
                 <td class="p-3 text-gemini-primary font-medium">${dentistaName}</td>
                 <td class="p-3 text-gemini-secondary">${producao.nomePaciente || '-'}</td>
@@ -1207,7 +1117,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderAllUIComponents = () => {
         renderizarDashboard();
         renderizarProducaoDia();
-        renderizarProducaoPorDentista(); // Adicionado
+        renderizarProducaoPorDentista();
         renderizarListaDentistas();
         renderizarResumoMensal();
         renderizarAnaliseDentista();
@@ -1223,7 +1133,7 @@ document.addEventListener('DOMContentLoaded', () => {
         producaoEditIdInput.value = producao.id;
         producaoTipoSelect.value = producao.tipo;
         producaoDentistaSelect.value = producao.dentista;
-        producaoPacienteInput.value = producao.nomePaciente || ''; // ATUALIZADO
+        producaoPacienteInput.value = producao.nomePaciente || '';
         producaoQtdInput.value = producao.qtd;
         producaoStatusSelect.value = producao.status;
         producaoObsInput.value = producao.obs || '';
@@ -1420,19 +1330,17 @@ document.addEventListener('DOMContentLoaded', () => {
     formProducao.addEventListener('submit', (e) => { 
         e.preventDefault(); 
         const editId = producaoEditIdInput.value ? parseInt(producaoEditIdInput.value) : null;
-        // COLETA DE DADOS ATUALIZADA ABAIXO
         const producaoData = { 
             id: editId || Date.now(), 
             tipo: producaoTipoSelect.value, 
             dentista: parseInt(producaoDentistaSelect.value), 
-            nomePaciente: producaoPacienteInput.value.trim(), // NOVO CAMPO
+            nomePaciente: producaoPacienteInput.value.trim(),
             qtd: parseInt(producaoQtdInput.value), 
             status: producaoStatusSelect.value, 
             obs: producaoObsInput.value.trim(), 
             data: producaoDataInput.value, 
             entrega: entregaDataInput.value 
         };
-        // VALIDAÇÃO ATUALIZADA ABAIXO
         if (producaoData.tipo && producaoData.dentista && producaoData.nomePaciente && producaoData.qtd > 0 && producaoData.data && producaoData.entrega) {
             if (editId) { 
                 const index = state.producao.findIndex(p => p.id === editId); 

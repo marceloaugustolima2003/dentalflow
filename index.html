@@ -267,19 +267,7 @@
                     </div>
 
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                        <div class="chart-container">
-                            <h3 class="font-semibold mb-4 text-lg">Faturamento vs Despesas (Últimos 6 Meses)</h3>
-                            <canvas id="faturamento-chart" width="400" height="200"></canvas>
-                        </div>
-                        
-                        <div class="chart-container">
-                            <h3 class="font-semibold mb-4 text-lg">Status da Produção</h3>
-                            <canvas id="status-chart" width="400" height="200"></canvas>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <section class="card-enhanced p-6">
+                        <section class="card-enhanced p-6" style="height: 400px;">
                             <h3 class="font-semibold mb-4 text-lg flex items-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 text-accent-blue">
                                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -289,9 +277,16 @@
                                 </svg>
                                 Próximas Entregas (7 dias)
                             </h3>
-                            <div id="lista-entregas-proximas" class="space-y-3 max-h-60 overflow-y-auto dark-scrollbar"></div>
+                            <div id="lista-entregas-proximas" class="space-y-3 h-[300px] overflow-y-auto dark-scrollbar pr-2"></div>
                         </section>
                         
+                        <div class="chart-container">
+                            <h3 class="font-semibold mb-4 text-lg">Status da Produção</h3>
+                            <canvas id="status-chart" width="400" height="200"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-8">
                         <section class="card-enhanced p-6">
                             <h3 class="font-semibold mb-4 text-lg flex items-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 text-accent-purple">
