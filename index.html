@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DentalFlow</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="styles.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gemini-dark text-gemini-primary font-sans antialiased">
+
+    <!-- Toast de Notificação -->
+    <div id="toast-notification" class="fixed top-4 right-4 z-50 p-4 rounded-lg text-white font-medium shadow-lg transform translate-x-full transition-transform duration-300" style="transform: translateX(calc(100% + 1.25rem));">
+        <p id="toast-message"></p>
+    </div>
+
+    <div id="initial-loading-overlay" class="fixed inset-0 bg-gemini-dark z-50 flex flex-col items-center justify-center">
+        <svg class="animate-spin h-8 w-8 text-white mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p class="text-gemini-secondary">A verificar sessão...</p>
+    </div>
+
+    <div id="auth-screen" class="min-h-screen flex items-center justify-center bg-gemini-dark p-4 hidden">
+        <div class="relative flex flex-col bg-gemini-dark-card shadow-2xl rounded-2xl md:flex-row w-full max-w-4xl hover-lift">
+            
+            <div class="flex flex-col justify-center p-8 md:p-14 w-full md:w-1/2">
+                <div class="text-center mb-8">
+                    <div class="flex justify-center items-center mb-4">
+                        <div class="h-12 w-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white">
+                                <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                                <path d="M2 17l10 5 10-5"></path>
+                                <path d="M2 12l10 5 10-5"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <h1 id="auth-title" class="text-3xl font-bold text-gemini-primary">Entrar</h1>
+                    <p class="text-gemini-secondary mt-2">Bem-vindo ao <span class="gradient-text font-bold">DentalFLOW</span></p>
+                </div>
+
+                <form id="auth-form" class="space-y-4">
+                    <div>
+                        <label for="email-input" class="text-sm font-medium text-gemini-secondary mb-2 block">E-mail</label>
+                        <input type="email" id="email-input" placeholder="seuemail@exemplo.com" required class="w-full px-4 py-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-blue mobile-optimized-input">
+                    </div>
+                    <div>
+                        <label for="password-input" class="text-sm font-medium text-gemini-secondary mb-2 block">Palavra-passe</label>
+                        <input type="password" id="password-input" placeholder="Sua palavra-passe" required class="w-full px-4 py-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-blue mobile-optimized-input">
+                    </div>
+                    
+                    <div class="flex justify-end w-full text-sm">
+                        <button type="button" id="password-reset-button" class="text-accent-blue hover:underline">Esqueceu-se da palavra-passe?</button>
+                    </div>
+
+                    <button id="auth-button" type="submit" class="w-full bg-accent-blue text-white font-bold py-3 px-4 rounded-lg hover:bg-accent-blue-hover transition-all active:scale-95">Entrar</button>
+                </form>
+
+                <p id="auth-error-message" class="text-red-500 mt-4 text-sm hidden text-center"></p>
+
+                <div class="mt-8 text-sm text-center">
+                    <button id="toggle-auth-mode" class="text-accent-blue hover:underline">Ainda não tem conta? Registe-se</button>
+                </div>
+            </div>
+
+            <div class="relative hidden md:block md:w-1/2">
+                <img 
+                    src="https://images.unsplash.com/photo-1666249397413-410a53c61316?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                    alt=""
+                    class="w-full h-full object-cover rounded-r-2xl"
+                >
+                <div class="absolute inset-0 bg-black bg-opacity-50 rounded-r-2xl p-8 text-white flex flex-col justify-end">
+                    <div class="mb-10">
+                         <h2 class="text-4xl font-bold gradient-text">DentalFLOW</h2>
+                        <p class="text-xl font-light leading-relaxed mt-2">
+                           Gerencie seu laboratório de forma fácil e moderna.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="app-content" class="main-content-wrapper hidden">
+        
+        <div id="side-menu-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden lg:hidden"></div>
+        <aside id="side-menu" class="fixed top-0 left-0 h-full w-64 bg-gemini-dark-card shadow-lg z-40 transform -translate-x-full lg:translate-x-0 lg:sticky lg:h-screen lg:flex-shrink-0">
+            <div class="p-4 border-b border-gemini-border flex justify-between items-center">
+                <h2 class="text-xl font-bold gradient-text">Menu</h2>
+                <button id="menu-close-btn" class="p-2 rounded-full hover:bg-gray-700 lg:hidden">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <nav class="p-4 space-y-2">
+                <a href="#" data-view="view-dashboard" class="nav-link active flex items-center space-x-3 p-3 rounded-lg transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" data-view="view-producao" class="nav-link flex items-center space-x-3 p-3 rounded-lg transition-colors">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                    <span>Produção</span>
+                </a>
+                <a href="#" data-view="view-dentistas" class="nav-link flex items-center space-x-3 p-3 rounded-lg transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    <span>Dentistas</span>
+                </a>
+                <a href="#" data-view="view-analise-dentista" class="nav-link flex items-center space-x-3 p-3 rounded-lg transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>
+                    <span>Análise por Dentista</span>
+                </a>
+                <a href="#" data-view="view-resumo" class="nav-link flex items-center space-x-3 p-3 rounded-lg transition-colors">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M18.7 8a2.3 2.3 0 0 0-3.4 0l-4.6 4.6a2.3 2.3 0 0 0 0 3.4l4.6 4.6a2.3 2.3 0 0 0 3.4 0V8z"></path></svg>
+                    <span>Resumo Mensal</span>
+                </a>
+                 <a href="#" data-view="view-admin" class="nav-link flex items-center space-x-3 p-3 rounded-lg transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.6.9c-2.4-1.2-5.1-.3-6.3 2.1s-.3 5.1 2.1 6.3c1.3.6 2.7.9 4.2.9H12l-1.9 4.8a2.6 2.6 0 0 1-4.9-.4l-1.1-2.9a2.6 2.6 0 0 0-4.9-.4L2 22h12.3c2.4-1.2 3.3-4.1 2.1-6.5s-4.1-3.3-6.5-2.1L12 14V5.1c0-1.5.3-2.9.9-4.2Z"></path><path d="m14 5 3 3"></path><path d="M14 13.5c2.4 1.2 5.1.3 6.3-2.1s.3-5.1-2.1-6.3-5.1-.3-6.3 2.1c-.5.9-.6 2-.5 3"></path></svg>
+                    <span>Admin</span>
+                </a>
+            </nav>
+        </aside>
+
+        <div class="flex flex-col flex-1 w-full lg:w-auto overflow-y-auto">
+             <header class="bg-gemini-dark-card shadow-md sticky top-0 z-10 flex-shrink-0">
+                <div class="container mx-auto px-4 lg:px-8 py-3 flex justify-between items-center">
+                    <div class="flex items-center space-x-3">
+                        <button id="menu-toggle-btn" class="p-2 rounded-full hover:bg-gray-700 lg:hidden">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                        </button>
+                        <div class="flex items-center space-x-2">
+                            <div class="h-8 w-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white">
+                                    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                                    <path d="M2 17l10 5 10-5"></path>
+                                    <path d="M2 12l10 5 10-5"></path>
+                                </svg>
+                            </div>
+                            <h1 class="text-xl md:text-2xl font-bold text-gemini-primary hidden sm:block">Dental<span class="gradient-text">FLOW</span></h1>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2 md:space-x-4">
+                        <!-- Notificações -->
+                        <div class="relative">
+                            <button id="notifications-btn" class="p-2 rounded-full hover:bg-gray-700 transition-colors relative">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
+                                    <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
+                                </svg>
+                                <span id="notification-count" class="notification-badge absolute -top-1 -right-1 hidden">0</span>
+                            </button>
+                            
+                            <!-- Dropdown de Notificações -->
+                            <div id="notifications-dropdown" class="absolute right-0 mt-2 w-80 bg-gemini-dark-card rounded-lg shadow-lg border border-gemini-border hidden z-50">
+                                <div class="p-4 border-b border-gemini-border">
+                                    <h3 class="font-semibold text-gemini-primary">Notificações</h3>
+                                </div>
+                                <div id="notifications-list" class="max-h-64 overflow-y-auto dark-scrollbar">
+                                    <!-- Notificações serão inseridas aqui -->
+                                </div>
+                                <div class="p-3 border-t border-gemini-border">
+                                    <button id="clear-notifications" class="text-sm text-accent-blue hover:underline">Limpar todas</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <span id="user-email-display" class="text-sm text-gemini-secondary hidden md:block"></span>
+                        <button id="logout-button" class="text-sm bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-3 rounded-lg transition-all active:scale-95">Sair</button>
+                    </div>
+                </div>
+            </header>
+            
+            <main class="container mx-auto p-4 lg:p-8 flex-1">
+                <!-- Dashboard -->
+                <div id="view-dashboard" class="view-container">
+                    <div class="flex justify-between items-center mb-8">
+                        <h2 class="text-3xl font-bold gradient-text">Dashboard Analítico</h2>
+                        <div class="flex space-x-2">
+                            <button id="export-dashboard-pdf" class="bg-accent-purple hover:bg-accent-purple-hover text-white font-semibold py-2 px-4 rounded-lg transition-all active:scale-95">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mr-2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14,2 14,8 20,8"></polyline>
+                                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                                    <polyline points="10,9 9,9 8,9"></polyline>
+                                </svg>
+                                Exportar PDF
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div class="card-enhanced p-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gemini-secondary">Faturamento do Mês</p>
+                                    <p id="kpi-faturamento-mes" class="text-2xl font-bold mt-2 text-accent-green">R$ 0,00</p>
+                                </div>
+                                <div class="p-3 bg-accent-green bg-opacity-20 rounded-full">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-accent-green">
+                                        <line x1="12" y1="1" x2="12" y2="23"></line>
+                                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-enhanced p-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gemini-secondary">Lucro do Mês</p>
+                                    <p id="kpi-lucro-mes" class="text-2xl font-bold mt-2 text-accent-blue">R$ 0,00</p>
+                                </div>
+                                <div class="p-3 bg-accent-blue bg-opacity-20 rounded-full">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-accent-blue">
+                                        <polyline points="22,12 18,12 15,21 9,3 6,12 2,12"></polyline>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-enhanced p-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gemini-secondary">Peças no Mês</p>
+                                    <p id="kpi-pecas-mes" class="text-2xl font-bold mt-2 text-accent-purple">0</p>
+                                </div>
+                                <div class="p-3 bg-accent-purple bg-opacity-20 rounded-full">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-accent-purple">
+                                        <path d="M20 7h-9"></path>
+                                        <path d="M14 17H5"></path>
+                                        <circle cx="17" cy="17" r="3"></circle>
+                                        <circle cx="7" cy="7" r="3"></circle>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-enhanced p-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gemini-secondary">Despesas do Mês</p>
+                                    <p id="kpi-despesas-mes" class="text-2xl font-bold mt-2 text-red-400">R$ 0,00</p>
+                                </div>
+                                <div class="p-3 bg-red-500 bg-opacity-20 rounded-full">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-400">
+                                        <polyline points="22,12 18,12 15,21 9,3 6,12 2,12"></polyline>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                        <!-- Gráfico de Faturamento vs Despesas -->
+                        <div class="chart-container">
+                            <h3 class="font-semibold mb-4 text-lg">Faturamento vs Despesas (Últimos 6 Meses)</h3>
+                            <canvas id="faturamento-chart" width="400" height="200"></canvas>
+                        </div>
+                        
+                        <!-- Gráfico de Status da Produção -->
+                        <div class="chart-container">
+                            <h3 class="font-semibold mb-4 text-lg">Status da Produção</h3>
+                            <canvas id="status-chart" width="400" height="200"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <!-- Próximas Entregas -->
+                        <section class="card-enhanced p-6">
+                            <h3 class="font-semibold mb-4 text-lg flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 text-accent-blue">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                                Próximas Entregas (7 dias)
+                            </h3>
+                            <div id="lista-entregas-proximas" class="space-y-3 max-h-60 overflow-y-auto dark-scrollbar"></div>
+                        </section>
+                        
+                        <!-- Ações Rápidas -->
+                        <section class="card-enhanced p-6">
+                            <h3 class="font-semibold mb-4 text-lg flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 text-accent-purple">
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                </svg>
+                                Ações Rápidas
+                            </h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <button id="action-add-producao" class="bg-accent-blue hover:bg-accent-blue-hover text-white font-semibold py-3 px-4 rounded-lg transition-all active:scale-95 flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                    Adicionar Produção
+                                </button>
+                                <button id="action-add-despesa" class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-4 rounded-lg transition-all active:scale-95 flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                    Adicionar Despesa
+                                </button>
+                            </div>
+                            
+                            <!-- Status da Produção -->
+                            <div class="mt-6 pt-6 border-t border-gemini-border">
+                                <h4 class="font-medium mb-3 text-gemini-secondary">Status da Produção</h4>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm">Pendente</span>
+                                        <span id="status-pendente" class="status-badge status-pendente">0</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm">Em Andamento</span>
+                                        <span id="status-andamento" class="status-badge status-andamento">0</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm">Finalizado</span>
+                                        <span id="status-finalizado" class="status-badge status-finalizado">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+
+                <!-- Produção -->
+                <div id="view-producao" class="view-container hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold gradient-text">Gestão de Produção</h2>
+                        <button id="export-producao-pdf" class="bg-accent-purple hover:bg-accent-purple-hover text-white font-semibold py-2 px-4 rounded-lg transition-all active:scale-95">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mr-2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14,2 14,8 20,8"></polyline>
+                            </svg>
+                            Exportar PDF
+                        </button>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <!-- Formulário -->
+                        <div class="lg:col-span-1 space-y-6">
+                            <section class="card-enhanced p-6">
+                                <h2 id="form-producao-title" class="text-xl font-semibold mb-4 border-b border-gemini-border pb-3">Adicionar Produção</h2>
+                                <form id="form-producao" class="space-y-5">
+                                    <input type="hidden" id="producao-edit-id">
+                                    <select id="producao-tipo-select" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                        <option value="">Selecione o tipo de trabalho</option>
+                                    </select>
+                                    <select id="producao-dentista-select" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                        <option value="">Selecione o Dentista</option>
+                                    </select>
+                                    <input type="number" id="producao-qtd-input" placeholder="Quantidade" value="1" min="1" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                    <select id="producao-status-select" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                        <option value="Pendente">Pendente</option>
+                                        <option value="Em Andamento">Em Andamento</option>
+                                        <option value="Finalizado">Finalizado</option>
+                                    </select>
+                                    <textarea id="producao-obs-input" placeholder="Observações..." rows="2" class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input"></textarea>
+                                    <input type="date" id="producao-data-input" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                    <input type="date" id="entrega-data-input" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                    <div class="flex space-x-3">
+                                        <button id="form-producao-submit-btn" type="submit" class="flex-1 bg-accent-blue hover:bg-accent-blue-hover text-white font-bold py-3 px-4 rounded-lg transition-all active:scale-95">Adicionar</button>
+                                        <button id="form-producao-cancel-btn" type="button" class="px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white font-bold rounded-lg transition-all active:scale-95 hidden">Cancelar</button>
+                                    </div>
+                                </form>
+                            </section>
+                        </div>
+
+                        <!-- Lista de Produção -->
+                        <div class="lg:col-span-2 space-y-6">
+                            <!-- Filtros Avançados -->
+                            <section class="card-enhanced p-6">
+                                <h3 class="font-semibold mb-4 text-lg">Filtros Avançados</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                    <input type="text" id="search-producao-input" placeholder="Buscar..." class="p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                    <select id="filter-status-select" class="p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                        <option value="">Todos os Status</option>
+                                        <option value="Pendente">Pendente</option>
+                                        <option value="Em Andamento">Em Andamento</option>
+                                        <option value="Finalizado">Finalizado</option>
+                                    </select>
+                                    <input type="date" id="filter-data-inicio" class="p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                    <input type="date" id="filter-data-fim" class="p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                </div>
+                            </section>
+                            
+                            <section class="card-enhanced p-6">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h3 class="font-semibold text-lg">Produção do Dia</h3>
+                                    <div class="text-sm text-gemini-secondary">
+                                        <span id="total-pecas-dia" class="font-bold">0</span> peças | 
+                                        <span id="total-faturamento-dia" class="font-bold">R$ 0,00</span>
+                                    </div>
+                                </div>
+                                <div id="lista-producao-dia" class="space-y-3 max-h-96 overflow-y-auto dark-scrollbar"></div>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dentistas -->
+                <div id="view-dentistas" class="view-container hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold gradient-text">Gestão de Dentistas</h2>
+                        <button id="export-dentistas-pdf" class="bg-accent-purple hover:bg-accent-purple-hover text-white font-semibold py-2 px-4 rounded-lg transition-all active:scale-95">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mr-2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14,2 14,8 20,8"></polyline>
+                            </svg>
+                            Exportar PDF
+                        </button>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div class="lg:col-span-1 space-y-6">
+                            <section class="card-enhanced p-6">
+                                <h2 id="form-dentista-title" class="text-xl font-semibold mb-4 border-b border-gemini-border pb-3">Adicionar Dentista</h2>
+                                <form id="form-dentista" class="space-y-5">
+                                    <input type="hidden" id="dentista-edit-id">
+                                    <input type="text" id="dentista-nome-input" placeholder="Nome do Dentista" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                    <input type="text" id="dentista-clinica-input" placeholder="Clínica" class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                    <input type="tel" id="dentista-telefone-input" placeholder="Telefone" class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                    <input type="email" id="dentista-email-input" placeholder="E-mail" class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                    <div class="flex space-x-3">
+                                        <button id="form-dentista-submit-btn" type="submit" class="flex-1 bg-accent-blue hover:bg-accent-blue-hover text-white font-bold py-3 px-4 rounded-lg transition-all active:scale-95">Adicionar</button>
+                                        <button id="form-dentista-cancel-btn" type="button" class="px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white font-bold rounded-lg transition-all active:scale-95 hidden">Cancelar</button>
+                                    </div>
+                                </form>
+                            </section>
+                        </div>
+
+                        <div class="lg:col-span-2 space-y-6">
+                            <section class="card-enhanced p-6">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h3 class="font-semibold text-lg">Lista de Dentistas</h3>
+                                    <input type="text" id="search-dentistas-input" placeholder="Buscar dentista..." class="p-2 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg">
+                                </div>
+                                <div id="lista-dentistas" class="space-y-3 max-h-96 overflow-y-auto dark-scrollbar"></div>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Análise por Dentista -->
+                <div id="view-analise-dentista" class="view-container hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold gradient-text">Análise por Dentista</h2>
+                        <button id="export-analise-pdf" class="bg-accent-purple hover:bg-accent-purple-hover text-white font-semibold py-2 px-4 rounded-lg transition-all active:scale-95">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mr-2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14,2 14,8 20,8"></polyline>
+                            </svg>
+                            Exportar PDF
+                        </button>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 gap-8">
+                        <!-- Gráfico de Faturamento por Dentista -->
+                        <div class="chart-container">
+                            <h3 class="font-semibold mb-4 text-lg">Faturamento por Dentista (Mês Atual)</h3>
+                            <canvas id="dentista-chart" width="400" height="200"></canvas>
+                        </div>
+                        
+                        <!-- Tabela Detalhada -->
+                        <section class="card-enhanced p-6">
+                            <h3 class="font-semibold mb-4 text-lg">Resumo Detalhado</h3>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left">
+                                    <thead>
+                                        <tr class="border-b border-gemini-border">
+                                            <th class="pb-3 text-gemini-secondary">Dentista</th>
+                                            <th class="pb-3 text-gemini-secondary">Peças</th>
+                                            <th class="pb-3 text-gemini-secondary">Faturamento</th>
+                                            <th class="pb-3 text-gemini-secondary">Ticket Médio</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dentista-summary-table-body">
+                                        <!-- Dados serão inseridos aqui -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+
+                <!-- Resumo Mensal -->
+                <div id="view-resumo" class="view-container hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold gradient-text">Resumo Mensal</h2>
+                        <div class="flex items-center space-x-4">
+                            <div class="flex items-center space-x-2">
+                                <button id="prev-month" class="p-2 rounded-lg bg-gemini-dark-card hover:bg-gray-700 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="15,18 9,12 15,6"></polyline>
+                                    </svg>
+                                </button>
+                                <span id="mes-ano-atual" class="text-lg font-semibold px-4"></span>
+                                <button id="next-month" class="p-2 rounded-lg bg-gemini-dark-card hover:bg-gray-700 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="9,18 15,12 9,6"></polyline>
+                                    </svg>
+                                </button>
+                            </div>
+                            <button id="export-resumo-pdf" class="bg-accent-purple hover:bg-accent-purple-hover text-white font-semibold py-2 px-4 rounded-lg transition-all active:scale-95">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mr-2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14,2 14,8 20,8"></polyline>
+                                </svg>
+                                Exportar PDF
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div class="card-enhanced p-6">
+                            <p class="text-sm text-gemini-secondary">Total de Peças</p>
+                            <p id="total-pecas-mes" class="text-2xl font-bold mt-2 text-accent-purple">0</p>
+                        </div>
+                        <div class="card-enhanced p-6">
+                            <p class="text-sm text-gemini-secondary">Faturamento Bruto</p>
+                            <p id="total-faturamento-mes" class="text-2xl font-bold mt-2 text-accent-green">R$ 0,00</p>
+                        </div>
+                        <div class="card-enhanced p-6">
+                            <p class="text-sm text-gemini-secondary">Total de Despesas</p>
+                            <p id="total-despesas-mes" class="text-2xl font-bold mt-2 text-red-400">R$ 0,00</p>
+                        </div>
+                        <div class="card-enhanced p-6">
+                            <p class="text-sm text-gemini-secondary">Lucro Líquido</p>
+                            <p id="lucro-liquido-mes" class="text-2xl font-bold mt-2 text-accent-blue">R$ 0,00</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <section class="card-enhanced p-6">
+                            <h3 class="font-semibold mb-4 text-lg">Comparativo Financeiro</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <div class="flex justify-between mb-2">
+                                        <span>Faturamento</span>
+                                        <span id="faturamento-bar-label" class="font-bold">R$ 0,00</span>
+                                    </div>
+                                    <div class="w-full bg-gray-700 rounded-full h-3">
+                                        <div id="faturamento-bar" class="bg-accent-green h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-2">
+                                        <span>Despesas</span>
+                                        <span id="despesas-bar-label" class="font-bold">R$ 0,00</span>
+                                    </div>
+                                    <div class="w-full bg-gray-700 rounded-full h-3">
+                                        <div id="despesas-bar" class="bg-red-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="card-enhanced p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="font-semibold text-lg">Despesas do Mês</h3>
+                                <button id="ver-todas-despesas-btn" class="text-accent-blue hover:underline text-sm">Ver todas</button>
+                            </div>
+                            <div id="despesas-container" class="space-y-3 max-h-60 overflow-y-auto dark-scrollbar"></div>
+                        </section>
+                    </div>
+                </div>
+
+                <!-- Admin -->
+                <div id="view-admin" class="view-container hidden">
+                    <h2 class="text-3xl font-bold gradient-text mb-8">Administração</h2>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <section class="card-enhanced p-6">
+                            <h2 class="text-xl font-semibold mb-4 border-b border-gemini-border pb-3">Valores dos Trabalhos</h2>
+                            <form id="form-valores" class="space-y-4 mb-6">
+                                <input type="text" id="tipo-trabalho-input" placeholder="Tipo de trabalho" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                <input type="number" id="valor-trabalho-input" placeholder="Valor (R$)" step="0.01" min="0" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                <button type="submit" class="w-full bg-accent-blue hover:bg-accent-blue-hover text-white font-bold py-3 px-4 rounded-lg transition-all active:scale-95">Adicionar Valor</button>
+                            </form>
+                            <div id="lista-valores" class="space-y-2 max-h-60 overflow-y-auto dark-scrollbar"></div>
+                        </section>
+
+                        <section class="card-enhanced p-6">
+                            <h2 id="form-despesa-title" class="text-xl font-semibold mb-4 border-b border-gemini-border pb-3">Adicionar Despesa</h2>
+                            <form id="form-despesas" class="space-y-4">
+                                <input type="hidden" id="despesa-edit-id">
+                                <input type="text" id="despesa-desc-input" placeholder="Descrição da despesa" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                <select id="despesa-categoria-select" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                    <option value="">Selecione a categoria</option>
+                                    <option value="Material">Material</option>
+                                    <option value="Equipamento">Equipamento</option>
+                                    <option value="Manutenção">Manutenção</option>
+                                    <option value="Transporte">Transporte</option>
+                                    <option value="Outros">Outros</option>
+                                </select>
+                                <input type="number" id="despesa-valor-input" placeholder="Valor (R$)" step="0.01" min="0" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                <input type="date" id="despesa-data-input" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                <div class="flex space-x-3">
+                                    <button id="form-despesa-submit-btn" type="submit" class="flex-1 bg-accent-blue hover:bg-accent-blue-hover text-white font-bold py-3 px-4 rounded-lg transition-all active:scale-95">Adicionar</button>
+                                    <button id="form-despesa-cancel-btn" type="button" class="px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white font-bold rounded-lg transition-all active:scale-95 hidden">Cancelar</button>
+                                </div>
+                            </form>
+                        </section>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modais -->
+    
+    <!-- Modal de Loading -->
+    <div id="loading-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
+        <div class="bg-gemini-dark-card p-8 rounded-xl text-center">
+            <svg class="animate-spin h-8 w-8 text-white mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="text-gemini-secondary">Processando...</p>
+        </div>
+    </div>
+
+    <!-- Modal de Mensagem -->
+    <div id="message-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
+        <div class="bg-gemini-dark-card p-6 rounded-xl max-w-md w-full mx-4">
+            <h3 class="text-lg font-semibold mb-4">Mensagem Gerada</h3>
+            <div id="generated-message-text" class="bg-gemini-input p-4 rounded-lg mb-4 text-sm"></div>
+            <div class="flex space-x-3">
+                <button id="copy-message-btn" class="flex-1 bg-accent-blue hover:bg-accent-blue-hover text-white font-bold py-2 px-4 rounded-lg transition-all active:scale-95">Copiar</button>
+                <button id="close-message-modal-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-bold rounded-lg transition-all active:scale-95">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Despesas -->
+    <div id="despesas-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
+        <div class="bg-gemini-dark-card p-6 rounded-xl max-w-2xl w-full mx-4 max-h-96 overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Todas as Despesas</h3>
+                <button id="close-despesas-modal-btn" class="p-2 rounded-full hover:bg-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div id="lista-despesas-detalhada" class="space-y-3"></div>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
