@@ -771,7 +771,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- RENDERIZAÇÃO E LÓGICA DA UI ---
     
-    // Função unificada para atualizar a exibição do mês
     const updateMonthDisplay = () => {
         const mesAtualDate = new Date(state.mesAtual);
         const monthYearString = mesAtualDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
@@ -782,7 +781,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderizarDashboard = () => {
         updateMonthDisplay();
 
-        // Usa o state.mesAtual para os cálculos, permitindo a navegação
         const mesAtualDate = new Date(state.mesAtual);
         const primeiroDiaMes = new Date(mesAtualDate.getFullYear(), mesAtualDate.getMonth(), 1);
         const ultimoDiaMes = new Date(mesAtualDate.getFullYear(), mesAtualDate.getMonth() + 1, 0);
@@ -806,8 +804,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
-        const seteDiasDepois = new Date();
-        seteDiasDepois.setDate(hoje.getDate() + 7);
+        const trintaDiasDepois = new Date();
+        trintaDiasDepois.setDate(hoje.getDate() + 30);
 
         const entregasAtrasadas = (state.producao || []).filter(p => {
             const dataEntrega = new Date(p.entrega + 'T00:00:00');
@@ -816,7 +814,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const entregasProximas = (state.producao || []).filter(p => {
             const dataEntrega = new Date(p.entrega + 'T00:00:00');
-            return p.status !== 'Finalizado' && dataEntrega >= hoje && dataEntrega <= seteDiasDepois;
+            return p.status !== 'Finalizado' && dataEntrega >= hoje && dataEntrega <= trintaDiasDepois;
         }).sort((a, b) => new Date(a.entrega) - new Date(b.entrega));
         
         const todasAsEntregas = [...entregasAtrasadas, ...entregasProximas];
@@ -832,7 +830,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isUrgent = dataEntrega < hoje;
                 const entregaEl = document.createElement('div');
                 entregaEl.className = `p-3 rounded-lg border ${isUrgent ? 'border-red-500 bg-red-500/10' : 'border-yellow-500 bg-yellow-500/10'}`;
-                entregaEl.innerHTML = `<div class="flex justify-between items-center"><div><p class="font-medium">${entrega.tipo}</p><p class="text-sm text-gemini-secondary">${dentistaName}</p></div><div class="text-right"><p class="text-sm font-medium">${dataEntrega.toLocaleDateString('pt-BR')}</p><span class="text-xs px-2 py-1 rounded-full ${isUrgent ? 'bg-red-500 text-white' : 'bg-yellow-500 text-black'}">${isUrgent ? 'URGENTE' : 'PRÓXIMO'}</span></div></div>`;
+                entregaEl.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="font-medium">${entrega.tipo}</p>
+                            <p class="text-sm text-gemini-secondary">${dentistaName}</p>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                             <div class="text-right">
+                                <p class="text-sm font-medium">${dataEntrega.toLocaleDateString('pt-BR')}</p>
+                                <span class="text-xs px-2 py-1 rounded-full ${isUrgent ? 'bg-red-500 text-white' : 'bg-yellow-500 text-black'}">${isUrgent ? 'URGENTE' : 'PRÓXIMO'}</span>
+                            </div>
+                            <button class="finalize-entrega-btn p-2 rounded-full bg-green-500/20 hover:bg-green-500/40" data-id="${entrega.id}" title="Finalizar Entrega">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-green-400">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>`;
                 listaEntregasProximas.appendChild(entregaEl);
             });
         }
@@ -1533,6 +1548,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (editButton) { startEditDespesa(parseInt(editButton.dataset.id)); }
         const removeButton = e.target.closest('.remove-despesa-btn');
         if (removeButton) { if (confirm('Tem certeza?')) { state.despesas = state.despesas.filter(d => d.id !== parseInt(removeButton.dataset.id)); saveDataToFirestore(); renderizarListaDespesasDetalhada(); showToast("Despesa removida.", "success"); } }
+    });
+
+    listaEntregasProximas.addEventListener('click', (e) => {
+        const finalizeButton = e.target.closest('.finalize-entrega-btn');
+        if (finalizeButton) {
+            const producaoId = parseInt(finalizeButton.dataset.id);
+            const producaoIndex = state.producao.findIndex(p => p.id === producaoId);
+            if (producaoIndex !== -1) {
+                state.producao[producaoIndex].status = 'Finalizado';
+                saveDataToFirestore();
+                showToast("Produção finalizada com sucesso!", "success");
+            }
+        }
     });
 
     // --- INICIALIZAÇÃO ---
