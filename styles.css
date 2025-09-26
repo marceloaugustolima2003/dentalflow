@@ -424,13 +424,3 @@ select option {
     background: #2a2b2c; /* Mesma cor de fundo dos seus inputs */
     color: #ffffff;      /* Cor do texto branca */
 }
-
-/* Funcionalidade para ocultar valores */
-.values-hidden .monetary-value {
-    font-size: 0; /* Oculta o texto original */
-}
-
-.values-hidden .monetary-value::before {
-    content: "R$ •••"; /* Substitui pelo texto ofuscado */
-    font-size: 1.5rem; /* Restaura o tamanho da fonte para o texto ofuscado */
-}

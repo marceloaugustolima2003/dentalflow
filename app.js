@@ -107,7 +107,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const eyeIcon = document.getElementById('eye-icon');
     const eyeOffIcon = document.getElementById('eye-off-icon');
     const formFechamento = document.getElementById('form-fechamento');
-    const fechamentoDiaInput = document.getElementById('fechamento-dia-input');
+    const fechamentoDiaInicioInput = document.getElementById('fechamento-dia-inicio-input');
+    const fechamentoDiaFimInput = document.getElementById('fechamento-dia-fim-input');
 
     // Novos elementos para funcionalidades avançadas
     const notificationsBtn = document.getElementById('notifications-btn');
@@ -144,7 +145,8 @@ document.addEventListener('DOMContentLoaded', () => {
         despesas: [],
         dentistas: [],
         mesAtual: new Date().toISOString(),
-        closingDay: 25, // Dia padrão para o fechamento
+        closingDayStart: 25,
+        closingDayEnd: 24,
         searchTermProducao: '',
         searchTermDentistas: '',
         notifications: []
@@ -174,14 +176,23 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const getBillingPeriod = (currentDate) => {
-        const closingDay = state.closingDay || 25;
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth(); // 0-indexed
+        const startDay = state.closingDayStart || 25;
+        const endDay = state.closingDayEnd || 24;
+        
+        let year = currentDate.getFullYear();
+        let month = currentDate.getMonth(); // 0-indexed
     
-        // Data de início é no mês anterior
-        const startDate = new Date(year, month - 1, closingDay);
-        // Data de fim é no mês atual, um dia antes do dia de fechamento
-        const endDate = new Date(year, month, closingDay - 1);
+        let startDate, endDate;
+    
+        if (startDay > endDay) {
+            // Ciclo que atravessa o mês (ex: 25 a 24)
+            startDate = new Date(year, month - 1, startDay);
+            endDate = new Date(year, month, endDay);
+        } else {
+            // Ciclo dentro do mesmo mês (ex: 1 a 31)
+            startDate = new Date(year, month, startDay);
+            endDate = new Date(year, month, endDay);
+        }
     
         return { startDate, endDate };
     };
@@ -759,7 +770,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     despesas: (data.despesas || []).map(d => ({...d, categoria: d.categoria || 'Outros'})),
                     dentistas: data.dentistas || [],
                     notifications: data.notifications || [],
-                    closingDay: data.closingDay || 25,
+                    closingDayStart: data.closingDayStart || 25,
+                    closingDayEnd: data.closingDayEnd || 24,
                 };
             } else {
                 state = { 
@@ -768,12 +780,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     despesas: [], 
                     dentistas: [], 
                     mesAtual: new Date(),
-                    closingDay: 25,
+                    closingDayStart: 25,
+                    closingDayEnd: 24,
                     notifications: []
                 };
                 saveDataToFirestore(); 
             }
-            fechamentoDiaInput.value = state.closingDay;
+            if(fechamentoDiaInicioInput && fechamentoDiaFimInput) {
+                fechamentoDiaInicioInput.value = state.closingDayStart;
+                fechamentoDiaFimInput.value = state.closingDayEnd;
+            }
             renderAllUIComponents();
             updateNotificationUI();
             updateCharts();
@@ -1360,13 +1376,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- EVENT LISTENERS ---
     
     // Botão de ocultar/mostrar valores
-    toggleValuesBtn.addEventListener('click', () => {
-        document.body.classList.toggle('values-hidden');
-        const isHidden = document.body.classList.contains('values-hidden');
-        toggleValuesBtn.setAttribute('aria-pressed', isHidden);
-        eyeIcon.classList.toggle('hidden', isHidden);
-        eyeOffIcon.classList.toggle('hidden', !isHidden);
-    });
+    if(toggleValuesBtn) {
+        toggleValuesBtn.addEventListener('click', () => {
+            document.body.classList.toggle('values-hidden');
+            const isHidden = document.body.classList.contains('values-hidden');
+            toggleValuesBtn.setAttribute('aria-pressed', isHidden);
+            eyeIcon.classList.toggle('hidden', isHidden);
+            eyeOffIcon.classList.toggle('hidden', !isHidden);
+        });
+    }
 
     // Notificações
     if (notificationsBtn) {
@@ -1447,110 +1465,125 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Formulários
-    formFechamento.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const dia = parseInt(fechamentoDiaInput.value);
-        if (dia >= 1 && dia <= 31) {
-            state.closingDay = dia;
-            saveDataToFirestore().then(() => {
-                showToast("Dia de fechamento salvo com sucesso!", "success");
-                renderAllUIComponents(); // Re-renderiza tudo com a nova data
-                updateCharts();
-            });
-        } else {
-            showToast("Por favor, insira um dia válido (1-31).");
-        }
-    });
-
-    formDentista.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const id = dentistaEditIdInput.value ? parseInt(dentistaEditIdInput.value) : Date.now();
-        const nome = dentistaNomeInput.value.trim();
-        if (!nome) { showToast("O nome do dentista é obrigatório."); return; }
-        const dentistaData = { id, nome, clinica: dentistaClinicaInput.value.trim(), telefone: dentistaTelefoneInput.value.trim(), email: dentistaEmailInput.value.trim() };
-        if (dentistaEditIdInput.value) {
-            const index = state.dentistas.findIndex(d => d.id === id);
-            if (index !== -1) { state.dentistas[index] = dentistaData; showToast("Dentista atualizado com sucesso!", "success"); }
-        } else { state.dentistas.push(dentistaData); showToast("Dentista adicionado com sucesso!", "success"); }
-        saveDataToFirestore(formDentistaSubmitBtn);
-        cancelEditDentista();
-    });
-
-    formDentistaCancelBtn.addEventListener('click', cancelEditDentista);
-    listaDentistas.addEventListener('click', (e) => {
-        const editButton = e.target.closest('.edit-dentista-btn');
-        if (editButton) { startEditDentista(parseInt(editButton.dataset.id)); }
-        const removeButton = e.target.closest('.remove-dentista-btn');
-        if (removeButton) { if (confirm('Tem certeza?')) { state.dentistas = state.dentistas.filter(d => d.id !== parseInt(removeButton.dataset.id)); saveDataToFirestore(); showToast("Dentista removido.", "success"); } }
-    });
-
-    formValores.addEventListener('submit', (e) => { e.preventDefault(); const tipo = tipoTrabalhoInput.value.trim(); const valor = parseFloat(valorTrabalhoInput.value); if (tipo && !isNaN(valor)) { state.valores.push({ tipo, valor }); saveDataToFirestore(); formValores.reset(); showToast("Valor adicionado com sucesso!", "success"); } });
-    listaValores.addEventListener('click', (e) => { const btn = e.target.closest('.remove-valor-btn'); if (btn) { state.valores.splice(btn.dataset.index, 1); saveDataToFirestore(); showToast("Valor removido.", "success"); } });
+    if (formFechamento) {
+        formFechamento.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const diaInicio = parseInt(fechamentoDiaInicioInput.value);
+            const diaFim = parseInt(fechamentoDiaFimInput.value);
     
-    formProducao.addEventListener('submit', (e) => { 
-        e.preventDefault(); 
-        const editId = producaoEditIdInput.value ? parseInt(producaoEditIdInput.value) : null;
-        const producaoData = { 
-            id: editId || Date.now(), 
-            tipo: producaoTipoSelect.value, 
-            dentista: parseInt(producaoDentistaSelect.value), 
-            nomePaciente: producaoPacienteInput.value.trim(),
-            qtd: parseInt(producaoQtdInput.value), 
-            status: producaoStatusSelect.value, 
-            obs: producaoObsInput.value.trim(), 
-            data: producaoDataInput.value, 
-            entrega: entregaDataInput.value 
-        };
-        if (producaoData.tipo && producaoData.dentista && producaoData.nomePaciente && producaoData.qtd > 0 && producaoData.data && producaoData.entrega) {
-            if (editId) { 
-                const index = state.producao.findIndex(p => p.id === editId); 
-                if (index !== -1) { 
-                    state.producao[index] = producaoData; 
-                    showToast("Produção atualizada com sucesso!", "success");
-                    addNotification(`Produção atualizada: ${producaoData.tipo}`, 'success');
-                } 
-            } else { 
-                state.producao.push(producaoData); 
-                showToast("Produção adicionada com sucesso!", "success");
-                addNotification(`Nova produção adicionada: ${producaoData.tipo}`, 'success');
+            if (diaInicio >= 1 && diaInicio <= 31 && diaFim >= 1 && diaFim <= 31) {
+                state.closingDayStart = diaInicio;
+                state.closingDayEnd = diaFim;
+                saveDataToFirestore().then(() => {
+                    showToast("Ciclo de fechamento salvo com sucesso!", "success");
+                    renderAllUIComponents();
+                    updateCharts();
+                });
+            } else {
+                showToast("Por favor, insira dias válidos (1-31).");
             }
-            saveDataToFirestore(producaoSubmitBtn);
-            cancelEditProducao();
-        } else { showToast("Por favor, preencha todos os campos obrigatórios, incluindo o nome do paciente."); }
-    });
+        });
+    }
 
-    producaoCancelBtn.addEventListener('click', cancelEditProducao);
-    listaProducaoDia.addEventListener('click', (e) => { 
-        const removeBtn = e.target.closest('.remove-producao-btn');
-        if (removeBtn) { if (confirm('Tem certeza?')) { state.producao = state.producao.filter(p => p.id !== parseInt(removeBtn.dataset.id)); saveDataToFirestore(); showToast("Produção removida.", "success"); }}
-        const editBtn = e.target.closest('.edit-producao-btn');
-        if (editBtn) { startEditProducao(parseInt(editBtn.dataset.id)); }
-    });
-    producaoDataInput.addEventListener('change', renderizarProducaoDia);
+    if (formDentista) {
+        formDentista.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = dentistaEditIdInput.value ? parseInt(dentistaEditIdInput.value) : Date.now();
+            const nome = dentistaNomeInput.value.trim();
+            if (!nome) { showToast("O nome do dentista é obrigatório."); return; }
+            const dentistaData = { id, nome, clinica: dentistaClinicaInput.value.trim(), telefone: dentistaTelefoneInput.value.trim(), email: dentistaEmailInput.value.trim() };
+            if (dentistaEditIdInput.value) {
+                const index = state.dentistas.findIndex(d => d.id === id);
+                if (index !== -1) { state.dentistas[index] = dentistaData; showToast("Dentista atualizado com sucesso!", "success"); }
+            } else { state.dentistas.push(dentistaData); showToast("Dentista adicionado com sucesso!", "success"); }
+            saveDataToFirestore(formDentistaSubmitBtn);
+            cancelEditDentista();
+        });
+    }
+
+    if(formDentistaCancelBtn) formDentistaCancelBtn.addEventListener('click', cancelEditDentista);
+    if(listaDentistas) {
+        listaDentistas.addEventListener('click', (e) => {
+            const editButton = e.target.closest('.edit-dentista-btn');
+            if (editButton) { startEditDentista(parseInt(editButton.dataset.id)); }
+            const removeButton = e.target.closest('.remove-dentista-btn');
+            if (removeButton) { if (confirm('Tem certeza?')) { state.dentistas = state.dentistas.filter(d => d.id !== parseInt(removeButton.dataset.id)); saveDataToFirestore(); showToast("Dentista removido.", "success"); } }
+        });
+    }
+
+    if(formValores) formValores.addEventListener('submit', (e) => { e.preventDefault(); const tipo = tipoTrabalhoInput.value.trim(); const valor = parseFloat(valorTrabalhoInput.value); if (tipo && !isNaN(valor)) { state.valores.push({ tipo, valor }); saveDataToFirestore(); formValores.reset(); showToast("Valor adicionado com sucesso!", "success"); } });
+    if(listaValores) listaValores.addEventListener('click', (e) => { const btn = e.target.closest('.remove-valor-btn'); if (btn) { state.valores.splice(btn.dataset.index, 1); saveDataToFirestore(); showToast("Valor removido.", "success"); } });
     
-    formDespesas.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const editId = despesaEditIdInput.value ? parseInt(despesaEditIdInput.value) : null;
-        const despesaData = { id: editId || Date.now(), desc: despesaDescInput.value.trim(), categoria: despesaCategoriaSelect.value, valor: parseFloat(despesaValorInput.value), data: despesaDataInput.value };
-        if (despesaData.desc && !isNaN(despesaData.valor) && despesaData.data) {
-            if (editId) { 
-                const index = state.despesas.findIndex(d => d.id === editId); 
-                if (index !== -1) { 
-                    state.despesas[index] = despesaData; 
-                    showToast("Despesa atualizada com sucesso!", "success"); 
-                    addNotification(`Despesa atualizada: ${despesaData.desc}`, 'success');
-                } 
-            } else { 
-                state.despesas.push(despesaData); 
-                showToast("Despesa adicionada com sucesso!", "success"); 
-                addNotification(`Nova despesa: ${despesaData.desc} - ${formatarMoeda(despesaData.valor)}`, 'info');
-            }
-            saveDataToFirestore(formDespesaSubmitBtn);
-            cancelEditDespesa();
-        } else { showToast("Preencha todos os campos da despesa."); }
-    });
+    if(formProducao){
+        formProducao.addEventListener('submit', (e) => { 
+            e.preventDefault(); 
+            const editId = producaoEditIdInput.value ? parseInt(producaoEditIdInput.value) : null;
+            const producaoData = { 
+                id: editId || Date.now(), 
+                tipo: producaoTipoSelect.value, 
+                dentista: parseInt(producaoDentistaSelect.value), 
+                nomePaciente: producaoPacienteInput.value.trim(),
+                qtd: parseInt(producaoQtdInput.value), 
+                status: producaoStatusSelect.value, 
+                obs: producaoObsInput.value.trim(), 
+                data: producaoDataInput.value, 
+                entrega: entregaDataInput.value 
+            };
+            if (producaoData.tipo && producaoData.dentista && producaoData.nomePaciente && producaoData.qtd > 0 && producaoData.data && producaoData.entrega) {
+                if (editId) { 
+                    const index = state.producao.findIndex(p => p.id === editId); 
+                    if (index !== -1) { 
+                        state.producao[index] = producaoData; 
+                        showToast("Produção atualizada com sucesso!", "success");
+                        addNotification(`Produção atualizada: ${producaoData.tipo}`, 'success');
+                    } 
+                } else { 
+                    state.producao.push(producaoData); 
+                    showToast("Produção adicionada com sucesso!", "success");
+                    addNotification(`Nova produção adicionada: ${producaoData.tipo}`, 'success');
+                }
+                saveDataToFirestore(producaoSubmitBtn);
+                cancelEditProducao();
+            } else { showToast("Por favor, preencha todos os campos obrigatórios, incluindo o nome do paciente."); }
+        });
+    }
 
-    formDespesaCancelBtn.addEventListener('click', cancelEditDespesa);
+    if(producaoCancelBtn) producaoCancelBtn.addEventListener('click', cancelEditProducao);
+    if(listaProducaoDia) {
+        listaProducaoDia.addEventListener('click', (e) => { 
+            const removeBtn = e.target.closest('.remove-producao-btn');
+            if (removeBtn) { if (confirm('Tem certeza?')) { state.producao = state.producao.filter(p => p.id !== parseInt(removeBtn.dataset.id)); saveDataToFirestore(); showToast("Produção removida.", "success"); }}
+            const editBtn = e.target.closest('.edit-producao-btn');
+            if (editBtn) { startEditProducao(parseInt(editBtn.dataset.id)); }
+        });
+    }
+    if(producaoDataInput) producaoDataInput.addEventListener('change', renderizarProducaoDia);
+    
+    if(formDespesas) {
+        formDespesas.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const editId = despesaEditIdInput.value ? parseInt(despesaEditIdInput.value) : null;
+            const despesaData = { id: editId || Date.now(), desc: despesaDescInput.value.trim(), categoria: despesaCategoriaSelect.value, valor: parseFloat(despesaValorInput.value), data: despesaDataInput.value };
+            if (despesaData.desc && !isNaN(despesaData.valor) && despesaData.data) {
+                if (editId) { 
+                    const index = state.despesas.findIndex(d => d.id === editId); 
+                    if (index !== -1) { 
+                        state.despesas[index] = despesaData; 
+                        showToast("Despesa atualizada com sucesso!", "success"); 
+                        addNotification(`Despesa atualizada: ${despesaData.desc}`, 'success');
+                    } 
+                } else { 
+                    state.despesas.push(despesaData); 
+                    showToast("Despesa adicionada com sucesso!", "success"); 
+                    addNotification(`Nova despesa: ${despesaData.desc} - ${formatarMoeda(despesaData.valor)}`, 'info');
+                }
+                saveDataToFirestore(formDespesaSubmitBtn);
+                cancelEditDespesa();
+            } else { showToast("Preencha todos os campos da despesa."); }
+        });
+    }
+
+    if(formDespesaCancelBtn) formDespesaCancelBtn.addEventListener('click', cancelEditDespesa);
     
     const changeMonth = (offset) => {
         const d = new Date(state.mesAtual);
@@ -1561,32 +1594,36 @@ document.addEventListener('DOMContentLoaded', () => {
         saveDataToFirestore();
     };
 
-    prevMonthBtn.addEventListener('click', () => changeMonth(-1));
-    nextMonthBtn.addEventListener('click', () => changeMonth(1));
-    dashboardPrevMonthBtn.addEventListener('click', () => changeMonth(-1));
-    dashboardNextMonthBtn.addEventListener('click', () => changeMonth(1));
+    if(prevMonthBtn) prevMonthBtn.addEventListener('click', () => changeMonth(-1));
+    if(nextMonthBtn) nextMonthBtn.addEventListener('click', () => changeMonth(1));
+    if(dashboardPrevMonthBtn) dashboardPrevMonthBtn.addEventListener('click', () => changeMonth(-1));
+    if(dashboardNextMonthBtn) dashboardNextMonthBtn.addEventListener('click', () => changeMonth(1));
 
-    verTodasDespesasBtn.addEventListener('click', () => { renderizarListaDespesasDetalhada(); despesasModal.classList.remove('hidden'); });
-    closeDespesasModalBtn.addEventListener('click', () => { despesasModal.classList.add('hidden'); });
-    listaDespesasDetalhada.addEventListener('click', (e) => {
-        const editButton = e.target.closest('.edit-despesa-btn');
-        if (editButton) { startEditDespesa(parseInt(editButton.dataset.id)); }
-        const removeButton = e.target.closest('.remove-despesa-btn');
-        if (removeButton) { if (confirm('Tem certeza?')) { state.despesas = state.despesas.filter(d => d.id !== parseInt(removeButton.dataset.id)); saveDataToFirestore(); renderizarListaDespesasDetalhada(); showToast("Despesa removida.", "success"); } }
-    });
+    if(verTodasDespesasBtn) verTodasDespesasBtn.addEventListener('click', () => { renderizarListaDespesasDetalhada(); despesasModal.classList.remove('hidden'); });
+    if(closeDespesasModalBtn) closeDespesasModalBtn.addEventListener('click', () => { despesasModal.classList.add('hidden'); });
+    if(listaDespesasDetalhada) {
+        listaDespesasDetalhada.addEventListener('click', (e) => {
+            const editButton = e.target.closest('.edit-despesa-btn');
+            if (editButton) { startEditDespesa(parseInt(editButton.dataset.id)); }
+            const removeButton = e.target.closest('.remove-despesa-btn');
+            if (removeButton) { if (confirm('Tem certeza?')) { state.despesas = state.despesas.filter(d => d.id !== parseInt(removeButton.dataset.id)); saveDataToFirestore(); renderizarListaDespesasDetalhada(); showToast("Despesa removida.", "success"); } }
+        });
+    }
 
-    listaEntregasProximas.addEventListener('click', (e) => {
-        const finalizeButton = e.target.closest('.finalize-entrega-btn');
-        if (finalizeButton) {
-            const producaoId = parseInt(finalizeButton.dataset.id);
-            const producaoIndex = state.producao.findIndex(p => p.id === producaoId);
-            if (producaoIndex !== -1) {
-                state.producao[producaoIndex].status = 'Finalizado';
-                saveDataToFirestore();
-                showToast("Produção finalizada com sucesso!", "success");
+    if(listaEntregasProximas) {
+        listaEntregasProximas.addEventListener('click', (e) => {
+            const finalizeButton = e.target.closest('.finalize-entrega-btn');
+            if (finalizeButton) {
+                const producaoId = parseInt(finalizeButton.dataset.id);
+                const producaoIndex = state.producao.findIndex(p => p.id === producaoId);
+                if (producaoIndex !== -1) {
+                    state.producao[producaoIndex].status = 'Finalizado';
+                    saveDataToFirestore();
+                    showToast("Produção finalizada com sucesso!", "success");
+                }
             }
-        }
-    });
+        });
+    }
 
     // --- INICIALIZAÇÃO ---
     const initApp = () => {

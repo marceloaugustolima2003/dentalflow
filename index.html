@@ -641,13 +641,19 @@
                             <section class="card-enhanced p-6">
                                 <h2 class="text-xl font-semibold mb-4 border-b border-gemini-border pb-3">Configurações do Ciclo</h2>
                                 <form id="form-fechamento" class="space-y-4">
-                                    <div>
-                                        <label for="fechamento-dia-input" class="text-sm font-medium text-gemini-secondary mb-2 block">Dia de Fechamento do Mês</label>
-                                        <input type="number" id="fechamento-dia-input" min="1" max="31" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
-                                        <p class="text-xs text-gemini-secondary mt-2">
-                                            Ex: Se inserir "25", o ciclo irá do dia 25 de um mês até o dia 24 do próximo.
-                                        </p>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label for="fechamento-dia-inicio-input" class="text-sm font-medium text-gemini-secondary mb-2 block">Dia de Início do Ciclo</label>
+                                            <input type="number" id="fechamento-dia-inicio-input" min="1" max="31" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                        </div>
+                                        <div>
+                                            <label for="fechamento-dia-fim-input" class="text-sm font-medium text-gemini-secondary mb-2 block">Dia de Fim do Ciclo</label>
+                                            <input type="number" id="fechamento-dia-fim-input" min="1" max="31" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                        </div>
                                     </div>
+                                    <p class="text-xs text-gemini-secondary mt-2">
+                                        Ex: Para um ciclo do dia 25 ao 24, insira Início: 25 e Fim: 24.
+                                    </p>
                                     <button type="submit" class="w-full bg-accent-blue hover:bg-accent-blue-hover text-white font-bold py-3 px-4 rounded-lg transition-all active:scale-95">Salvar Configuração</button>
                                 </form>
                             </section>
