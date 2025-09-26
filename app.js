@@ -106,6 +106,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggleValuesBtn = document.getElementById('toggle-values-btn');
     const eyeIcon = document.getElementById('eye-icon');
     const eyeOffIcon = document.getElementById('eye-off-icon');
+    const formFechamento = document.getElementById('form-fechamento');
+    const fechamentoDiaInput = document.getElementById('fechamento-dia-input');
 
     // Novos elementos para funcionalidades avançadas
     const notificationsBtn = document.getElementById('notifications-btn');
@@ -142,6 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
         despesas: [],
         dentistas: [],
         mesAtual: new Date().toISOString(),
+        closingDay: 25, // Dia padrão para o fechamento
         searchTermProducao: '',
         searchTermDentistas: '',
         notifications: []
@@ -168,6 +171,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const navigateToView = (viewId) => {
         const link = document.querySelector(`.nav-link[data-view="${viewId}"]`);
         if (link) { link.click(); }
+    };
+
+    const getBillingPeriod = (currentDate) => {
+        const closingDay = state.closingDay || 25;
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth(); // 0-indexed
+    
+        // Data de início é no mês anterior
+        const startDate = new Date(year, month - 1, closingDay);
+        // Data de fim é no mês atual, um dia antes do dia de fechamento
+        const endDate = new Date(year, month, closingDay - 1);
+    
+        return { startDate, endDate };
     };
 
     const setButtonLoading = (button, isLoading) => {
@@ -408,13 +424,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateDentistaChart = () => {
         if (!charts.dentista) return;
         
-        const mesAtualDate = new Date(state.mesAtual);
-        const primeiroDiaMes = new Date(mesAtualDate.getFullYear(), mesAtualDate.getMonth(), 1);
-        const ultimoDiaMes = new Date(mesAtualDate.getFullYear(), mesAtualDate.getMonth() + 1, 0);
+        const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
         
         const producaoDoMes = (state.producao || []).filter(p => {
-            const data = new Date(p.data + 'T00:00:00');
-            return data >= primeiroDiaMes && data <= ultimoDiaMes;
+            const data = new Date(p.data + "T00:00:00");
+            return data >= startDate && data <= endDate;
         });
         
         const faturamentoPorDentista = {};
@@ -503,18 +517,16 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const generateDashboardPDF = () => {
-        const mesAtualDate = new Date(state.mesAtual);
-        const primeiroDiaMes = new Date(mesAtualDate.getFullYear(), mesAtualDate.getMonth(), 1);
-        const ultimoDiaMes = new Date(mesAtualDate.getFullYear(), mesAtualDate.getMonth() + 1, 0);
+        const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
         
         const producaoDoMes = (state.producao || []).filter(p => {
-            const data = new Date(p.data + 'T00:00:00');
-            return data >= primeiroDiaMes && data <= ultimoDiaMes;
+            const data = new Date(p.data + "T00:00:00");
+            return data >= startDate && data <= endDate;
         });
         
         const despesasDoMes = (state.despesas || []).filter(d => {
-            const data = new Date(d.data + 'T00:00:00');
-            return data >= primeiroDiaMes && data <= ultimoDiaMes;
+            const data = new Date(d.data + "T00:00:00");
+            return data >= startDate && data <= endDate;
         });
         
         const faturamentoBruto = producaoDoMes.reduce((acc, p) => {
@@ -746,7 +758,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     mesAtual: data.mesAtual ? new Date(data.mesAtual) : new Date(),
                     despesas: (data.despesas || []).map(d => ({...d, categoria: d.categoria || 'Outros'})),
                     dentistas: data.dentistas || [],
-                    notifications: data.notifications || []
+                    notifications: data.notifications || [],
+                    closingDay: data.closingDay || 25,
                 };
             } else {
                 state = { 
@@ -755,10 +768,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     despesas: [], 
                     dentistas: [], 
                     mesAtual: new Date(),
+                    closingDay: 25,
                     notifications: []
                 };
                 saveDataToFirestore(); 
             }
+            fechamentoDiaInput.value = state.closingDay;
             renderAllUIComponents();
             updateNotificationUI();
             updateCharts();
@@ -780,45 +795,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderizarDashboard = () => {
         updateMonthDisplay();
-
-        const mesAtualDate = new Date(state.mesAtual);
-        const primeiroDiaMes = new Date(mesAtualDate.getFullYear(), mesAtualDate.getMonth(), 1);
-        const ultimoDiaMes = new Date(mesAtualDate.getFullYear(), mesAtualDate.getMonth() + 1, 0);
-
+    
+        const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
+    
         const producaoDoMes = (state.producao || []).filter(p => {
-            const dataProducao = new Date(p.data + 'T00:00:00');
-            return dataProducao >= primeiroDiaMes && dataProducao <= ultimoDiaMes;
+            if (!p.data) return false;
+            const dataProducao = new Date(p.data + "T00:00:00");
+            return dataProducao >= startDate && dataProducao <= endDate;
         });
-
+    
         const despesasDoMes = (state.despesas || []).filter(d => {
-            const dataDespesa = new Date(d.data + 'T00:00:00');
-            return dataDespesa >= primeiroDiaMes && dataDespesa <= ultimoDiaMes;
+            if (!d.data) return false;
+            const dataDespesa = new Date(d.data + "T00:00:00");
+            return dataDespesa >= startDate && dataDespesa <= endDate;
         });
-
+    
         const faturamentoBruto = producaoDoMes.reduce((acc, p) => acc + ((state.valores || []).find(v => v.tipo === p.tipo)?.valor || 0) * p.qtd, 0);
         const totalDespesas = despesasDoMes.reduce((acc, d) => acc + d.valor, 0);
         kpiFaturamentoMes.textContent = formatarMoeda(faturamentoBruto);
         kpiLucroMes.textContent = formatarMoeda(faturamentoBruto - totalDespesas);
         kpiPecasMes.textContent = producaoDoMes.reduce((acc, p) => acc + p.qtd, 0);
         kpiDespesasMes.textContent = formatarMoeda(totalDespesas);
-
+    
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
         const trintaDiasDepois = new Date();
         trintaDiasDepois.setDate(hoje.getDate() + 30);
-
+    
         const entregasAtrasadas = (state.producao || []).filter(p => {
             const dataEntrega = new Date(p.entrega + 'T00:00:00');
             return p.status !== 'Finalizado' && dataEntrega < hoje;
         }).sort((a, b) => new Date(a.entrega) - new Date(b.entrega));
-
+    
         const entregasProximas = (state.producao || []).filter(p => {
             const dataEntrega = new Date(p.entrega + 'T00:00:00');
             return p.status !== 'Finalizado' && dataEntrega >= hoje && dataEntrega <= trintaDiasDepois;
         }).sort((a, b) => new Date(a.entrega) - new Date(b.entrega));
         
         const todasAsEntregas = [...entregasAtrasadas, ...entregasProximas];
-
+    
         listaEntregasProximas.innerHTML = '';
         if (todasAsEntregas.length === 0) {
             listaEntregasProximas.innerHTML = '<p class="text-center text-gemini-secondary">Nenhuma entrega próxima ou atrasada</p>';
@@ -833,13 +848,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 entregaEl.innerHTML = `
                     <div class="flex justify-between items-center">
                         <div>
-                            <p class="font-medium">${entrega.tipo}</p>
+                            <p class="font-medium">${entrega.nomePaciente || 'Paciente não informado'}</p>
                             <p class="text-sm text-gemini-secondary">${dentistaName}</p>
                         </div>
                         <div class="flex items-center space-x-3">
                              <div class="text-right">
                                 <p class="text-sm font-medium">${dataEntrega.toLocaleDateString('pt-BR')}</p>
-                                <span class="text-xs px-2 py-1 rounded-full ${isUrgent ? 'bg-red-500 text-white' : 'bg-yellow-500 text-black'}">${isUrgent ? 'URGENTE' : 'PRÓXIMO'}</span>
+                                <span class="text-xs px-2 py-1 rounded-full ${isUrgent ? 'bg-red-500 text-white' : 'bg-yellow-500 text-black'}">${isUrgent ? 'ATRASADO' : 'PRÓXIMO'}</span>
                             </div>
                             <button class="finalize-entrega-btn p-2 rounded-full bg-green-500/20 hover:bg-green-500/40" data-id="${entrega.id}" title="Finalizar Entrega">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-green-400">
@@ -851,11 +866,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 listaEntregasProximas.appendChild(entregaEl);
             });
         }
-
+    
         statusPendente.textContent = (state.producao || []).filter(p => p.status === 'Pendente').length;
         statusAndamento.textContent = (state.producao || []).filter(p => p.status === 'Em Andamento').length;
         statusFinalizado.textContent = (state.producao || []).filter(p => p.status === 'Finalizado').length;
     };
+    
 
     const renderizarProducaoDia = () => {
         const dataSelecionada = producaoDataInput.value;
@@ -1021,19 +1037,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderizarResumoMensal = () => {
         updateMonthDisplay();
-
-        const mesAtualDate = new Date(state.mesAtual);
-        const primeiroDiaMes = new Date(mesAtualDate.getFullYear(), mesAtualDate.getMonth(), 1);
-        const ultimoDiaMes = new Date(mesAtualDate.getFullYear(), mesAtualDate.getMonth() + 1, 0);
-        
+    
+        const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
+    
         const producaoDoMes = (state.producao || []).filter(p => {
-            const data = new Date(p.data + 'T00:00:00');
-            return data >= primeiroDiaMes && data <= ultimoDiaMes;
+            const data = new Date(p.data + "T00:00:00");
+            return data >= startDate && data <= endDate;
         });
-        
+    
         const despesasDoMes = (state.despesas || []).filter(d => {
-            const data = new Date(d.data + 'T00:00:00');
-            return data >= primeiroDiaMes && data <= ultimoDiaMes;
+            const data = new Date(d.data + "T00:00:00");
+            return data >= startDate && data <= endDate;
         });
         
         const totalPecasValue = producaoDoMes.reduce((acc, p) => acc + p.qtd, 0);
@@ -1086,13 +1100,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const renderizarAnaliseDentista = () => {
-        const mesAtualDate = new Date(state.mesAtual);
-        const primeiroDiaMes = new Date(mesAtualDate.getFullYear(), mesAtualDate.getMonth(), 1);
-        const ultimoDiaMes = new Date(mesAtualDate.getFullYear(), mesAtualDate.getMonth() + 1, 0);
-        
+        const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
+    
         const producaoDoMes = (state.producao || []).filter(p => {
-            const data = new Date(p.data + 'T00:00:00');
-            return data >= primeiroDiaMes && data <= ultimoDiaMes;
+            const data = new Date(p.data + "T00:00:00");
+            return data >= startDate && data <= endDate;
         });
         
         const analise = {};
@@ -1187,13 +1199,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const renderizarListaDespesasDetalhada = () => {
-        const mesAtualDate = new Date(state.mesAtual);
-        const primeiroDiaMes = new Date(mesAtualDate.getFullYear(), mesAtualDate.getMonth(), 1);
-        const ultimoDiaMes = new Date(mesAtualDate.getFullYear(), mesAtualDate.getMonth() + 1, 0);
+        const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
         
         const despesasDoMes = (state.despesas || []).filter(d => {
-            const data = new Date(d.data + 'T00:00:00');
-            return data >= primeiroDiaMes && data <= ultimoDiaMes;
+            const data = new Date(d.data + "T00:00:00");
+            return data >= startDate && data <= endDate;
         });
         
         listaDespesasDetalhada.innerHTML = '';
@@ -1437,6 +1447,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Formulários
+    formFechamento.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const dia = parseInt(fechamentoDiaInput.value);
+        if (dia >= 1 && dia <= 31) {
+            state.closingDay = dia;
+            saveDataToFirestore().then(() => {
+                showToast("Dia de fechamento salvo com sucesso!", "success");
+                renderAllUIComponents(); // Re-renderiza tudo com a nova data
+                updateCharts();
+            });
+        } else {
+            showToast("Por favor, insira um dia válido (1-31).");
+        }
+    });
+
     formDentista.addEventListener('submit', (e) => {
         e.preventDefault();
         const id = dentistaEditIdInput.value ? parseInt(dentistaEditIdInput.value) : Date.now();
