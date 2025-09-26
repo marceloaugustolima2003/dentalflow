@@ -122,6 +122,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const producaoDentistaTableBody = document.getElementById('producao-dentista-table-body');
     const exportDentistaProducaoPdfBtn = document.getElementById('export-dentista-producao-pdf');
 
+    // Novos elementos para controle de mês no dashboard
+    const dashboardMesAnoAtualSpan = document.getElementById('dashboard-mes-ano-atual');
+    const dashboardPrevMonthBtn = document.getElementById('dashboard-prev-month');
+    const dashboardNextMonthBtn = document.getElementById('dashboard-next-month');
+
     // Botões de exportação
     const exportDashboardPdf = document.getElementById('export-dashboard-pdf');
     const exportProducaoPdf = document.getElementById('export-producao-pdf');
@@ -766,27 +771,75 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- RENDERIZAÇÃO E LÓGICA DA UI ---
     
+    // Função unificada para atualizar a exibição do mês
+    const updateMonthDisplay = () => {
+        const mesAtualDate = new Date(state.mesAtual);
+        const monthYearString = mesAtualDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+        if (mesAnoAtualSpan) mesAnoAtualSpan.textContent = monthYearString;
+        if (dashboardMesAnoAtualSpan) dashboardMesAnoAtualSpan.textContent = monthYearString;
+    };
+
     const renderizarDashboard = () => {
+        updateMonthDisplay();
+
+        // Usa o state.mesAtual para os cálculos, permitindo a navegação
         const mesAtualDate = new Date(state.mesAtual);
         const primeiroDiaMes = new Date(mesAtualDate.getFullYear(), mesAtualDate.getMonth(), 1);
         const ultimoDiaMes = new Date(mesAtualDate.getFullYear(), mesAtualDate.getMonth() + 1, 0);
-        const producaoDoMes = (state.producao || []).filter(p => new Date(p.data+'T00:00:00') >= primeiroDiaMes && new Date(p.data+'T00:00:00') <= ultimoDiaMes);
-        const despesasDoMes = (state.despesas || []).filter(d => new Date(d.data+'T00:00:00') >= primeiroDiaMes && new Date(d.data+'T00:00:00') <= ultimoDiaMes);
+
+        const producaoDoMes = (state.producao || []).filter(p => {
+            const dataProducao = new Date(p.data + 'T00:00:00');
+            return dataProducao >= primeiroDiaMes && dataProducao <= ultimoDiaMes;
+        });
+
+        const despesasDoMes = (state.despesas || []).filter(d => {
+            const dataDespesa = new Date(d.data + 'T00:00:00');
+            return dataDespesa >= primeiroDiaMes && dataDespesa <= ultimoDiaMes;
+        });
+
         const faturamentoBruto = producaoDoMes.reduce((acc, p) => acc + ((state.valores || []).find(v => v.tipo === p.tipo)?.valor || 0) * p.qtd, 0);
         const totalDespesas = despesasDoMes.reduce((acc, d) => acc + d.valor, 0);
         kpiFaturamentoMes.textContent = formatarMoeda(faturamentoBruto);
         kpiLucroMes.textContent = formatarMoeda(faturamentoBruto - totalDespesas);
         kpiPecasMes.textContent = producaoDoMes.reduce((acc, p) => acc + p.qtd, 0);
         kpiDespesasMes.textContent = formatarMoeda(totalDespesas);
+
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        const seteDiasDepois = new Date();
+        seteDiasDepois.setDate(hoje.getDate() + 7);
+
+        const entregasAtrasadas = (state.producao || []).filter(p => {
+            const dataEntrega = new Date(p.entrega + 'T00:00:00');
+            return p.status !== 'Finalizado' && dataEntrega < hoje;
+        }).sort((a, b) => new Date(a.entrega) - new Date(b.entrega));
+
+        const entregasProximas = (state.producao || []).filter(p => {
+            const dataEntrega = new Date(p.entrega + 'T00:00:00');
+            return p.status !== 'Finalizado' && dataEntrega >= hoje && dataEntrega <= seteDiasDepois;
+        }).sort((a, b) => new Date(a.entrega) - new Date(b.entrega));
+        
+        const todasAsEntregas = [...entregasAtrasadas, ...entregasProximas];
+
+        listaEntregasProximas.innerHTML = '';
+        if (todasAsEntregas.length === 0) {
+            listaEntregasProximas.innerHTML = '<p class="text-center text-gemini-secondary">Nenhuma entrega próxima ou atrasada</p>';
+        } else {
+            todasAsEntregas.forEach(entrega => {
+                const dentista = (state.dentistas || []).find(d => d.id === entrega.dentista);
+                const dentistaName = dentista ? dentista.nome : 'Dentista desconhecido';
+                const dataEntrega = new Date(entrega.entrega + 'T00:00:00');
+                const isUrgent = dataEntrega < hoje;
+                const entregaEl = document.createElement('div');
+                entregaEl.className = `p-3 rounded-lg border ${isUrgent ? 'border-red-500 bg-red-500/10' : 'border-yellow-500 bg-yellow-500/10'}`;
+                entregaEl.innerHTML = `<div class="flex justify-between items-center"><div><p class="font-medium">${entrega.tipo}</p><p class="text-sm text-gemini-secondary">${dentistaName}</p></div><div class="text-right"><p class="text-sm font-medium">${dataEntrega.toLocaleDateString('pt-BR')}</p><span class="text-xs px-2 py-1 rounded-full ${isUrgent ? 'bg-red-500 text-white' : 'bg-yellow-500 text-black'}">${isUrgent ? 'URGENTE' : 'PRÓXIMO'}</span></div></div>`;
+                listaEntregasProximas.appendChild(entregaEl);
+            });
+        }
+
         statusPendente.textContent = (state.producao || []).filter(p => p.status === 'Pendente').length;
         statusAndamento.textContent = (state.producao || []).filter(p => p.status === 'Em Andamento').length;
         statusFinalizado.textContent = (state.producao || []).filter(p => p.status === 'Finalizado').length;
-        const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-        const seteDiasDepois = new Date(); seteDiasDepois.setDate(hoje.getDate() + 7);
-        const entregas = (state.producao || []).filter(p => { const dataEntrega = new Date(p.entrega + 'T00:00:00'); return p.status !== 'Finalizado' && dataEntrega >= hoje && dataEntrega <= seteDiasDepois; }).sort((a, b) => new Date(a.entrega) - new Date(b.entrega));
-        listaEntregasProximas.innerHTML = '';
-        if (entregas.length === 0) { listaEntregasProximas.innerHTML = '<p class="text-center text-gemini-secondary">Nenhuma entrega próxima</p>'; } 
-        else { entregas.forEach(entrega => { const dentista = (state.dentistas || []).find(d => d.id === entrega.dentista); const dentistaName = dentista ? dentista.nome : 'Dentista desconhecido'; const dataEntrega = new Date(entrega.entrega + 'T00:00:00'); const isUrgent = dataEntrega <= hoje; const entregaEl = document.createElement('div'); entregaEl.className = `p-3 rounded-lg border ${isUrgent ? 'border-red-500 bg-red-500/10' : 'border-yellow-500 bg-yellow-500/10'}`; entregaEl.innerHTML = `<div class="flex justify-between items-center"><div><p class="font-medium">${entrega.tipo}</p><p class="text-sm text-gemini-secondary">${dentistaName}</p></div><div class="text-right"><p class="text-sm font-medium">${dataEntrega.toLocaleDateString('pt-BR')}</p><span class="text-xs px-2 py-1 rounded-full ${isUrgent ? 'bg-red-500 text-white' : 'bg-yellow-500 text-black'}">${isUrgent ? 'URGENTE' : 'PRÓXIMO'}</span></div></div>`; listaEntregasProximas.appendChild(entregaEl); }); }
     };
 
     const renderizarProducaoDia = () => {
@@ -952,9 +1005,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const renderizarResumoMensal = () => {
+        updateMonthDisplay();
+
         const mesAtualDate = new Date(state.mesAtual);
-        mesAnoAtualSpan.textContent = mesAtualDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-        
         const primeiroDiaMes = new Date(mesAtualDate.getFullYear(), mesAtualDate.getMonth(), 1);
         const ultimoDiaMes = new Date(mesAtualDate.getFullYear(), mesAtualDate.getMonth() + 1, 0);
         
@@ -1459,23 +1512,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     formDespesaCancelBtn.addEventListener('click', cancelEditDespesa);
     
-    prevMonthBtn.addEventListener('click', () => { 
-        const d = new Date(state.mesAtual); 
-        d.setMonth(d.getMonth() - 1); 
-        state.mesAtual = d; 
-        renderAllUIComponents(); // Atualiza a UI imediatamente
-        updateCharts(); // Atualiza os gráficos
-        saveDataToFirestore(); // Salva em segundo plano
-    });
-    
-    nextMonthBtn.addEventListener('click', () => { 
-        const d = new Date(state.mesAtual); 
-        d.setMonth(d.getMonth() + 1); 
-        state.mesAtual = d; 
-        renderAllUIComponents(); // Atualiza a UI imediatamente
-        updateCharts(); // Atualiza os gráficos
-        saveDataToFirestore(); // Salva em segundo plano
-    });
+    const changeMonth = (offset) => {
+        const d = new Date(state.mesAtual);
+        d.setMonth(d.getMonth() + offset);
+        state.mesAtual = d;
+        renderAllUIComponents();
+        updateCharts();
+        saveDataToFirestore();
+    };
+
+    prevMonthBtn.addEventListener('click', () => changeMonth(-1));
+    nextMonthBtn.addEventListener('click', () => changeMonth(1));
+    dashboardPrevMonthBtn.addEventListener('click', () => changeMonth(-1));
+    dashboardNextMonthBtn.addEventListener('click', () => changeMonth(1));
 
     verTodasDespesasBtn.addEventListener('click', () => { renderizarListaDespesasDetalhada(); despesasModal.classList.remove('hidden'); });
     closeDespesasModalBtn.addEventListener('click', () => { despesasModal.classList.add('hidden'); });
