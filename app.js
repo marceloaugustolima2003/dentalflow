@@ -1354,11 +1354,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (exportProducaoPdf) {
         exportProducaoPdf.addEventListener('click', generateProducaoPDF);
     }
-
+    
     if (exportDentistaProducaoPdfBtn) {
         exportDentistaProducaoPdfBtn.addEventListener('click', generateProducaoDentistaPDF);
     }
-    
+
     // Ações rápidas
     if (actionAddProducao) {
         actionAddProducao.addEventListener('click', () => navigateToView('view-producao'));
@@ -1458,8 +1458,25 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     formDespesaCancelBtn.addEventListener('click', cancelEditDespesa);
-    prevMonthBtn.addEventListener('click', () => { const d = new Date(state.mesAtual); d.setMonth(d.getMonth() - 1); state.mesAtual = d; saveDataToFirestore(); });
-    nextMonthBtn.addEventListener('click', () => { const d = new Date(state.mesAtual); d.setMonth(d.getMonth() + 1); state.mesAtual = d; saveDataToFirestore(); });
+    
+    prevMonthBtn.addEventListener('click', () => { 
+        const d = new Date(state.mesAtual); 
+        d.setMonth(d.getMonth() - 1); 
+        state.mesAtual = d; 
+        renderAllUIComponents(); // Atualiza a UI imediatamente
+        updateCharts(); // Atualiza os gráficos
+        saveDataToFirestore(); // Salva em segundo plano
+    });
+    
+    nextMonthBtn.addEventListener('click', () => { 
+        const d = new Date(state.mesAtual); 
+        d.setMonth(d.getMonth() + 1); 
+        state.mesAtual = d; 
+        renderAllUIComponents(); // Atualiza a UI imediatamente
+        updateCharts(); // Atualiza os gráficos
+        saveDataToFirestore(); // Salva em segundo plano
+    });
+
     verTodasDespesasBtn.addEventListener('click', () => { renderizarListaDespesasDetalhada(); despesasModal.classList.remove('hidden'); });
     closeDespesasModalBtn.addEventListener('click', () => { despesasModal.classList.add('hidden'); });
     listaDespesasDetalhada.addEventListener('click', (e) => {
