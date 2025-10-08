@@ -26,20 +26,6 @@ html, body {
     background-color: #5f6368; 
 }
 
-/* Estilo para ocultar valores */
-.values-hidden .monetary-value {
-    font-family: monospace;
-    font-weight: 800;
-    letter-spacing: 2px;
-}
-.values-hidden .monetary-value::before {
-    content: 'R$ ••••';
-    color: #a0a0a0;
-}
-.values-hidden .monetary-value > * {
-    display: none;
-}
-
 /* Tema Escuro Aprimorado */
 .bg-gemini-dark { 
     background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%);
@@ -238,6 +224,10 @@ button:hover:before, .btn:hover:before {
     opacity: 1;
 }
 
+.dentista-card-clickable {
+    cursor: pointer;
+}
+
 /* Status Badges Aprimorados */
 .status-badge {
     padding: 0.5rem 1rem;
@@ -428,13 +418,10 @@ select#producao-dentista-select,
 select#producao-status-select,
 select#despesa-categoria-select,
 select#filter-status-select {
-    color-scheme: dark; /* Isso ajuda a instruir o navegador a usar um estilo escuro para as opções */
+    color-scheme: dark;
 }
 
-/* Estiliza as opções DENTRO do select.
-   Isso garante que cada <option> tenha um fundo escuro e texto branco.
-*/
 select option {
-    background: #2a2b2c; /* Mesma cor de fundo dos seus inputs */
-    color: #ffffff;      /* Cor do texto branca */
+    background: #2a2b2c;
+    color: #ffffff;
 }

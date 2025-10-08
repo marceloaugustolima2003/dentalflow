@@ -99,9 +99,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const kpiPecasMes = document.getElementById('kpi-pecas-mes');
     const kpiDespesasMes = document.getElementById('kpi-despesas-mes');
     const listaEntregasProximas = document.getElementById('lista-entregas-proximas');
-    const statusPendente = document.getElementById('status-pendente');
-    const statusAndamento = document.getElementById('status-andamento');
-    const statusFinalizado = document.getElementById('status-finalizado');
     const actionAddProducao = document.getElementById('action-add-producao');
     const actionAddDespesa = document.getElementById('action-add-despesa');
     const searchProducaoInput = document.getElementById('search-producao-input');
@@ -196,25 +193,30 @@ document.addEventListener('DOMContentLoaded', () => {
         if (link) { link.click(); }
     };
 
-    const getBillingPeriod = (currentDate) => {
+    /**
+     * [CORREÇÃO] Lógica de cálculo do período de faturamento.
+     * Calcula o período de faturamento (data de início e fim) com base em uma data de referência.
+     * @param {Date} targetDate - A data de referência para a qual o período será calculado.
+     * @returns {{startDate: Date, endDate: Date}} O objeto contendo as datas de início e fim.
+     */
+    const getBillingPeriod = (targetDate) => {
         const startDay = state.closingDayStart || 25;
         const endDay = state.closingDayEnd || 24;
-        
-        let year = currentDate.getFullYear();
-        let month = currentDate.getMonth(); // 0-indexed
-    
+        let year = targetDate.getFullYear();
+        let month = targetDate.getMonth(); // 0-indexado
+
         let startDate, endDate;
-    
-        if (startDay > endDay) {
-            // Ciclo que atravessa o mês (ex: 25 a 24)
-            startDate = new Date(year, month - 1, startDay);
-            endDate = new Date(year, month, endDay);
-        } else {
-            // Ciclo dentro do mesmo mês (ex: 1 a 31)
-            startDate = new Date(year, month, startDay);
-            endDate = new Date(year, month, endDay);
+
+        if (startDay > endDay) { // O ciclo atravessa o mês (ex: 25 a 24)
+            // O período pertence ao mês da data de TÉRMINO.
+            // Ex: "Período de Outubro" vai de 25/Set a 24/Out.
+            endDate = new Date(year, month, endDay, 23, 59, 59);
+            startDate = new Date(year, month - 1, startDay, 0, 0, 0);
+        } else { // O ciclo é dentro do mesmo mês (ex: 1 a 31)
+            startDate = new Date(year, month, startDay, 0, 0, 0);
+            endDate = new Date(year, month, endDay, 23, 59, 59);
         }
-    
+
         return { startDate, endDate };
     };
 
@@ -362,37 +364,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- GRÁFICOS ---
     const initializeCharts = () => {
-        // GRÁFICO DE FATURAMENTO REMOVIDO
-        
-        // Gráfico de Status da Produção
-        const statusCtx = document.getElementById('status-chart');
-        if (statusCtx) {
-            charts.status = new Chart(statusCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Pendente', 'Em Andamento', 'Finalizado'],
-                    datasets: [{
-                        data: [0, 0, 0],
-                        backgroundColor: ['#ef4444', '#f59e0b', '#10b981'],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                color: '#e8eaed',
-                                padding: 20
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
         // Gráfico de Faturamento por Dentista
         const dentistaCtx = document.getElementById('dentista-chart');
         if (dentistaCtx) {
@@ -403,8 +374,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     datasets: [{
                         label: 'Faturamento',
                         data: [],
-                        backgroundColor: '#6366f1',
-                        borderRadius: 8
+                        backgroundColor: '#4f46e5',
+                        borderRadius: 6
                     }]
                 },
                 options: {
@@ -418,7 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     scales: {
                         x: {
                             ticks: { color: '#9aa0a6' },
-                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' }
                         },
                         y: {
                             ticks: { 
@@ -427,7 +398,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     return 'R$ ' + value.toLocaleString('pt-BR');
                                 }
                             },
-                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' }
                         }
                     }
                 }
@@ -436,22 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const updateCharts = () => {
-        // CHAMADA PARA updateFaturamentoChart REMOVIDA
-        updateStatusChart();
         updateDentistaChart();
-    };
-
-    // FUNÇÃO updateFaturamentoChart REMOVIDA
-
-    const updateStatusChart = () => {
-        if (!charts.status) return;
-        
-        const pendente = (state.producao || []).filter(p => p.status === 'Pendente').length;
-        const andamento = (state.producao || []).filter(p => p.status === 'Em Andamento').length;
-        const finalizado = (state.producao || []).filter(p => p.status === 'Finalizado').length;
-        
-        charts.status.data.datasets[0].data = [pendente, andamento, finalizado];
-        charts.status.update();
     };
 
     const updateDentistaChart = () => {
@@ -576,15 +532,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 title: 'Resumo Executivo',
                 type: 'text',
                 content: `Faturamento: ${formatarMoeda(faturamentoBruto)}\nDespesas: ${formatarMoeda(totalDespesas)}\nLucro: ${formatarMoeda(lucro)}\nPeças Produzidas: ${totalPecas}`
-            },
-            {
-                title: 'Status da Produção',
-                type: 'table',
-                data: [
-                    `Pendente: ${(state.producao || []).filter(p => p.status === 'Pendente').length}`,
-                    `Em Andamento: ${(state.producao || []).filter(p => p.status === 'Em Andamento').length}`,
-                    `Finalizado: ${(state.producao || []).filter(p => p.status === 'Finalizado').length}`
-                ]
             }
         ];
         
@@ -909,10 +856,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 listaEntregasProximas.appendChild(entregaEl);
             });
         }
-    
-        statusPendente.textContent = (state.producao || []).filter(p => p.status === 'Pendente').length;
-        statusAndamento.textContent = (state.producao || []).filter(p => p.status === 'Em Andamento').length;
-        statusFinalizado.textContent = (state.producao || []).filter(p => p.status === 'Finalizado').length;
     };
     
 
@@ -950,7 +893,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </a>` : '';
                 
                 const producaoEl = document.createElement('div');
-                producaoEl.className = 'card-enhanced p-4 hover-scale';
+                producaoEl.className = 'card-enhanced p-4 hover-effect';
                 producaoEl.innerHTML = `
                     <div class="flex justify-between items-start">
                         <div class="flex-1">
@@ -1055,7 +998,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         dentistasFiltrados.forEach(dentista => {
             const dentistaEl = document.createElement('div');
-            dentistaEl.className = 'card-enhanced p-4 hover-scale';
+            dentistaEl.className = 'card-enhanced p-4 hover-effect';
             dentistaEl.innerHTML = `
                 <div class="flex justify-between items-start">
                     <div class="flex-1">
@@ -1163,16 +1106,17 @@ document.addEventListener('DOMContentLoaded', () => {
         
         producaoDoMes.forEach(p => {
             const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
-            const dentistaName = dentista ? dentista.nome : 'Desconhecido';
+            if (!dentista) return; // Pular se o dentista não for encontrado
+
+            if (!analise[dentista.nome]) {
+                analise[dentista.nome] = { id: dentista.id, pecas: 0, faturamento: 0 };
+            }
+            
             const valor = (state.valores || []).find(v => v.tipo === p.tipo);
             const faturamento = valor ? valor.valor * p.qtd : 0;
             
-            if (!analise[dentistaName]) {
-                analise[dentistaName] = { pecas: 0, faturamento: 0 };
-            }
-            
-            analise[dentistaName].pecas += p.qtd;
-            analise[dentistaName].faturamento += faturamento;
+            analise[dentista.nome].pecas += p.qtd;
+            analise[dentista.nome].faturamento += faturamento;
         });
         
         // Renderizar tabela
@@ -1182,7 +1126,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const ticketMedio = dados.pecas > 0 ? dados.faturamento / dados.pecas : 0;
             
             const row = document.createElement('tr');
-            row.className = 'border-b border-gemini-border hover:bg-gray-700 transition-colors';
+            // [NOVO] Adicionando classe e data attribute para a funcionalidade de clique
+            row.className = 'border-b border-gemini-border hover:bg-gray-700/50 transition-colors cursor-pointer dentist-summary-row';
+            row.dataset.dentistId = dados.id;
+
             row.innerHTML = `
                 <td class="py-3 text-gemini-primary">${nome}</td>
                 <td class="py-3 text-gemini-secondary">${dados.pecas}</td>
@@ -1269,7 +1216,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         despesasDoMes.forEach(despesa => {
             const despesaEl = document.createElement('div');
-            despesaEl.className = 'card-enhanced p-4 hover-scale';
+            despesaEl.className = 'card-enhanced p-4 hover-effect';
             despesaEl.innerHTML = `
                 <div class="flex justify-between items-start">
                     <div class="flex-1">
@@ -1317,7 +1264,7 @@ document.addEventListener('DOMContentLoaded', () => {
         estoqueFiltrado.forEach(item => {
             const isLowStock = item.qtd <= item.min;
             const itemEl = document.createElement('div');
-            itemEl.className = `card-enhanced p-4 hover-scale ${isLowStock ? 'border-red-500/50' : ''}`;
+            itemEl.className = `card-enhanced p-4 hover-effect ${isLowStock ? 'border-red-500/50' : ''}`;
             itemEl.innerHTML = `
                 <div class="flex justify-between items-start">
                     <div class="flex-1">
@@ -1548,6 +1495,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // Produção por dentista
     if (filterDentistaSelect) filterDentistaSelect.addEventListener('change', renderizarProducaoPorDentista);
     
+    // [NOVO] Event Listener para clicar na linha da tabela de análise de dentista
+    if (dentistaSummaryTableBody) {
+        dentistaSummaryTableBody.addEventListener('click', (e) => {
+            const row = e.target.closest('.dentist-summary-row');
+            if (row) {
+                const dentistaId = row.dataset.dentistId;
+                if (dentistaId) {
+                    // Navega para a view de produção
+                    navigateToView('view-producao');
+                    
+                    // Aguarda um instante para garantir que a view foi renderizada
+                    setTimeout(() => {
+                        // Seleciona o dentista no filtro
+                        filterDentistaSelect.value = dentistaId;
+                        // Dispara o evento change para atualizar a tabela
+                        filterDentistaSelect.dispatchEvent(new Event('change'));
+                    }, 50);
+                }
+            }
+        });
+    }
+
     // Exportação PDF
     if (exportDashboardPdf) exportDashboardPdf.addEventListener('click', generateDashboardPDF);
     if (exportProducaoPdf) exportProducaoPdf.addEventListener('click', generateProducaoPDF);
