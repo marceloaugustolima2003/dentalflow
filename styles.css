@@ -26,6 +26,20 @@ html, body {
     background-color: #5f6368; 
 }
 
+/* Estilo para ocultar valores */
+.values-hidden .monetary-value {
+    font-family: monospace;
+    font-weight: 800;
+    letter-spacing: 2px;
+}
+.values-hidden .monetary-value::before {
+    content: 'R$ ••••';
+    color: #a0a0a0;
+}
+.values-hidden .monetary-value > * {
+    display: none;
+}
+
 /* Tema Escuro Aprimorado */
 .bg-gemini-dark { 
     background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%);
