@@ -2,11 +2,12 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
 document.addEventListener('DOMContentLoaded', () => {
     
-    let db, auth, functions, userId;
+    let db, auth, functions, storage, userId;
     let unsubscribeFromFirestore;
     let charts = {}; // Armazenar instâncias dos gráficos
 
@@ -35,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const despesaCategoriaSelect = document.getElementById('despesa-categoria-select');
     const despesaValorInput = document.getElementById('despesa-valor-input');
     const despesaDataInput = document.getElementById('despesa-data-input');
+    const despesaRecorrenteCheckbox = document.getElementById('despesa-recorrente-checkbox');
     const formDespesaSubmitBtn = document.getElementById('form-despesa-submit-btn');
     const formDespesaCancelBtn = document.getElementById('form-despesa-cancel-btn');
     const formProducao = document.getElementById('form-producao');
@@ -44,6 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const producaoQtdInput = document.getElementById('producao-qtd-input');
     const producaoStatusSelect = document.getElementById('producao-status-select');
     const producaoObsInput = document.getElementById('producao-obs-input');
+    const producaoAnexoInput = document.getElementById('producao-anexo-input');
     const producaoDataInput = document.getElementById('producao-data-input');
     const entregaDataInput = document.getElementById('entrega-data-input');
     const formProducaoTitle = document.getElementById('form-producao-title');
@@ -110,6 +113,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const fechamentoDiaInicioInput = document.getElementById('fechamento-dia-inicio-input');
     const fechamentoDiaFimInput = document.getElementById('fechamento-dia-fim-input');
 
+    // Elementos do Estoque
+    const formEstoque = document.getElementById('form-estoque');
+    const formEstoqueTitle = document.getElementById('form-estoque-title');
+    const estoqueEditIdInput = document.getElementById('estoque-edit-id');
+    const estoqueNomeInput = document.getElementById('estoque-nome-input');
+    const estoqueFornecedorInput = document.getElementById('estoque-fornecedor-input');
+    const estoqueQtdInput = document.getElementById('estoque-qtd-input');
+    const estoqueUnidadeInput = document.getElementById('estoque-unidade-input');
+    const estoqueMinInput = document.getElementById('estoque-min-input');
+    const estoquePrecoInput = document.getElementById('estoque-preco-input');
+    const formEstoqueSubmitBtn = document.getElementById('form-estoque-submit-btn');
+    const formEstoqueCancelBtn = document.getElementById('form-estoque-cancel-btn');
+    const listaEstoque = document.getElementById('lista-estoque');
+    const searchEstoqueInput = document.getElementById('search-estoque-input');
+
+
     // Novos elementos para funcionalidades avançadas
     const notificationsBtn = document.getElementById('notifications-btn');
     const notificationCount = document.getElementById('notification-count');
@@ -144,11 +163,13 @@ document.addEventListener('DOMContentLoaded', () => {
         producao: [],
         despesas: [],
         dentistas: [],
+        estoque: [],
         mesAtual: new Date().toISOString(),
         closingDayStart: 25,
         closingDayEnd: 24,
         searchTermProducao: '',
         searchTermDentistas: '',
+        searchTermEstoque: '',
         notifications: []
     };
 
@@ -197,9 +218,10 @@ document.addEventListener('DOMContentLoaded', () => {
         return { startDate, endDate };
     };
 
-    const setButtonLoading = (button, isLoading) => {
+    const setButtonLoading = (button, isLoading, originalText = null) => {
         if (isLoading) {
             button.disabled = true;
+            if (originalText) button.dataset.originalText = originalText;
             button.innerHTML = `<svg class="animate-spin h-5 w-5 text-white mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
         } else {
             button.disabled = false;
@@ -714,6 +736,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const email = emailInput.value; 
         const password = passwordInput.value; 
         authErrorMessage.classList.add('hidden'); 
+        setButtonLoading(authButton, true, isLoginMode ? 'Entrar' : 'Registar');
         try { 
             if (isLoginMode) { await signInWithEmailAndPassword(auth, email, password); } 
             else { await createUserWithEmailAndPassword(auth, email, password); }
@@ -725,7 +748,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error.code === 'auth/weak-password') message = "A palavra-passe deve ter pelo menos 6 caracteres.";
             authErrorMessage.textContent = message; 
             authErrorMessage.classList.remove('hidden'); 
-        } 
+        } finally {
+            setButtonLoading(authButton, false);
+        }
     });
     
     logoutButton.addEventListener('click', () => { signOut(auth); });
@@ -769,6 +794,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     mesAtual: data.mesAtual ? new Date(data.mesAtual) : new Date(),
                     despesas: (data.despesas || []).map(d => ({...d, categoria: d.categoria || 'Outros'})),
                     dentistas: data.dentistas || [],
+                    estoque: data.estoque || [],
                     notifications: data.notifications || [],
                     closingDayStart: data.closingDayStart || 25,
                     closingDayEnd: data.closingDayEnd || 24,
@@ -779,6 +805,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     producao: [], 
                     despesas: [], 
                     dentistas: [], 
+                    estoque: [],
                     mesAtual: new Date(),
                     closingDayStart: 25,
                     closingDayEnd: 24,
@@ -793,7 +820,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderAllUIComponents();
             updateNotificationUI();
             updateCharts();
-            checkForNotifications();
+            checkAndCreateRecurringExpenses();
         }, (error) => {
             console.error("Erro ao carregar dados do Firestore:", error);
             showToast("Não foi possível carregar os dados.");
@@ -916,6 +943,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     'Em Andamento': 'status-andamento',
                     'Finalizado': 'status-finalizado'
                 }[producao.status] || 'status-pendente';
+
+                const anexoHtml = producao.anexoURL ? `
+                    <a href="${producao.anexoURL}" target="_blank" class="p-1 rounded hover:bg-blue-700 transition-colors text-blue-400" title="Ver Anexo">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                    </a>` : '';
                 
                 const producaoEl = document.createElement('div');
                 producaoEl.className = 'card-enhanced p-4 hover-scale';
@@ -929,12 +961,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <span class="text-sm">Qtd: <span class="font-semibold">${producao.qtd}</span></span>
                                 <span class="text-sm whitespace-nowrap">Valor: <span class="font-semibold text-accent-green monetary-value">${formatarMoeda(valorTotal)}</span></span>
                             </div>
-                            <p class="text-xs text-gemini-secondary mt-1">Entrega: ${new Date(producao.entrega).toLocaleDateString('pt-BR')}</p>
+                            <p class="text-xs text-gemini-secondary mt-1">Entrega: ${new Date(producao.entrega + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
                             ${producao.obs ? `<p class="text-xs text-gemini-secondary mt-1">${producao.obs}</p>` : ''}
                         </div>
                         <div class="flex flex-col items-end space-y-2">
                             <span class="status-badge ${statusClass}">${producao.status}</span>
                             <div class="flex space-x-1">
+                                ${anexoHtml}
                                 <button class="edit-producao-btn p-1 rounded hover:bg-gray-700 transition-colors" data-id="${producao.id}">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -957,6 +990,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         totalPecasDia.textContent = totalPecas;
         totalFaturamentoDia.textContent = formatarMoeda(totalFaturamento);
+        toggleValuesVisibility();
     };
 
     const renderizarProducaoPorDentista = () => {
@@ -1002,6 +1036,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             producaoDentistaTableBody.appendChild(row);
         });
+        toggleValuesVisibility();
     };
 
     const renderizarListaDentistas = () => {
@@ -1113,6 +1148,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 despesasContainer.appendChild(despesaEl);
             });
         }
+        toggleValuesVisibility();
     };
 
     const renderizarAnaliseDentista = () => {
@@ -1161,6 +1197,7 @@ document.addEventListener('DOMContentLoaded', () => {
             row.innerHTML = '<td colspan="4" class="py-6 text-center text-gemini-secondary">Nenhum dado encontrado para o mês atual</td>';
             dentistaSummaryTableBody.appendChild(row);
         }
+        toggleValuesVisibility();
     };
 
     const renderizarListaValores = () => {
@@ -1184,6 +1221,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             listaValores.appendChild(valorEl);
         });
+        toggleValuesVisibility();
     };
 
     const renderizarSelects = () => {
@@ -1237,7 +1275,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="flex-1">
                         <h4 class="font-semibold text-gemini-primary">${despesa.desc}</h4>
                         <p class="text-sm text-gemini-secondary">${despesa.categoria}</p>
-                        <p class="text-xs text-gemini-secondary mt-1">${new Date(despesa.data).toLocaleDateString('pt-BR')}</p>
+                        <p class="text-xs text-gemini-secondary mt-1">${new Date(despesa.data + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
                     </div>
                     <div class="flex items-center space-x-2">
                         <span class="text-lg font-semibold text-red-400 monetary-value">${formatarMoeda(despesa.valor)}</span>
@@ -1260,6 +1298,58 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             listaDespesasDetalhada.appendChild(despesaEl);
         });
+        toggleValuesVisibility();
+    };
+
+    const renderizarEstoque = () => {
+        const estoqueFiltrado = (state.estoque || []).filter(item => 
+            !state.searchTermEstoque || 
+            item.nome.toLowerCase().includes(state.searchTermEstoque.toLowerCase())
+        );
+        
+        listaEstoque.innerHTML = '';
+        
+        if (estoqueFiltrado.length === 0) {
+            listaEstoque.innerHTML = '<p class="text-center text-gemini-secondary">Nenhum material encontrado</p>';
+            return;
+        }
+        
+        estoqueFiltrado.forEach(item => {
+            const isLowStock = item.qtd <= item.min;
+            const itemEl = document.createElement('div');
+            itemEl.className = `card-enhanced p-4 hover-scale ${isLowStock ? 'border-red-500/50' : ''}`;
+            itemEl.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <div class="flex items-center space-x-2">
+                            ${isLowStock ? `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-400"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>` : ''}
+                            <h4 class="font-semibold text-gemini-primary">${item.nome}</h4>
+                        </div>
+                        <p class="text-sm text-gemini-secondary">${item.fornecedor || 'Sem fornecedor'}</p>
+                        <div class="flex items-center space-x-4 mt-2">
+                            <span class="text-sm">Qtd: <span class="font-semibold ${isLowStock ? 'text-red-400' : ''}">${item.qtd} ${item.unidade}</span></span>
+                            <span class="text-sm">Preço: <span class="font-semibold text-accent-green monetary-value">${formatarMoeda(item.preco)}</span></span>
+                        </div>
+                    </div>
+                    <div class="flex space-x-1">
+                        <button class="edit-estoque-btn p-2 rounded hover:bg-gray-700 transition-colors" data-id="${item.id}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                        </button>
+                        <button class="remove-estoque-btn p-2 rounded hover:bg-red-700 transition-colors text-red-400" data-id="${item.id}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="3,6 5,6 21,6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `;
+            listaEstoque.appendChild(itemEl);
+        });
+        toggleValuesVisibility();
     };
 
     const renderAllUIComponents = () => {
@@ -1271,6 +1361,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderizarAnaliseDentista();
         renderizarListaValores();
         renderizarSelects();
+        renderizarEstoque();
     };
 
     // --- FUNÇÕES DE EDIÇÃO ---
@@ -1287,12 +1378,12 @@ document.addEventListener('DOMContentLoaded', () => {
         producaoObsInput.value = producao.obs || '';
         producaoDataInput.value = producao.data;
         entregaDataInput.value = producao.entrega;
+        producaoAnexoInput.value = '';
         
         formProducaoTitle.textContent = 'Editar Produção';
         producaoSubmitBtn.textContent = 'Atualizar';
         producaoCancelBtn.classList.remove('hidden');
         
-        // Scroll para o formulário
         document.getElementById('form-producao').scrollIntoView({ behavior: 'smooth' });
     };
 
@@ -1303,7 +1394,6 @@ document.addEventListener('DOMContentLoaded', () => {
         producaoSubmitBtn.textContent = 'Adicionar';
         producaoCancelBtn.classList.add('hidden');
         
-        // Definir data padrão
         const hoje = new Date();
         producaoDataInput.valueAsDate = hoje;
         entregaDataInput.valueAsDate = hoje;
@@ -1324,7 +1414,6 @@ document.addEventListener('DOMContentLoaded', () => {
         formDentistaSubmitBtn.textContent = 'Atualizar';
         formDentistaCancelBtn.classList.remove('hidden');
         
-        // Scroll para o formulário
         document.getElementById('form-dentista').scrollIntoView({ behavior: 'smooth' });
     };
 
@@ -1345,18 +1434,15 @@ document.addEventListener('DOMContentLoaded', () => {
         despesaCategoriaSelect.value = despesa.categoria;
         despesaValorInput.value = despesa.valor;
         despesaDataInput.value = despesa.data;
+        despesaRecorrenteCheckbox.checked = despesa.recorrente || false;
         
         formDespesaTitle.textContent = 'Editar Despesa';
         formDespesaSubmitBtn.textContent = 'Atualizar';
         formDespesaCancelBtn.classList.remove('hidden');
         
-        // Fechar modal se estiver aberto
         despesasModal.classList.add('hidden');
-        
-        // Navegar para a view admin
         navigateToView('view-admin');
         
-        // Scroll para o formulário
         setTimeout(() => {
             document.getElementById('form-despesas').scrollIntoView({ behavior: 'smooth' });
         }, 100);
@@ -1369,20 +1455,62 @@ document.addEventListener('DOMContentLoaded', () => {
         formDespesaSubmitBtn.textContent = 'Adicionar';
         formDespesaCancelBtn.classList.add('hidden');
         
-        // Definir data padrão
         despesaDataInput.valueAsDate = new Date();
+    };
+
+    const startEditEstoque = (id) => {
+        const item = (state.estoque || []).find(i => i.id === id);
+        if (!item) return;
+        
+        estoqueEditIdInput.value = item.id;
+        estoqueNomeInput.value = item.nome;
+        estoqueFornecedorInput.value = item.fornecedor || '';
+        estoqueQtdInput.value = item.qtd;
+        estoqueUnidadeInput.value = item.unidade;
+        estoqueMinInput.value = item.min;
+        estoquePrecoInput.value = item.preco;
+        
+        formEstoqueTitle.textContent = 'Editar Material';
+        formEstoqueSubmitBtn.textContent = 'Atualizar';
+        formEstoqueCancelBtn.classList.remove('hidden');
+        
+        formEstoque.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    const cancelEditEstoque = () => {
+        estoqueEditIdInput.value = '';
+        formEstoque.reset();
+        formEstoqueTitle.textContent = 'Adicionar Material';
+        formEstoqueSubmitBtn.textContent = 'Adicionar';
+        formEstoqueCancelBtn.classList.add('hidden');
     };
 
     // --- EVENT LISTENERS ---
     
     // Botão de ocultar/mostrar valores
+    const toggleValuesVisibility = () => {
+        const isHidden = document.body.classList.contains('values-hidden');
+        document.querySelectorAll('.monetary-value').forEach(el => {
+            if (isHidden) {
+                const originalValue = el.dataset.originalValue || el.textContent;
+                el.dataset.originalValue = originalValue;
+                el.textContent = ''; // O CSS fará o resto com o ::before
+            } else {
+                if (el.dataset.originalValue) {
+                    el.textContent = el.dataset.originalValue;
+                }
+            }
+        });
+        eyeIcon.classList.toggle('hidden', isHidden);
+        eyeOffIcon.classList.toggle('hidden', !isHidden);
+    };
+
     if(toggleValuesBtn) {
         toggleValuesBtn.addEventListener('click', () => {
             document.body.classList.toggle('values-hidden');
             const isHidden = document.body.classList.contains('values-hidden');
             toggleValuesBtn.setAttribute('aria-pressed', isHidden);
-            eyeIcon.classList.toggle('hidden', isHidden);
-            eyeOffIcon.classList.toggle('hidden', !isHidden);
+            toggleValuesVisibility();
         });
     }
 
@@ -1403,7 +1531,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Fechar dropdown ao clicar fora
     document.addEventListener('click', () => {
         if (notificationsDropdown) {
             notificationsDropdown.classList.add('hidden');
@@ -1411,58 +1538,24 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // Filtros
-    if (searchProducaoInput) {
-        searchProducaoInput.addEventListener('input', (e) => {
-            state.searchTermProducao = e.target.value;
-            renderizarProducaoDia();
-        });
-    }
-    
-    if (searchDentistasInput) {
-        searchDentistasInput.addEventListener('input', (e) => {
-            state.searchTermDentistas = e.target.value;
-            renderizarListaDentistas();
-        });
-    }
-    
-    if (filterStatusSelect) {
-        filterStatusSelect.addEventListener('change', renderizarProducaoDia);
-    }
-    
-    if (filterDataInicio) {
-        filterDataInicio.addEventListener('change', renderizarProducaoDia);
-    }
-    
-    if (filterDataFim) {
-        filterDataFim.addEventListener('change', renderizarProducaoDia);
-    }
+    if (searchProducaoInput) searchProducaoInput.addEventListener('input', (e) => { state.searchTermProducao = e.target.value; renderizarProducaoDia(); });
+    if (searchDentistasInput) searchDentistasInput.addEventListener('input', (e) => { state.searchTermDentistas = e.target.value; renderizarListaDentistas(); });
+    if (searchEstoqueInput) searchEstoqueInput.addEventListener('input', (e) => { state.searchTermEstoque = e.target.value; renderizarEstoque(); });
+    if (filterStatusSelect) filterStatusSelect.addEventListener('change', renderizarProducaoDia);
+    if (filterDataInicio) filterDataInicio.addEventListener('change', renderizarProducaoDia);
+    if (filterDataFim) filterDataFim.addEventListener('change', renderizarProducaoDia);
 
-    // Event listener para a nova área de produção por dentista
-    if (filterDentistaSelect) {
-        filterDentistaSelect.addEventListener('change', renderizarProducaoPorDentista);
-    }
+    // Produção por dentista
+    if (filterDentistaSelect) filterDentistaSelect.addEventListener('change', renderizarProducaoPorDentista);
     
     // Exportação PDF
-    if (exportDashboardPdf) {
-        exportDashboardPdf.addEventListener('click', generateDashboardPDF);
-    }
-    
-    if (exportProducaoPdf) {
-        exportProducaoPdf.addEventListener('click', generateProducaoPDF);
-    }
-    
-    if (exportDentistaProducaoPdfBtn) {
-        exportDentistaProducaoPdfBtn.addEventListener('click', generateProducaoDentistaPDF);
-    }
+    if (exportDashboardPdf) exportDashboardPdf.addEventListener('click', generateDashboardPDF);
+    if (exportProducaoPdf) exportProducaoPdf.addEventListener('click', generateProducaoPDF);
+    if (exportDentistaProducaoPdfBtn) exportDentistaProducaoPdfBtn.addEventListener('click', generateProducaoDentistaPDF);
 
     // Ações rápidas
-    if (actionAddProducao) {
-        actionAddProducao.addEventListener('click', () => navigateToView('view-producao'));
-    }
-    
-    if (actionAddDespesa) {
-        actionAddDespesa.addEventListener('click', () => navigateToView('view-admin'));
-    }
+    if (actionAddProducao) actionAddProducao.addEventListener('click', () => navigateToView('view-producao'));
+    if (actionAddDespesa) actionAddDespesa.addEventListener('click', () => navigateToView('view-admin'));
 
     // Formulários
     if (formFechamento) {
@@ -1515,8 +1608,26 @@ document.addEventListener('DOMContentLoaded', () => {
     if(listaValores) listaValores.addEventListener('click', (e) => { const btn = e.target.closest('.remove-valor-btn'); if (btn) { state.valores.splice(btn.dataset.index, 1); saveDataToFirestore(); showToast("Valor removido.", "success"); } });
     
     if(formProducao){
-        formProducao.addEventListener('submit', (e) => { 
-            e.preventDefault(); 
+        formProducao.addEventListener('submit', async (e) => { 
+            e.preventDefault();
+            setButtonLoading(producaoSubmitBtn, true);
+
+            const file = producaoAnexoInput.files[0];
+            let anexoURL = null;
+
+            if (file) {
+                const storageRef = ref(storage, `users/${userId}/attachments/${Date.now()}_${file.name}`);
+                try {
+                    const snapshot = await uploadBytes(storageRef, file);
+                    anexoURL = await getDownloadURL(snapshot.ref);
+                } catch (error) {
+                    console.error("Erro no upload: ", error);
+                    showToast("Falha no upload do anexo.");
+                    setButtonLoading(producaoSubmitBtn, false);
+                    return;
+                }
+            }
+            
             const editId = producaoEditIdInput.value ? parseInt(producaoEditIdInput.value) : null;
             const producaoData = { 
                 id: editId || Date.now(), 
@@ -1527,24 +1638,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 status: producaoStatusSelect.value, 
                 obs: producaoObsInput.value.trim(), 
                 data: producaoDataInput.value, 
-                entrega: entregaDataInput.value 
+                entrega: entregaDataInput.value,
+                anexoURL: anexoURL
             };
+
             if (producaoData.tipo && producaoData.dentista && producaoData.nomePaciente && producaoData.qtd > 0 && producaoData.data && producaoData.entrega) {
                 if (editId) { 
                     const index = state.producao.findIndex(p => p.id === editId); 
-                    if (index !== -1) { 
+                    if (index !== -1) {
+                        producaoData.anexoURL = anexoURL || state.producao[index].anexoURL; // Mantém anexo antigo se não houver novo
                         state.producao[index] = producaoData; 
                         showToast("Produção atualizada com sucesso!", "success");
-                        addNotification(`Produção atualizada: ${producaoData.tipo}`, 'success');
                     } 
                 } else { 
                     state.producao.push(producaoData); 
                     showToast("Produção adicionada com sucesso!", "success");
-                    addNotification(`Nova produção adicionada: ${producaoData.tipo}`, 'success');
                 }
-                saveDataToFirestore(producaoSubmitBtn);
+                await saveDataToFirestore();
                 cancelEditProducao();
-            } else { showToast("Por favor, preencha todos os campos obrigatórios, incluindo o nome do paciente."); }
+            } else { 
+                showToast("Por favor, preencha todos os campos obrigatórios."); 
+            }
+            setButtonLoading(producaoSubmitBtn, false);
         });
     }
 
@@ -1563,19 +1678,24 @@ document.addEventListener('DOMContentLoaded', () => {
         formDespesas.addEventListener('submit', (e) => {
             e.preventDefault();
             const editId = despesaEditIdInput.value ? parseInt(despesaEditIdInput.value) : null;
-            const despesaData = { id: editId || Date.now(), desc: despesaDescInput.value.trim(), categoria: despesaCategoriaSelect.value, valor: parseFloat(despesaValorInput.value), data: despesaDataInput.value };
+            const despesaData = { 
+                id: editId || Date.now(), 
+                desc: despesaDescInput.value.trim(), 
+                categoria: despesaCategoriaSelect.value, 
+                valor: parseFloat(despesaValorInput.value), 
+                data: despesaDataInput.value,
+                recorrente: despesaRecorrenteCheckbox.checked
+            };
             if (despesaData.desc && !isNaN(despesaData.valor) && despesaData.data) {
                 if (editId) { 
                     const index = state.despesas.findIndex(d => d.id === editId); 
                     if (index !== -1) { 
                         state.despesas[index] = despesaData; 
                         showToast("Despesa atualizada com sucesso!", "success"); 
-                        addNotification(`Despesa atualizada: ${despesaData.desc}`, 'success');
                     } 
                 } else { 
                     state.despesas.push(despesaData); 
                     showToast("Despesa adicionada com sucesso!", "success"); 
-                    addNotification(`Nova despesa: ${despesaData.desc} - ${formatarMoeda(despesaData.valor)}`, 'info');
                 }
                 saveDataToFirestore(formDespesaSubmitBtn);
                 cancelEditDespesa();
@@ -1584,6 +1704,51 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if(formDespesaCancelBtn) formDespesaCancelBtn.addEventListener('click', cancelEditDespesa);
+
+    // Estoque
+    if (formEstoque) {
+        formEstoque.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = estoqueEditIdInput.value ? parseInt(estoqueEditIdInput.value) : Date.now();
+            const itemData = {
+                id,
+                nome: estoqueNomeInput.value.trim(),
+                fornecedor: estoqueFornecedorInput.value.trim(),
+                qtd: parseFloat(estoqueQtdInput.value),
+                unidade: estoqueUnidadeInput.value.trim(),
+                min: parseFloat(estoqueMinInput.value),
+                preco: parseFloat(estoquePrecoInput.value)
+            };
+            if (!itemData.nome || isNaN(itemData.qtd) || !itemData.unidade || isNaN(itemData.min)) {
+                showToast("Preencha os campos obrigatórios do material.");
+                return;
+            }
+            if (estoqueEditIdInput.value) {
+                const index = state.estoque.findIndex(i => i.id === id);
+                if (index !== -1) state.estoque[index] = itemData;
+            } else {
+                state.estoque.push(itemData);
+            }
+            saveDataToFirestore(formEstoqueSubmitBtn);
+            cancelEditEstoque();
+            showToast("Material salvo com sucesso!", "success");
+        });
+    }
+    if (formEstoqueCancelBtn) formEstoqueCancelBtn.addEventListener('click', cancelEditEstoque);
+    if (listaEstoque) {
+        listaEstoque.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('.edit-estoque-btn');
+            if (editBtn) startEditEstoque(parseInt(editBtn.dataset.id));
+            const removeBtn = e.target.closest('.remove-estoque-btn');
+            if (removeBtn) {
+                if (confirm('Tem certeza?')) {
+                    state.estoque = state.estoque.filter(i => i.id !== parseInt(removeBtn.dataset.id));
+                    saveDataToFirestore();
+                    showToast("Material removido.", "success");
+                }
+            }
+        });
+    }
     
     const changeMonth = (offset) => {
         const d = new Date(state.mesAtual);
@@ -1591,6 +1756,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.mesAtual = d;
         renderAllUIComponents();
         updateCharts();
+        checkAndCreateRecurringExpenses(); 
         saveDataToFirestore();
     };
 
@@ -1625,6 +1791,42 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- LÓGICA DE DESPESAS RECORRENTES ---
+    const checkAndCreateRecurringExpenses = () => {
+        const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
+        const recurringExpenses = (state.despesas || []).filter(d => d.recorrente);
+        let createdNewExpense = false;
+
+        recurringExpenses.forEach(recurrent => {
+            const alreadyExists = (state.despesas || []).some(d => 
+                d.desc === recurrent.desc &&
+                d.valor === recurrent.valor &&
+                new Date(d.data + "T00:00:00") >= startDate &&
+                new Date(d.data + "T00:00:00") <= endDate
+            );
+
+            if (!alreadyExists) {
+                const newDate = new Date(startDate);
+                newDate.setDate(new Date(recurrent.data + "T00:00:00").getDate());
+
+                const newExpense = {
+                    ...recurrent,
+                    id: Date.now() + Math.random(),
+                    data: newDate.toISOString().split('T')[0],
+                    recorrente: false // A nova despesa não é o "molde" recorrente
+                };
+                state.despesas.push(newExpense);
+                createdNewExpense = true;
+                addNotification(`Despesa recorrente '${newExpense.desc}' criada para este mês.`, 'info');
+            }
+        });
+
+        if (createdNewExpense) {
+            saveDataToFirestore();
+        }
+    };
+
+
     // --- INICIALIZAÇÃO ---
     const initApp = () => {
         document.querySelectorAll('button[type="submit"]').forEach(button => {
@@ -1635,7 +1837,6 @@ document.addEventListener('DOMContentLoaded', () => {
         entregaDataInput.valueAsDate = hoje;
         despesaDataInput.valueAsDate = hoje;
         
-        // Inicializar gráficos
         setTimeout(initializeCharts, 100);
     };
 
@@ -1645,13 +1846,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 apiKey: "AIzaSyDEDzQkvYegnFT2EK7RI_xZxconQ3-Q9GU",
                 authDomain: "cad-manager-d7eaf.firebaseapp.com",
                 projectId: "cad-manager-d7eaf",
-                storageBucket: "cad-manager-d7eaf.firebasestorage.app",
+                storageBucket: "cad-manager-d7eaf.appspot.com",
                 messagingSenderId: "631779304741",
                 appId: "1:631779304741:web:57c388a39cbe1ec32766cc"
             };
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
+            storage = getStorage(app);
             functions = getFunctions(app, 'southamerica-east1'); 
             onAuthStateChanged(auth, (user) => {
                 initialLoadingOverlay.classList.add('hidden');
