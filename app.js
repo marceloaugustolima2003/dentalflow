@@ -463,11 +463,25 @@ const generateDashboardPDF = () => {
         const doc = new jsPDF();
         let totalFaturamentoMes = 0;
 
-        // Colunas solicitadas pelo usuário
-        const tableColumns = ["PACIENTE", "TIPO DE TRABALHO", "STATUS", "QTD", "VALOR"];
+        // Colunas
+        const tableColumns = ["PACIENTE", "DENTISTA", "TIPO DE TRABALHO", "STATUS", "QTD", "VALOR"];
         const tableRows = [];
+        
+        // Define a ordem das colunas e seus índices
+        const columnMap = {
+            'PACIENTE': 0,
+            'DENTISTA': 1,
+            'TIPO DE TRABALHO': 2,
+            'STATUS': 3,
+            'QTD': 4,
+            'VALOR': 5
+        };
 
         producaoDoMes.forEach(p => {
+            // Busca o nome do dentista
+            const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
+            const dentistaName = dentista ? dentista.nome : 'Dentista Desconhecido';
+
             // Busca o valor unitário
             const valorItem = (state.valores || []).find(v => v.tipo === p.tipo);
             const valorUnitario = valorItem ? valorItem.valor : 0;
@@ -477,6 +491,7 @@ const generateDashboardPDF = () => {
 
             const producaoData = [
                 p.nomePaciente || 'Não Informado',
+                dentistaName,
                 p.tipo,
                 p.status,
                 p.qtd.toString(),
@@ -496,8 +511,18 @@ const generateDashboardPDF = () => {
             head: [tableColumns], 
             body: tableRows, 
             startY: 25,
-            styles: { fontSize: 9, cellPadding: 2, overflow: 'ellipsize', cellWidth: 'wrap' },
-            headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' } // Cor azul-índigo
+            styles: { fontSize: 9, cellPadding: 2, overflow: 'ellipsize' },
+            headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
+            // NOVO: Definição de largura das colunas
+            columnStyles: {
+                // Largura em mm. A largura total do documento A4 é ~190mm
+                [columnMap['PACIENTE']]: { cellWidth: 35 }, 
+                [columnMap['DENTISTA']]: { cellWidth: 35 },
+                [columnMap['TIPO DE TRABALHO']]: { cellWidth: 45 }, // O mais longo
+                [columnMap['STATUS']]: { cellWidth: 25 }, // Curto
+                [columnMap['QTD']]: { cellWidth: 15, halign: 'center' }, // Bem Curto
+                [columnMap['VALOR']]: { cellWidth: 35, halign: 'right' } // Valor
+            }
         });
         
         // Posição final da tabela
