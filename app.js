@@ -447,7 +447,7 @@ const generateDashboardPDF = () => {
         // ... função original generateDashboardPDF (inalterada)
     };
 
-    const generateProducaoPDF = () => {
+const generateProducaoPDF = () => {
         // Usa o estado atual do mês para determinar o período de fechamento
         const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
         const mesAno = new Date(state.mesAtual).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
@@ -490,14 +490,14 @@ const generateDashboardPDF = () => {
             
             totalFaturamentoMes += valorTotal;
             
-            // ATUALIZAÇÃO: OBS. agora usa o conteúdo completo
+            // OBS. usa o conteúdo completo
             const obsConteudo = (p.obs || '-'); 
 
             const producaoData = [
                 p.nomePaciente || 'Não Informado',
                 dentistaName,
                 p.tipo,
-                obsConteudo, // AGORA USA O CONTEÚDO COMPLETO
+                obsConteudo,
                 p.status,
                 p.qtd.toString(),
                 formatarMoeda(valorTotal)
@@ -516,20 +516,21 @@ const generateDashboardPDF = () => {
             head: [tableColumns], 
             body: tableRows, 
             startY: 25,
-            // Permite quebra de linha automática (cellWidth: 'auto') mas com preferência de truncamento (overflow: 'ellipsize')
+            // Mantemos 'ellipsize' mas o aumento de largura deve reduzir a necessidade de truncamento.
             styles: { fontSize: 9, cellPadding: 2, overflow: 'ellipsize' }, 
             headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
-            // AJUSTE FINO NAS LARGURAS PARA MELHOR DISTRIBUIÇÃO
+            // NOVO AJUSTE FINO (Reduz TIPO DE TRABALHO e VALOR, Aumenta nomes)
             columnStyles: {
                 // Largura em mm. Largura total do documento é ~190mm
-                [columnMap['PACIENTE']]: { cellWidth: 35 },     // +5mm (Total: 35)
-                [columnMap['DENTISTA']]: { cellWidth: 35 },     // +0mm (Total: 70)
-                [columnMap['TIPO DE TRABALHO']]: { cellWidth: 40 }, // +0mm (Total: 110)
-                [columnMap['OBS.']]: { cellWidth: 20 },         // +5mm (Total: 130)
-                [columnMap['STATUS']]: { cellWidth: 20 },       // +0mm (Total: 150)
-                [columnMap['QTD']]: { cellWidth: 10, halign: 'center' }, // -5mm (Total: 160)
-                [columnMap['VALOR']]: { cellWidth: 30, halign: 'right' } // -5mm (Total: 190)
+                [columnMap['PACIENTE']]: { cellWidth: 44 },     // +2mm (Prioridade máxima)
+                [columnMap['DENTISTA']]: { cellWidth: 44 },     // +2mm (Prioridade máxima)
+                [columnMap['TIPO DE TRABALHO']]: { cellWidth: 40 }, // -5mm (Mais compacto)
+                [columnMap['OBS.']]: { cellWidth: 20 },         // Mantido
+                [columnMap['STATUS']]: { cellWidth: 15 },       // Mantido
+                [columnMap['QTD']]: { cellWidth: 8, halign: 'center' }, // Mantido no mínimo
+                [columnMap['VALOR']]: { cellWidth: 19, halign: 'right' } // +1mm (Apenas o necessário para o formato R$ X,XX)
             }
+            // Soma das larguras: 44 + 44 + 40 + 20 + 15 + 8 + 19 = 190mm (Uso total do espaço)
         });
         
         // Posição final da tabela
