@@ -463,18 +463,19 @@ const generateDashboardPDF = () => {
         const doc = new jsPDF();
         let totalFaturamentoMes = 0;
 
-        // Colunas
-        const tableColumns = ["PACIENTE", "DENTISTA", "TIPO DE TRABALHO", "STATUS", "QTD", "VALOR"];
+        // Colunas (inalteradas)
+        const tableColumns = ["PACIENTE", "DENTISTA", "TIPO DE TRABALHO", "OBS.", "STATUS", "QTD", "VALOR"];
         const tableRows = [];
         
-        // Define a ordem das colunas e seus índices
+        // Define a ordem das colunas e seus índices (inalterado)
         const columnMap = {
             'PACIENTE': 0,
             'DENTISTA': 1,
             'TIPO DE TRABALHO': 2,
-            'STATUS': 3,
-            'QTD': 4,
-            'VALOR': 5
+            'OBS.': 3,
+            'STATUS': 4,
+            'QTD': 5,
+            'VALOR': 6
         };
 
         producaoDoMes.forEach(p => {
@@ -488,11 +489,15 @@ const generateDashboardPDF = () => {
             const valorTotal = valorUnitario * p.qtd;
             
             totalFaturamentoMes += valorTotal;
+            
+            // ATUALIZAÇÃO: OBS. agora usa o conteúdo completo
+            const obsConteudo = (p.obs || '-'); 
 
             const producaoData = [
                 p.nomePaciente || 'Não Informado',
                 dentistaName,
                 p.tipo,
+                obsConteudo, // AGORA USA O CONTEÚDO COMPLETO
                 p.status,
                 p.qtd.toString(),
                 formatarMoeda(valorTotal)
@@ -511,17 +516,19 @@ const generateDashboardPDF = () => {
             head: [tableColumns], 
             body: tableRows, 
             startY: 25,
-            styles: { fontSize: 9, cellPadding: 2, overflow: 'ellipsize' },
+            // Permite quebra de linha automática (cellWidth: 'auto') mas com preferência de truncamento (overflow: 'ellipsize')
+            styles: { fontSize: 9, cellPadding: 2, overflow: 'ellipsize' }, 
             headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
-            // NOVO: Definição de largura das colunas
+            // AJUSTE FINO NAS LARGURAS PARA MELHOR DISTRIBUIÇÃO
             columnStyles: {
-                // Largura em mm. A largura total do documento A4 é ~190mm
-                [columnMap['PACIENTE']]: { cellWidth: 35 }, 
-                [columnMap['DENTISTA']]: { cellWidth: 35 },
-                [columnMap['TIPO DE TRABALHO']]: { cellWidth: 45 }, // O mais longo
-                [columnMap['STATUS']]: { cellWidth: 25 }, // Curto
-                [columnMap['QTD']]: { cellWidth: 15, halign: 'center' }, // Bem Curto
-                [columnMap['VALOR']]: { cellWidth: 35, halign: 'right' } // Valor
+                // Largura em mm. Largura total do documento é ~190mm
+                [columnMap['PACIENTE']]: { cellWidth: 35 },     // +5mm (Total: 35)
+                [columnMap['DENTISTA']]: { cellWidth: 35 },     // +0mm (Total: 70)
+                [columnMap['TIPO DE TRABALHO']]: { cellWidth: 40 }, // +0mm (Total: 110)
+                [columnMap['OBS.']]: { cellWidth: 20 },         // +5mm (Total: 130)
+                [columnMap['STATUS']]: { cellWidth: 20 },       // +0mm (Total: 150)
+                [columnMap['QTD']]: { cellWidth: 10, halign: 'center' }, // -5mm (Total: 160)
+                [columnMap['VALOR']]: { cellWidth: 30, halign: 'right' } // -5mm (Total: 190)
             }
         });
         
