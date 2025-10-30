@@ -425,3 +425,42 @@ select option {
     background: #2a2b2c;
     color: #ffffff;
 }
+
+.quick-note-tab {
+    padding: 8px 16px;
+    margin: 0 2px;
+    border: 1px solid var(--gemini-border-color, rgba(255, 255, 255, 0.1));
+    border-bottom: none;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    background: #2a2b2c; /* Cor de fundo da aba inativa */
+    color: #a0a0a0; /* Cor do texto da aba inativa */
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap; /* Impede que o nome quebre a linha */
+}
+
+.quick-note-tab:hover {
+    background: #3c4043; /* Fundo mais claro no hover */
+    color: #ffffff;
+}
+
+.quick-note-tab.active {
+    background: var(--gemini-input-bg, #303134); /* Cor de fundo igual à da textarea */
+    color: #ffffff; /* Cor do texto da aba ativa */
+    font-weight: 600;
+    border-color: var(--gemini-border-color, rgba(255, 255, 255, 0.1));
+    /* Levanta a aba 1px para conectar com a textarea */
+    transform: translateY(1px); 
+    border-bottom: 1px solid var(--gemini-input-bg, #303134); /* Esconde a borda de baixo */
+}
+
+/* Scrollbar horizontal das abas */
+#quick-notes-tabs-list::-webkit-scrollbar {
+    height: 4px;
+}
+#quick-notes-tabs-list::-webkit-scrollbar-thumb {
+    background: #5f6368;
+    border-radius: 2px;

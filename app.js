@@ -15,6 +15,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const quickNotesInput = document.getElementById('quick-notes-input');
     const saveQuickNotesBtn = document.getElementById('save-quick-notes-btn');
     const quickNotesFeedback = document.getElementById('quick-notes-feedback');
+    const quickNotesTabsList = document.getElementById('quick-notes-tabs-list');
+    const addQuickNoteTabBtn = document.getElementById('add-quick-note-tab-btn'); 
+    const deleteQuickNoteTabBtn = document.getElementById('delete-quick-note-tab-btn'); 
     const initialLoadingOverlay = document.getElementById('initial-loading-overlay');
     const authScreen = document.getElementById('auth-screen');
     const appContent = document.getElementById('app-content');
@@ -164,7 +167,8 @@ document.addEventListener('DOMContentLoaded', () => {
         despesas: [],
         dentistas: [],
         estoque: [],
-        quickNotes: "", // Novo campo para notas rápidas
+        quickNotes: [], // MUDADO DE "" PARA []
+        activeQuickNoteId: null, // NOVO
         mesAtual: new Date().toISOString(),
         closingDayStart: 25,
         closingDayEnd: 24,
@@ -668,14 +672,36 @@ const generateProducaoPDF = () => {
         }
     }
 
-    function setupFirestoreListener(uid) {
+   function setupFirestoreListener(uid) {
         if (unsubscribeFromFirestore) unsubscribeFromFirestore();
         const docRef = doc(db, "users", uid);
         unsubscribeFromFirestore = onSnapshot(docRef, (docSnap) => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
+
+                // --- LÓGICA DAS NOTAS RÁPIDAS (MODIFICADA) ---
+                let notesData = data.quickNotes;
+                // 1. Migra dados antigos (string) para a nova estrutura (array)
+                if (typeof notesData === 'string') {
+                    notesData = [{ id: Date.now(), title: 'Geral', content: notesData }];
+                }
+                // 2. Garante que sempre haja pelo menos uma nota
+                if (!notesData || notesData.length === 0) {
+                    notesData = [{ id: Date.now(), title: 'Geral', content: '' }];
+                }
+                // 3. Define o estado
+                state.quickNotes = notesData;
+                
+                // 4. Define a aba ativa
+                const activeId = data.activeQuickNoteId || notesData[0].id;
+                // Garante que a aba ativa exista, senão, usa a primeira
+                state.activeQuickNoteId = notesData.some(n => n.id === activeId) ? activeId : notesData[0].id;
+                // --- FIM DA LÓGICA DAS NOTAS ---
+
                 state = {
                     ...state, ...data,
+                    quickNotes: notesData, // Sobrescreve com os dados tratados
+                    activeQuickNoteId: state.activeQuickNoteId, // Sobrescreve com o ID ativo
                     mesAtual: data.mesAtual ? new Date(data.mesAtual) : new Date(),
                     despesas: (data.despesas || []).map(d => ({...d, categoria: d.categoria || 'Outros'})),
                     dentistas: data.dentistas || [],
@@ -683,9 +709,10 @@ const generateProducaoPDF = () => {
                     closingDayStart: data.closingDayStart || 25,
                     closingDayEnd: data.closingDayEnd || 24,
                     notifications: data.notifications || [],
-                    quickNotes: data.quickNotes || "",
                 };
             } else {
+                // Novo usuário
+                const firstNoteId = Date.now();
                 state = { 
                     valores: [], 
                     producao: [], 
@@ -696,19 +723,20 @@ const generateProducaoPDF = () => {
                     closingDayStart: 25,
                     closingDayEnd: 24,
                     notifications: [],
-                    quickNotes: "" // Inicializa o campo
+                    quickNotes: [{ id: firstNoteId, title: 'Geral', content: '' }], // NOVO
+                    activeQuickNoteId: firstNoteId // NOVO
                 };
                 saveDataToFirestore(); 
             }
+
             if(fechamentoDiaInicioInput && fechamentoDiaFimInput) {
                 fechamentoDiaInicioInput.value = state.closingDayStart;
                 fechamentoDiaFimInput.value = state.closingDayEnd;
             }
-            renderAllUIComponents();
+            renderAllUIComponents(); // Esta função vai chamar a renderQuickNotesUI
             updateNotificationUI();
             updateCharts();
             checkAndCreateRecurringExpenses(); 
-            renderizarQuickNotes(); // Renderiza as notas rápidas
         }, (error) => {
             console.error("Erro ao carregar dados do Firestore:", error);
             showToast("Não foi possível carregar os dados.");
@@ -724,11 +752,56 @@ const generateProducaoPDF = () => {
         if (dashboardMesAnoAtualSpan) dashboardMesAnoAtualSpan.textContent = monthYearString;
     };
 
-	    const renderizarQuickNotes = () => {
-	        if (quickNotesInput) {
-	            quickNotesInput.value = state.quickNotes || '';
-	        }
-	    };
+	    const renderQuickNoteContent = () => {
+        if (quickNotesInput) {
+            const activeNote = state.quickNotes.find(n => n.id === state.activeQuickNoteId);
+            if (activeNote) {
+                quickNotesInput.value = activeNote.content || '';
+                quickNotesInput.disabled = false;
+            } else {
+                quickNotesInput.value = 'Nenhuma nota selecionada.';
+                quickNotesInput.disabled = true;
+            }
+        }
+    };
+
+    // Renderiza a UI inteira (abas + conteúdo)
+    const renderQuickNotesUI = () => {
+        if (!quickNotesTabsList) return;
+
+        quickNotesTabsList.innerHTML = ''; // Limpa as abas
+
+        // Garante que uma aba ativa esteja definida
+        if (!state.activeQuickNoteId && state.quickNotes.length > 0) {
+            state.activeQuickNoteId = state.quickNotes[0].id;
+        }
+
+        // Cria os botões das abas
+        state.quickNotes.forEach(note => {
+            const tabButton = document.createElement('button');
+            tabButton.className = 'quick-note-tab';
+            if (note.id === state.activeQuickNoteId) {
+                tabButton.classList.add('active');
+            }
+            tabButton.textContent = note.title;
+            tabButton.dataset.id = note.id;
+            tabButton.title = note.title;
+            quickNotesTabsList.appendChild(tabButton);
+        });
+
+        // Mostra/Esconde o botão de apagar (só pode apagar se tiver mais de uma)
+        deleteQuickNoteTabBtn.style.display = state.quickNotes.length > 1 ? 'block' : 'none';
+
+        // Carrega o conteúdo da aba ativa
+        renderQuickNoteContent();
+    };
+
+    // Função para selecionar uma aba
+    const selectQuickNoteTab = (id) => {
+        state.activeQuickNoteId = id;
+        saveDataToFirestore(); // Salva qual aba está ativa
+        renderQuickNotesUI(); // Redesenha a UI
+    };
 	
 	    const renderizarDashboard = () => {
 	        updateMonthDisplay();
@@ -1249,7 +1322,7 @@ const generateProducaoPDF = () => {
 	    const renderAllUIComponents = () => {
 	        renderizarDashboard();
 	        renderizarProducaoDia();
-	        renderizarQuickNotes(); // Adiciona a renderização das notas rápidas
+	        renderQuickNotesUI();
 	        renderizarProducaoPorDentista();
         renderizarProducaoPorDentista();
         renderizarListaDentistas();
@@ -1412,12 +1485,17 @@ const generateProducaoPDF = () => {
 
 	    if (saveQuickNotesBtn) {
 	        saveQuickNotesBtn.addEventListener('click', async () => {
-	            // 1. Atualizar o estado
-	            state.quickNotes = quickNotesInput.value;
+                const activeNoteIndex = state.quickNotes.findIndex(n => n.id === state.activeQuickNoteId);
+                if (activeNoteIndex === -1) {
+                    showToast("Nenhuma nota selecionada para salvar.");
+                    return;
+                }
+                
+                // 1. Atualizar o conteúdo da aba ativa no estado
+	            state.quickNotes[activeNoteIndex].content = quickNotesInput.value;
 	            
                 // 2. Ativar feedback visual (loading)
-                // Define o texto original do botão se ainda não estiver definido
-                const originalButtonText = saveQuickNotesBtn.dataset.originalText || 'Salvar Notas';
+                const originalButtonText = saveQuickNotesBtn.dataset.originalText || 'Salvar Nota';
                 if (!saveQuickNotesBtn.dataset.originalText) {
                     saveQuickNotesBtn.dataset.originalText = originalButtonText;
                 }
@@ -1425,23 +1503,20 @@ const generateProducaoPDF = () => {
 	            if (quickNotesFeedback) quickNotesFeedback.classList.add('hidden');
 
 	            try {
-	                // 3. Salvar no Firestore
+	                // 3. Salvar o estado inteiro no Firestore
 	                await saveDataToFirestore();
+	                showToast("Nota salva com sucesso!", "success");
 	                
-	                // 4. Feedback de sucesso (toast)
-	                showToast("Notas salvas com sucesso!", "success");
-	                
-	                // 5. Feedback visual localizado (texto "Salvo!")
+	                // 5. Feedback visual localizado
 	                if (quickNotesFeedback) {
 	                    quickNotesFeedback.textContent = 'Salvo!';
 	                    quickNotesFeedback.classList.remove('hidden', 'text-red-400');
 	                    quickNotesFeedback.classList.add('text-green-400');
-	                    setTimeout(() => quickNotesFeedback.classList.add('hidden'), 2000); // Esconde depois de 2s
+	                    setTimeout(() => quickNotesFeedback.classList.add('hidden'), 2000);
 	                }
 
 	            } catch (error) {
-	                // 6. Feedback de erro
-                    console.error("Erro ao salvar notas:", error);
+	                console.error("Erro ao salvar notas:", error);
 	                showToast("Erro ao salvar notas.");
 	                if (quickNotesFeedback) {
 	                    quickNotesFeedback.textContent = 'Erro ao salvar.';
@@ -1449,11 +1524,57 @@ const generateProducaoPDF = () => {
 	                    quickNotesFeedback.classList.add('text-red-400');
 	                }
 	            } finally {
-	                // 7. Resetar o botão para o estado normal
 	                setButtonLoading(saveQuickNotesBtn, false);
 	            }
 	        });
 	    }
+
+        // Clique nas abas (delegação de evento)
+        if (quickNotesTabsList) {
+            quickNotesTabsList.addEventListener('click', (e) => {
+                const tab = e.target.closest('.quick-note-tab');
+                if (tab && tab.dataset.id) {
+                    selectQuickNoteTab(Number(tab.dataset.id));
+                }
+            });
+        }
+
+        // Botão de Adicionar Nova Aba
+        if (addQuickNoteTabBtn) {
+            addQuickNoteTabBtn.addEventListener('click', () => {
+                const title = prompt("Qual o nome da nova nota?", "Nova Nota");
+                if (title && title.trim() !== "") {
+                    const newNote = {
+                        id: Date.now(),
+                        title: title.trim(),
+                        content: ""
+                    };
+                    state.quickNotes.push(newNote);
+                    selectQuickNoteTab(newNote.id); // Salva e renderiza a nova aba
+                }
+            });
+        }
+
+        // Botão de Apagar Aba
+        if (deleteQuickNoteTabBtn) {
+            deleteQuickNoteTabBtn.addEventListener('click', () => {
+                if (state.quickNotes.length <= 1) {
+                    showToast("Não pode apagar a última nota.");
+                    return;
+                }
+                
+                const activeNote = state.quickNotes.find(n => n.id === state.activeQuickNoteId);
+                if (confirm(`Tem certeza que quer apagar a nota "${activeNote.title}"?`)) {
+                    state.quickNotes = state.quickNotes.filter(n => n.id !== state.activeQuickNoteId);
+                    // Seleciona a primeira nota da lista como nova aba ativa
+                    state.activeQuickNoteId = state.quickNotes[0].id; 
+                    saveDataToFirestore().then(() => {
+                        renderQuickNotesUI(); // Atualiza a UI
+                        showToast("Nota apagada.", "success");
+                    });
+                }
+            });
+        }
 	
 	    // Notificações
 	    if (notificationsBtn) {
