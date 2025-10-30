@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let charts = {}; // Armazenar instâncias dos gráficos
 
     // --- ELEMENTOS DO DOM ---
+    const quickNotesInput = document.getElementById('quick-notes-input');
     const initialLoadingOverlay = document.getElementById('initial-loading-overlay');
     const authScreen = document.getElementById('auth-screen');
     const appContent = document.getElementById('app-content');
@@ -161,6 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
         despesas: [],
         dentistas: [],
         estoque: [],
+        quickNotes: "", // Novo campo para notas rápidas
         mesAtual: new Date().toISOString(),
         closingDayStart: 25,
         closingDayEnd: 24,
@@ -676,9 +678,10 @@ const generateProducaoPDF = () => {
                     despesas: (data.despesas || []).map(d => ({...d, categoria: d.categoria || 'Outros'})),
                     dentistas: data.dentistas || [],
                     estoque: data.estoque || [],
-                    notifications: data.notifications || [],
                     closingDayStart: data.closingDayStart || 25,
                     closingDayEnd: data.closingDayEnd || 24,
+                    notifications: data.notifications || [],
+                    quickNotes: data.quickNotes || "",
                 };
             } else {
                 state = { 
@@ -690,7 +693,8 @@ const generateProducaoPDF = () => {
                     mesAtual: new Date(),
                     closingDayStart: 25,
                     closingDayEnd: 24,
-                    notifications: []
+                    notifications: [],
+                    quickNotes: "" // Inicializa o campo
                 };
                 saveDataToFirestore(); 
             }
@@ -701,7 +705,8 @@ const generateProducaoPDF = () => {
             renderAllUIComponents();
             updateNotificationUI();
             updateCharts();
-            checkAndCreateRecurringExpenses();
+            checkAndCreateRecurringExpenses(); 
+            renderizarQuickNotes(); // Renderiza as notas rápidas
         }, (error) => {
             console.error("Erro ao carregar dados do Firestore:", error);
             showToast("Não foi possível carregar os dados.");
@@ -717,8 +722,14 @@ const generateProducaoPDF = () => {
         if (dashboardMesAnoAtualSpan) dashboardMesAnoAtualSpan.textContent = monthYearString;
     };
 
-    const renderizarDashboard = () => {
-        updateMonthDisplay();
+	    const renderizarQuickNotes = () => {
+	        if (quickNotesInput) {
+	            quickNotesInput.value = state.quickNotes || '';
+	        }
+	    };
+	
+	    const renderizarDashboard = () => {
+	        updateMonthDisplay();
     
         const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
     
@@ -1233,9 +1244,11 @@ const generateProducaoPDF = () => {
         toggleValuesVisibility();
     };
 
-    const renderAllUIComponents = () => {
-        renderizarDashboard();
-        renderizarProducaoDia();
+	    const renderAllUIComponents = () => {
+	        renderizarDashboard();
+	        renderizarProducaoDia();
+	        renderizarQuickNotes(); // Adiciona a renderização das notas rápidas
+	        renderizarProducaoPorDentista();
         renderizarProducaoPorDentista();
         renderizarListaDentistas();
         renderizarResumoMensal();
@@ -1395,9 +1408,21 @@ const generateProducaoPDF = () => {
         });
     }
 
-    // Notificações
-    if (notificationsBtn) {
-        notificationsBtn.addEventListener('click', (e) => {
+	    // Quick Notes - Salva automaticamente ao digitar
+	    if (quickNotesInput) {
+	        quickNotesInput.addEventListener('input', (e) => {
+	            state.quickNotes = e.target.value;
+	            // Salva no Firestore. Usamos um pequeno debounce para evitar muitas escritas
+	            clearTimeout(quickNotesInput.debounceTimer);
+	            quickNotesInput.debounceTimer = setTimeout(() => {
+	                saveDataToFirestore();
+	            }, 1000); // Salva 1 segundo após a última digitação
+	        });
+	    }
+	
+	    // Notificações
+	    if (notificationsBtn) {
+	        notificationsBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             notificationsDropdown.classList.toggle('hidden');
         });
@@ -1779,6 +1804,6 @@ const generateProducaoPDF = () => {
         }
     }
 
-    initApp();
-    initializeFirebase();
-});
+	    initApp();
+	    initializeFirebase();
+	});
