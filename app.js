@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- ELEMENTOS DO DOM ---
     const quickNotesInput = document.getElementById('quick-notes-input');
+    const saveQuickNotesBtn = document.getElementById('save-quick-notes-btn');
+    const quickNotesFeedback = document.getElementById('quick-notes-feedback');
     const initialLoadingOverlay = document.getElementById('initial-loading-overlay');
     const authScreen = document.getElementById('auth-screen');
     const appContent = document.getElementById('app-content');
@@ -1408,15 +1410,48 @@ const generateProducaoPDF = () => {
         });
     }
 
-	    // Quick Notes - Salva automaticamente ao digitar
-	    if (quickNotesInput) {
-	        quickNotesInput.addEventListener('input', (e) => {
-	            state.quickNotes = e.target.value;
-	            // Salva no Firestore. Usamos um pequeno debounce para evitar muitas escritas
-	            clearTimeout(quickNotesInput.debounceTimer);
-	            quickNotesInput.debounceTimer = setTimeout(() => {
-	                saveDataToFirestore();
-	            }, 1000); // Salva 1 segundo após a última digitação
+	    if (saveQuickNotesBtn) {
+	        saveQuickNotesBtn.addEventListener('click', async () => {
+	            // 1. Atualizar o estado
+	            state.quickNotes = quickNotesInput.value;
+	            
+                // 2. Ativar feedback visual (loading)
+                // Define o texto original do botão se ainda não estiver definido
+                const originalButtonText = saveQuickNotesBtn.dataset.originalText || 'Salvar Notas';
+                if (!saveQuickNotesBtn.dataset.originalText) {
+                    saveQuickNotesBtn.dataset.originalText = originalButtonText;
+                }
+                setButtonLoading(saveQuickNotesBtn, true, originalButtonText);
+	            if (quickNotesFeedback) quickNotesFeedback.classList.add('hidden');
+
+	            try {
+	                // 3. Salvar no Firestore
+	                await saveDataToFirestore();
+	                
+	                // 4. Feedback de sucesso (toast)
+	                showToast("Notas salvas com sucesso!", "success");
+	                
+	                // 5. Feedback visual localizado (texto "Salvo!")
+	                if (quickNotesFeedback) {
+	                    quickNotesFeedback.textContent = 'Salvo!';
+	                    quickNotesFeedback.classList.remove('hidden', 'text-red-400');
+	                    quickNotesFeedback.classList.add('text-green-400');
+	                    setTimeout(() => quickNotesFeedback.classList.add('hidden'), 2000); // Esconde depois de 2s
+	                }
+
+	            } catch (error) {
+	                // 6. Feedback de erro
+                    console.error("Erro ao salvar notas:", error);
+	                showToast("Erro ao salvar notas.");
+	                if (quickNotesFeedback) {
+	                    quickNotesFeedback.textContent = 'Erro ao salvar.';
+	                    quickNotesFeedback.classList.remove('hidden', 'text-green-400');
+	                    quickNotesFeedback.classList.add('text-red-400');
+	                }
+	            } finally {
+	                // 7. Resetar o botão para o estado normal
+	                setButtonLoading(saveQuickNotesBtn, false);
+	            }
 	        });
 	    }
 	

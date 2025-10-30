@@ -309,22 +309,30 @@
 
 	                    <!-- Quick Notes Component -->
 	                    <div class="grid grid-cols-1 gap-8 mb-8">
-	                        <section class="card-enhanced p-6">
-	                            <h3 class="font-semibold mb-4 text-lg flex items-center">
-	                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 text-yellow-400">
-	                                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
-	                                    <polyline points="14 2 14 8 20 8"></polyline>
-	                                    <line x1="16" y1="13" x2="8" y2="13"></line>
-	                                    <line x1="16" y1="17" x2="8" y2="17"></line>
-	                                    <line x1="10" y1="9" x2="10" y2="9"></line>
-	                                </svg>
-	                                Notas Rápidas
-	                            </h3>
-	                            <textarea id="quick-notes-input" rows="6" placeholder="Escreva suas notas rápidas aqui. Elas serão salvas automaticamente." class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 mobile-optimized-input"></textarea>
-	                            <p class="text-xs text-gemini-secondary mt-2">As notas são salvas automaticamente no seu perfil.</p>
-	                        </section>
-	                    </div>
-	                    <!-- End Quick Notes Component -->
+    <section class="card-enhanced p-6">
+        <h3 class="font-semibold mb-4 text-lg flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 text-yellow-400">
+                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <line x1="10" y1="9" x2="10" y2="9"></line>
+            </svg>
+            Notas Rápidas
+        </h3>
+        <textarea id="quick-notes-input" rows="6" placeholder="Escreva suas notas rápidas aqui..." class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 mobile-optimized-input"></textarea>
+        
+        <div class="flex items-center justify-between mt-3">
+            <button id="save-quick-notes-btn" class="btn bg-accent-blue hover:bg-accent-blue-hover text-white font-bold py-2 px-4 rounded-lg transition-all active:scale-95">
+                Salvar Notas
+            </button>
+            <span id="quick-notes-feedback" class="text-sm font-medium hidden"></span>
+        </div>
+        <p class="text-xs text-gemini-secondary mt-2">
+            Clique em "Salvar Notas" para guardar suas anotações.
+        </p>
+    </section>
+</div>
 	                    
 	                    <div class="grid grid-cols-1 gap-8">
 	                        <section class="card-enhanced p-6">
