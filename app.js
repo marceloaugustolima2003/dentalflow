@@ -975,7 +975,7 @@ const generateProducaoPDF = () => {
         producaoDentistaTableBody.innerHTML = '';
 
         if (!selectedDentistaId) {
-            producaoDentistaTableBody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gemini-secondary">Selecione um dentista para começar.</td></tr>';
+            producaoDentistaTableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-gemini-secondary">Selecione um dentista para começar.</td></tr>';
             exportDentistaProducaoPdfBtn.classList.add('hidden'); // Oculta o botão
             return;
         }
@@ -983,7 +983,7 @@ const generateProducaoPDF = () => {
         const producaoFiltrada = (state.producao || []).filter(p => p.dentista == selectedDentistaId);
 
         if (producaoFiltrada.length === 0) {
-            producaoDentistaTableBody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gemini-secondary">Nenhuma produção encontrada para este dentista.</td></tr>';
+            producaoDentistaTableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-gemini-secondary">Nenhuma produção encontrada para este dentista.</td></tr>';
             exportDentistaProducaoPdfBtn.classList.add('hidden'); // Oculta o botão
             return;
         }
@@ -1003,6 +1003,8 @@ const generateProducaoPDF = () => {
 
             const row = document.createElement('tr');
             row.className = 'border-b border-gemini-border hover:bg-gray-700/50 transition-colors';
+            
+            // [MODIFICADO] Adicionado o <td> para o botão de editar
             row.innerHTML = `
                 <td class="p-3 text-gemini-primary font-medium">${dentistaName}</td>
                 <td class="p-3 text-gemini-secondary">${producao.nomePaciente || '-'}</td>
@@ -1010,6 +1012,14 @@ const generateProducaoPDF = () => {
                 <td class="p-3 text-gemini-secondary text-sm">${producao.obs || '-'}</td>
                 <td class="p-3 font-semibold ${statusClass}">${producao.status}</td>
                 <td class="p-3 text-accent-green font-semibold monetary-value">${formatarMoeda(valorTotal)}</td>
+                <td class="p-3 text-center">
+                    <button class="edit-producao-btn p-1 rounded hover:bg-gray-700 transition-colors" data-id="${producao.id}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
+                </td>
             `;
             producaoDentistaTableBody.appendChild(row);
         });
@@ -1623,6 +1633,19 @@ const generateProducaoPDF = () => {
 
     // Produção por dentista
     if (filterDentistaSelect) filterDentistaSelect.addEventListener('change', renderizarProducaoPorDentista);
+    if (producaoDentistaTableBody) {
+    producaoDentistaTableBody.addEventListener('click', (e) => {
+        const editBtn = e.target.closest('.edit-producao-btn');
+        if (editBtn) {
+            const producaoId = parseInt(editBtn.dataset.id);
+
+            // A função 'startEditProducao' já está na mesma página (view-producao)
+            // e cuida de rolar a tela até o formulário de edição.
+            startEditProducao(producaoId);
+        }
+    });
+}
+
     
     // [NOVO] Event Listener para clicar na linha da tabela de análise de dentista
     if (dentistaSummaryTableBody) {
