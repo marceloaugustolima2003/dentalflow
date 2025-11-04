@@ -804,7 +804,7 @@ const generateProducaoPDF = () => {
     };
 	
 	    const renderizarDashboard = () => {
-	        updateMonthDisplay();
+        updateMonthDisplay();
     
         const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
     
@@ -853,29 +853,43 @@ const generateProducaoPDF = () => {
                 const dentistaName = dentista ? dentista.nome : 'Dentista desconhecido';
                 const dataEntrega = new Date(entrega.entrega + 'T00:00:00');
                 const isUrgent = dataEntrega < hoje;
+
+                // Buscar os detalhes extras
+                const tipoTrabalho = entrega.tipo || 'Tipo não informado';
+                const observacoes = entrega.obs || 'Nenhuma observação';
+
                 const entregaEl = document.createElement('div');
-                entregaEl.className = `p-3 rounded-lg border ${isUrgent ? 'border-red-500 bg-red-500/10' : 'border-yellow-500 bg-yellow-500/10'}`;
+                entregaEl.className = `entrega-item-container p-3 rounded-lg border ${isUrgent ? 'border-red-500 bg-red-500/10' : 'border-yellow-500 bg-yellow-500/10'}`;
+                
+                // HTML reestruturado para expansão (e CORRIGIDO sem os '+')
                 entregaEl.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <p class="font-medium">${entrega.nomePaciente || 'Paciente não informado'}</p>
-                            <p class="text-sm text-gemini-secondary">${dentistaName}</p>
+                    <div class="entrega-item-header flex justify-between items-center cursor-pointer">
+                        <div class="flex-1 min-w-0">
+                            <p class="font-medium truncate">${entrega.nomePaciente || 'Paciente não informado'}</p>
+                            <p class="text-sm text-gemini-secondary truncate">${dentistaName}</p>
                         </div>
-                        <div class="flex items-center space-x-3">
+                        <div class="flex items-center space-x-3 flex-shrink-0 ml-3">
                              <div class="text-right">
                                 <p class="text-sm font-medium">${dataEntrega.toLocaleDateString('pt-BR')}</p>
                                 <span class="text-xs px-2 py-1 rounded-full ${isUrgent ? 'bg-red-500 text-white' : 'bg-yellow-500 text-black'}">${isUrgent ? 'ATRASADO' : 'PRÓXIMO'}</span>
                             </div>
                             <button class="finalize-entrega-btn p-2 rounded-full bg-green-500/20 hover:bg-green-500/40" data-id="${entrega.id}" title="Finalizar Entrega">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-green-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-green-400" style="pointer-events: none;">
                                     <polyline points="20 6 9 17 4 12"></polyline>
                                 </svg>
                             </button>
+                            <svg class="entrega-expand-icon w-4 h-4 text-gemini-secondary transition-transform" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                         </div>
-                    </div>`;
-                listaEntregasProximas.appendChild(entregaEl);
+                     </div>
+ 
+                     <div class="entrega-item-details hidden mt-3 pt-3 border-t border-gemini-border/50">
+                         <p class="text-sm"><strong class="text-gemini-secondary">Trabalho:</strong> ${tipoTrabalho}</p>
+                         <p class="text-sm mt-1 break-words"><strong class="text-gemini-secondary">Obs:</strong> ${observacoes}</p>
+                     </div>
+                 `;
+                 listaEntregasProximas.appendChild(entregaEl);
             });
-        }
+        } 
     };
     
 
@@ -1863,7 +1877,10 @@ const generateProducaoPDF = () => {
     if(listaEntregasProximas) {
         listaEntregasProximas.addEventListener('click', (e) => {
             const finalizeButton = e.target.closest('.finalize-entrega-btn');
+           const header = e.target.closest('.entrega-item-header');
+
             if (finalizeButton) {
+               e.stopPropagation(); // Impede que o clique expanda o item
                 const producaoId = parseInt(finalizeButton.dataset.id);
                 const producaoIndex = state.producao.findIndex(p => p.id === producaoId);
                 if (producaoIndex !== -1) {
@@ -1872,6 +1889,15 @@ const generateProducaoPDF = () => {
                     showToast("Produção finalizada com sucesso!", "success");
                 }
             }
+           // [NOVO] Lógica para expandir
+           else if (header) {
+               const container = header.closest('.entrega-item-container');
+               const details = container.querySelector('.entrega-item-details');
+               const icon = header.querySelector('.entrega-expand-icon');
+               
+               details.classList.toggle('hidden');
+               icon.classList.toggle('rotate-180');
+           }
         });
     }
 
