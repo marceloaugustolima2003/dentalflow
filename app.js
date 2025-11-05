@@ -159,6 +159,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportAnalisePdf = document.getElementById('export-analise-pdf');
     const exportResumoPdf = document.getElementById('export-resumo-pdf');
 
+    // Elementos do Modal de Confirmação
+    const confirmationModal = document.getElementById('confirmation-modal');
+    const confirmationTitle = document.getElementById('confirmation-title');
+    const confirmationMessage = document.getElementById('confirmation-message');
+    const confirmYesBtn = document.getElementById('confirm-yes-btn');
+    const confirmNoBtn = document.getElementById('confirm-no-btn');
+
     // --- ESTADO DA APLICAÇÃO ---
     let isLoginMode = true;
     let state = {
@@ -237,6 +244,38 @@ document.addEventListener('DOMContentLoaded', () => {
             button.disabled = false;
             button.innerHTML = button.dataset.originalText || '';
         }
+    };
+
+     // Função para o Modal de Confirmação Elegante
+    const showConfirmationModal = (title, message) => {
+        // Define o texto
+        confirmationTitle.textContent = title;
+        confirmationMessage.textContent = message;
+
+        // Mostra o modal
+        confirmationModal.classList.remove('hidden');
+
+        // Retorna uma promessa que espera a decisão do usuário
+        return new Promise((resolve) => {
+            // Remove listeners antigos para evitar cliques duplicados
+            confirmYesBtn.replaceWith(confirmYesBtn.cloneNode(true));
+            confirmNoBtn.replaceWith(confirmNoBtn.cloneNode(true));
+
+            // Pega as novas referências dos botões
+            const newYesBtn = document.getElementById('confirm-yes-btn');
+            const newNoBtn = document.getElementById('confirm-no-btn');
+
+            // Adiciona os listeners
+            newYesBtn.addEventListener('click', () => {
+                confirmationModal.classList.add('hidden');
+                resolve(true); // Usuário clicou "Sim"
+            });
+            
+            newNoBtn.addEventListener('click', () => {
+                confirmationModal.classList.add('hidden');
+                resolve(false); // Usuário clicou "Cancelar"
+            });
+        });
     };
 
     // --- SISTEMA DE NOTIFICAÇÕES ---
@@ -1004,7 +1043,7 @@ const generateProducaoPDF = () => {
             const row = document.createElement('tr');
             row.className = 'border-b border-gemini-border hover:bg-gray-700/50 transition-colors';
             
-            // [MODIFICADO] Adicionado o <td> para o botão de editar
+            // [MODIFICADO] Adicionado o botão de excluir
             row.innerHTML = `
                 <td class="p-3 text-gemini-primary font-medium">${dentistaName}</td>
                 <td class="p-3 text-gemini-secondary">${producao.nomePaciente || '-'}</td>
@@ -1013,10 +1052,16 @@ const generateProducaoPDF = () => {
                 <td class="p-3 font-semibold ${statusClass}">${producao.status}</td>
                 <td class="p-3 text-accent-green font-semibold monetary-value">${formatarMoeda(valorTotal)}</td>
                 <td class="p-3 text-center">
-                    <button class="edit-producao-btn p-1 rounded hover:bg-gray-700 transition-colors" data-id="${producao.id}">
+                    <button class="edit-producao-btn p-1 rounded hover:bg-gray-700 transition-colors" data-id="${producao.id}" title="Editar">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
+                    <button class="remove-producao-btn p-1 rounded hover:bg-red-700 transition-colors text-red-400" data-id="${producao.id}" title="Excluir">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3,6 5,6 21,6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                         </svg>
                     </button>
                 </td>
@@ -1581,24 +1626,31 @@ const generateProducaoPDF = () => {
 
         // Botão de Apagar Aba
         if (deleteQuickNoteTabBtn) {
-            deleteQuickNoteTabBtn.addEventListener('click', () => {
-                if (state.quickNotes.length <= 1) {
-                    showToast("Não pode apagar a última nota.");
-                    return;
-                }
-                
-                const activeNote = state.quickNotes.find(n => n.id === state.activeQuickNoteId);
-                if (confirm(`Tem certeza que quer apagar a nota "${activeNote.title}"?`)) {
-                    state.quickNotes = state.quickNotes.filter(n => n.id !== state.activeQuickNoteId);
-                    // Seleciona a primeira nota da lista como nova aba ativa
-                    state.activeQuickNoteId = state.quickNotes[0].id; 
-                    saveDataToFirestore().then(() => {
-                        renderQuickNotesUI(); // Atualiza a UI
-                        showToast("Nota apagada.", "success");
-                    });
-                }
+    deleteQuickNoteTabBtn.addEventListener('click', async () => { // [MODIFICADO] Adicionado 'async'
+        if (state.quickNotes.length <= 1) {
+            showToast("Não pode apagar a última nota.");
+            return;
+        }
+
+        const activeNote = state.quickNotes.find(n => n.id === state.activeQuickNoteId);
+
+        // [MODIFICADO] Chamando o novo modal
+        const confirmed = await showConfirmationModal(
+            'Confirmar Exclusão', 
+            `Tem certeza que quer apagar a nota "${activeNote.title}"?`
+        );
+
+        if (confirmed) {
+            state.quickNotes = state.quickNotes.filter(n => n.id !== state.activeQuickNoteId);
+            // Seleciona a primeira nota da lista como nova aba ativa
+            state.activeQuickNoteId = state.quickNotes[0].id; 
+            saveDataToFirestore().then(() => {
+                renderQuickNotesUI(); // Atualiza a UI
+                showToast("Nota apagada.", "success");
             });
         }
+    });
+}
 	
 	    // Notificações
 	    if (notificationsBtn) {
@@ -1634,36 +1686,27 @@ const generateProducaoPDF = () => {
     // Produção por dentista
     if (filterDentistaSelect) filterDentistaSelect.addEventListener('change', renderizarProducaoPorDentista);
     if (producaoDentistaTableBody) {
-    producaoDentistaTableBody.addEventListener('click', (e) => {
-        const editBtn = e.target.closest('.edit-producao-btn');
-        if (editBtn) {
-            const producaoId = parseInt(editBtn.dataset.id);
+        producaoDentistaTableBody.addEventListener('click', async (e) => { // [MODIFICADO] Adicionado 'async'
+            const editBtn = e.target.closest('.edit-producao-btn');
+            const removeBtn = e.target.closest('.remove-producao-btn');
 
-            // A função 'startEditProducao' já está na mesma página (view-producao)
-            // e cuida de rolar a tela até o formulário de edição.
-            startEditProducao(producaoId);
-        }
-    });
-}
+            if (editBtn) {
+                const producaoId = parseInt(editBtn.dataset.id);
+                startEditProducao(producaoId);
+            } 
+            else if (removeBtn) {
+                const producaoId = parseInt(removeBtn.dataset.id);
+                
+                // [MODIFICADO] Chamando o novo modal
+                const confirmed = await showConfirmationModal(
+                    'Confirmar Exclusão', 
+                    'Tem certeza que quer excluir este trabalho?'
+                );
 
-    
-    // [NOVO] Event Listener para clicar na linha da tabela de análise de dentista
-    if (dentistaSummaryTableBody) {
-        dentistaSummaryTableBody.addEventListener('click', (e) => {
-            const row = e.target.closest('.dentist-summary-row');
-            if (row) {
-                const dentistaId = row.dataset.dentistId;
-                if (dentistaId) {
-                    // Navega para a view de produção
-                    navigateToView('view-producao');
-                    
-                    // Aguarda um instante para garantir que a view foi renderizada
-                    setTimeout(() => {
-                        // Seleciona o dentista no filtro
-                        filterDentistaSelect.value = dentistaId;
-                        // Dispara o evento change para atualizar a tabela
-                        filterDentistaSelect.dispatchEvent(new Event('change'));
-                    }, 50);
+                if (confirmed) {
+                    state.producao = state.producao.filter(p => p.id !== producaoId);
+                    saveDataToFirestore();
+                    showToast("Produção removida com sucesso!", "success");
                 }
             }
         });
@@ -1717,16 +1760,56 @@ const generateProducaoPDF = () => {
 
     if(formDentistaCancelBtn) formDentistaCancelBtn.addEventListener('click', cancelEditDentista);
     if(listaDentistas) {
-        listaDentistas.addEventListener('click', (e) => {
-            const editButton = e.target.closest('.edit-dentista-btn');
-            if (editButton) { startEditDentista(parseInt(editButton.dataset.id)); }
-            const removeButton = e.target.closest('.remove-dentista-btn');
-            if (removeButton) { if (confirm('Tem certeza?')) { state.dentistas = state.dentistas.filter(d => d.id !== parseInt(removeButton.dataset.id)); saveDataToFirestore(); showToast("Dentista removido.", "success"); } }
-        });
-    }
+    listaDentistas.addEventListener('click', async (e) => { // [MODIFICADO] Adicionado 'async'
+        const editButton = e.target.closest('.edit-dentista-btn');
+        const removeButton = e.target.closest('.remove-dentista-btn');
+
+        if (editButton) { 
+            startEditDentista(parseInt(editButton.dataset.id)); 
+        }
+
+        else if (removeButton) {
+            const dentistaId = parseInt(removeButton.dataset.id);
+
+            // [MODIFICADO] Chamando o novo modal
+            const confirmed = await showConfirmationModal(
+                'Confirmar Exclusão', 
+                'Tem certeza que quer remover este dentista?'
+            );
+
+            if (confirmed) { 
+                state.dentistas = state.dentistas.filter(d => d.id !== dentistaId); 
+                saveDataToFirestore(); 
+                showToast("Dentista removido.", "success"); 
+            } 
+        }
+    });
+}
 
     if(formValores) formValores.addEventListener('submit', (e) => { e.preventDefault(); const tipo = tipoTrabalhoInput.value.trim(); const valor = parseFloat(valorTrabalhoInput.value); if (tipo && !isNaN(valor)) { state.valores.push({ tipo, valor }); saveDataToFirestore(); formValores.reset(); showToast("Valor adicionado com sucesso!", "success"); } });
-    if(listaValores) listaValores.addEventListener('click', (e) => { const btn = e.target.closest('.remove-valor-btn'); if (btn) { state.valores.splice(btn.dataset.index, 1); saveDataToFirestore(); showToast("Valor removido.", "success"); } });
+    if(listaValores) {
+    listaValores.addEventListener('click', async (e) => { // [MODIFICADO] Adicionado 'async'
+        const btn = e.target.closest('.remove-valor-btn'); 
+
+        if (btn) { 
+            const index = btn.dataset.index;
+            // Pega o nome do trabalho para deixar a mensagem mais clara
+            const tipoTrabalho = state.valores[index]?.tipo || 'este item'; 
+
+            // [MODIFICADO] Chamando o novo modal
+            const confirmed = await showConfirmationModal(
+                'Confirmar Exclusão', 
+                `Tem certeza que quer remover o valor de "${tipoTrabalho}"?`
+            );
+
+            if (confirmed) {
+                state.valores.splice(index, 1); 
+                saveDataToFirestore(); 
+                showToast("Valor removido.", "success"); 
+            }
+        } 
+    });
+}
     
     if(formProducao){
         formProducao.addEventListener('submit', async (e) => { 
@@ -1786,13 +1869,31 @@ const generateProducaoPDF = () => {
 
     if(producaoCancelBtn) producaoCancelBtn.addEventListener('click', cancelEditProducao);
     if(listaProducaoDia) {
-        listaProducaoDia.addEventListener('click', (e) => { 
-            const removeBtn = e.target.closest('.remove-producao-btn');
-            if (removeBtn) { if (confirm('Tem certeza?')) { state.producao = state.producao.filter(p => p.id !== parseInt(removeBtn.dataset.id)); saveDataToFirestore(); showToast("Produção removida.", "success"); }}
-            const editBtn = e.target.closest('.edit-producao-btn');
-            if (editBtn) { startEditProducao(parseInt(editBtn.dataset.id)); }
-        });
-    }
+    listaProducaoDia.addEventListener('click', async (e) => { // [MODIFICADO] Adicionado 'async'
+        const removeBtn = e.target.closest('.remove-producao-btn');
+        const editBtn = e.target.closest('.edit-producao-btn');
+
+        if (removeBtn) { 
+            const producaoId = parseInt(removeBtn.dataset.id);
+
+            // [MODIFICADO] Chamando o novo modal
+            const confirmed = await showConfirmationModal(
+                'Confirmar Exclusão', 
+                'Tem certeza que quer excluir este trabalho?'
+            );
+
+            if (confirmed) { 
+                state.producao = state.producao.filter(p => p.id !== producaoId); 
+                saveDataToFirestore(); 
+                showToast("Produção removida.", "success"); 
+            }
+        }
+
+        else if (editBtn) { // [MODIFICADO] Mudei para 'else if'
+            startEditProducao(parseInt(editBtn.dataset.id)); 
+        }
+    });
+}
     if(producaoDataInput) producaoDataInput.addEventListener('change', renderizarProducaoDia);
     
     if(formDespesas) {
@@ -1857,19 +1958,30 @@ const generateProducaoPDF = () => {
     }
     if (formEstoqueCancelBtn) formEstoqueCancelBtn.addEventListener('click', cancelEditEstoque);
     if (listaEstoque) {
-        listaEstoque.addEventListener('click', (e) => {
-            const editBtn = e.target.closest('.edit-estoque-btn');
-            if (editBtn) startEditEstoque(parseInt(editBtn.dataset.id));
-            const removeBtn = e.target.closest('.remove-estoque-btn');
-            if (removeBtn) {
-                if (confirm('Tem certeza?')) {
-                    state.estoque = state.estoque.filter(i => i.id !== parseInt(removeBtn.dataset.id));
-                    saveDataToFirestore();
-                    showToast("Material removido.", "success");
-                }
+    listaEstoque.addEventListener('click', async (e) => { // [MODIFICADO] Adicionado 'async'
+        const editBtn = e.target.closest('.edit-estoque-btn');
+        const removeBtn = e.target.closest('.remove-estoque-btn'); // [NOVO]
+
+        if (editBtn) {
+            startEditEstoque(parseInt(editBtn.dataset.id));
+        } 
+        else if (removeBtn) { // [MODIFICADO] Mudei para 'else if'
+            const itemId = parseInt(removeBtn.dataset.id);
+
+            // [MODIFICADO] Chamando o novo modal
+            const confirmed = await showConfirmationModal(
+                'Confirmar Exclusão', 
+                'Tem certeza que quer remover este material do estoque?'
+            );
+
+            if (confirmed) {
+                state.estoque = state.estoque.filter(i => i.id !== itemId);
+                saveDataToFirestore();
+                showToast("Material removido.", "success");
             }
-        });
-    }
+        }
+    });
+}
     
     const changeMonth = (offset) => {
         const d = new Date(state.mesAtual);
