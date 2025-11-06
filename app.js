@@ -100,6 +100,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const formDentistaSubmitBtn = document.getElementById('form-dentista-submit-btn');
     const formDentistaCancelBtn = document.getElementById('form-dentista-cancel-btn');
     const listaDentistas = document.getElementById('lista-dentistas');
+    const dentistaValoresSection = document.getElementById('dentista-valores-section');
+    const formDentistaValores = document.getElementById('form-dentista-valores');
+    const dentistaTipoTrabalhoSelect = document.getElementById('dentista-tipo-trabalho-select');
+    const dentistaValorTrabalhoInput = document.getElementById('dentista-valor-trabalho-input');
+    const listaDentistaValores = document.getElementById('lista-dentista-valores');
     const kpiFaturamentoMes = document.getElementById('kpi-faturamento-mes');
     const kpiLucroMes = document.getElementById('kpi-lucro-mes');
     const kpiPecasMes = document.getElementById('kpi-pecas-mes');
@@ -147,6 +152,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const producaoDentistaTableBody = document.getElementById('producao-dentista-table-body');
     const exportDentistaProducaoPdfBtn = document.getElementById('export-dentista-producao-pdf');
 
+    // Botão para alternar Top 15 / Todos no gráfico de dentistas
+    const toggleDentistaShowAllBtn = document.getElementById('toggle-dentista-show-all');
+
     // Novos elementos para controle de mês no dashboard
     const dashboardMesAnoAtualSpan = document.getElementById('dashboard-mes-ano-atual');
     const dashboardPrevMonthBtn = document.getElementById('dashboard-prev-month');
@@ -166,6 +174,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmYesBtn = document.getElementById('confirm-yes-btn');
     const confirmNoBtn = document.getElementById('confirm-no-btn');
 
+    // --- FALLBACK: adicionar/remover classe 'modal-open' no <body> quando qualquer modal estiver visível
+    // Isso é usado como fallback para navegadores que não suportam backdrop-filter.
+    const updateBodyModalOpen = () => {
+        try {
+            const openModals = Array.from(document.querySelectorAll('[id$="-modal"]')).filter(m => m && !m.classList.contains('hidden'));
+            if (openModals.length > 0) document.body.classList.add('modal-open');
+            else document.body.classList.remove('modal-open');
+        } catch (e) { console.warn('updateBodyModalOpen error', e); }
+    };
+
+    // Observe alterações de atributo (classe) nos modais existentes
+    const modalElements = Array.from(document.querySelectorAll('[id$="-modal"]'));
+    if (modalElements.length > 0) {
+        const observer = new MutationObserver((mutations) => {
+            updateBodyModalOpen();
+        });
+        modalElements.forEach(el => observer.observe(el, { attributes: true, attributeFilter: ['class'] }));
+        // Estado inicial
+        updateBodyModalOpen();
+    }
+
     // --- ESTADO DA APLICAÇÃO ---
     let isLoginMode = true;
     let state = {
@@ -182,7 +211,8 @@ document.addEventListener('DOMContentLoaded', () => {
         searchTermProducao: '',
         searchTermDentistas: '',
         searchTermEstoque: '',
-        notifications: []
+        notifications: [],
+        showAllDentistas: false // controla Top 15 / Todos no gráfico
     };
 
     // --- FUNÇÕES UTILITÁRIAS ---
@@ -202,6 +232,24 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     const formatarMoeda = (valor) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor || 0);
+
+    // Encurta nomes longos para os rótulos do eixo Y, preservando o nome completo para tooltips
+    const abbreviateName = (name, maxLen = 28) => {
+        if (!name) return '';
+        if (name.length <= maxLen) return name;
+        // Tenta reduzir preservando sobrenome: "Primeiro Sobrenome" => "Primeiro S."
+        const parts = name.split(' ').filter(Boolean);
+        if (parts.length >= 2) {
+            const first = parts[0];
+            const last = parts[parts.length - 1];
+            const short = `${first} ${last}`;
+            if (short.length <= maxLen) return short;
+            // fallback para iniciais
+            const initials = parts.map(p => p[0]).join('');
+            if (initials.length <= maxLen) return initials;
+        }
+        return name.slice(0, maxLen - 1) + '…';
+    };
     
     const navigateToView = (viewId) => {
         const link = document.querySelector(`.nav-link[data-view="${viewId}"]`);
@@ -411,7 +459,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- GRÁFICOS ---
     const initializeCharts = () => {
-        // Gráfico de Faturamento por Dentista
+        // Gráfico de Faturamento por Dentista (Barras Horizontais)
         const dentistaCtx = document.getElementById('dentista-chart');
         if (dentistaCtx) {
             charts.dentista = new Chart(dentistaCtx, {
@@ -421,33 +469,56 @@ document.addEventListener('DOMContentLoaded', () => {
                     datasets: [{
                         label: 'Faturamento',
                         data: [],
-                        backgroundColor: '#4f46e5',
-                        borderRadius: 6
+                        backgroundColor: [],
+                        borderRadius: 8,
+                        barThickness: 18
                     }]
                 },
                 options: {
+                    indexAxis: 'y', // horizontal bars
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: {
-                            display: false
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                title: function(items) {
+                                    // Mostra o nome completo do dentista como título do tooltip
+                                    if (!items || items.length === 0) return '';
+                                    const idx = items[0].dataIndex;
+                                    return (charts.dentista && charts.dentista._fullNames && charts.dentista._fullNames[idx]) || items[0].label || '';
+                                },
+                                label: function(context) {
+                                    // context.parsed.x is the value for horizontal bars
+                                    const value = context.parsed && (context.parsed.x ?? context.parsed) || 0;
+                                    return 'Faturamento: ' + formatarMoeda(value);
+                                },
+                                afterLabel: function(context) {
+                                    const idx = context.dataIndex;
+                                    const pieces = charts.dentista && charts.dentista._piecesMap ? charts.dentista._piecesMap[charts.dentista._fullNames[idx]] : 0;
+                                    return 'Peças: ' + (pieces || 0);
+                                }
+                            },
+                            bodyFont: { weight: '600' }
                         }
                     },
                     scales: {
                         x: {
-                            ticks: { color: '#9aa0a6' },
-                            grid: { color: 'rgba(255, 255, 255, 0.05)' }
-                        },
-                        y: {
                             ticks: { 
                                 color: '#9aa0a6',
                                 callback: function(value) {
-                                    return 'R$ ' + value.toLocaleString('pt-BR');
+                                    // Exibe no formato moeda
+                                    try { return formatarMoeda(value); } catch (e) { return value; }
                                 }
                             },
                             grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                        },
+                        y: {
+                            ticks: { color: '#9aa0a6' },
+                            grid: { display: false }
                         }
-                    }
+                    },
+                    layout: { padding: { left: 8, right: 8, top: 8, bottom: 8 } }
                 }
             });
         }
@@ -459,33 +530,90 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const updateDentistaChart = () => {
         if (!charts.dentista) return;
-        
+
         const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
-        
+
         const producaoDoMes = (state.producao || []).filter(p => {
             const data = new Date(p.data + "T00:00:00");
             return data >= startDate && data <= endDate;
         });
-        
-        const faturamentoPorDentista = {};
-        
+
+        // Agregar faturamento e peças por dentista
+        const map = {}; // nome -> { faturamento, pecas }
         producaoDoMes.forEach(p => {
             const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
-            const dentistaName = dentista ? dentista.nome : 'Desconhecido';
-            const valor = (state.valores || []).find(v => v.tipo === p.tipo);
-            const faturamento = valor ? valor.valor * p.qtd : 0;
+            if (!dentista) return;
+
+            const nome = dentista.nome;
+            const valorDentista = (dentista.valores || []).find(v => v.tipo === p.tipo);
+            const valorGlobal = (state.valores || []).find(v => v.tipo === p.tipo);
+            const valorFinal = valorDentista || valorGlobal;
             
-            if (!faturamentoPorDentista[dentistaName]) {
-                faturamentoPorDentista[dentistaName] = 0;
-            }
-            faturamentoPorDentista[dentistaName] += faturamento;
+            const faturamento = valorFinal ? valorFinal.valor * p.qtd : 0;
+
+            if (!map[nome]) map[nome] = { faturamento: 0, pecas: 0 };
+            map[nome].faturamento += faturamento;
+            map[nome].pecas += p.qtd || 0;
         });
-        
-        const labels = Object.keys(faturamentoPorDentista);
-        const data = Object.values(faturamentoPorDentista);
-        
-        charts.dentista.data.labels = labels;
+
+    // Converter para array, ordenar
+    const entries = Object.entries(map).map(([nome, v]) => ({ nome, faturamento: v.faturamento, pecas: v.pecas }));
+    entries.sort((a, b) => b.faturamento - a.faturamento);
+    // Se o usuário escolheu ver todos, mostramos todos; senão limitamos ao Top 15
+    const top = state.showAllDentistas ? entries : entries.slice(0, 15);
+
+    const fullNames = top.map(e => e.nome);
+    const shortLabels = fullNames.map(n => abbreviateName(n, 28));
+    const data = top.map(e => Number(e.faturamento.toFixed(2)));
+
+        // Paleta: gradiente de roxo (Top 1 = mais claro, Top N = mais escuro)
+    // Tonalidade clara (Top 1) — ligeiramente mais viva que antes para melhor visibilidade
+    const purpleLight = '#d6a8ff'; // Top 1 (mais claro e mais vivo)
+        const purpleDark = '#4c1d95';  // Top N (mais escuro)
+
+        // Helpers simples para misturar cores hex
+        const hexToRgb = (hex) => {
+            const h = hex.replace('#','');
+            return [parseInt(h.substring(0,2),16), parseInt(h.substring(2,4),16), parseInt(h.substring(4,6),16)];
+        };
+        const rgbToHex = (r,g,b) => '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
+        const blend = (startHex, endHex, t) => {
+            const s = hexToRgb(startHex);
+            const e = hexToRgb(endHex);
+            const r = Math.round(s[0] + (e[0] - s[0]) * t);
+            const g = Math.round(s[1] + (e[1] - s[1]) * t);
+            const b = Math.round(s[2] + (e[2] - s[2]) * t);
+            return rgbToHex(r,g,b);
+        };
+
+        // Inverte o gradiente: Top1 (maior faturamento) deve ser mais escuro
+        const backgroundColors = top.map((_, i) => {
+            if (top.length === 1) return purpleDark;
+            const t = i / (top.length - 1); // 0 => Top1, 1 => TopN
+            return blend(purpleDark, purpleLight, t);
+        });
+
+    charts.dentista.data.labels = shortLabels;
         charts.dentista.data.datasets[0].data = data;
+        charts.dentista.data.datasets[0].backgroundColor = backgroundColors;
+
+    // Guardar mapa de peças e nomes completos para tooltips
+    charts.dentista._piecesMap = top.reduce((acc, cur) => { acc[cur.nome] = cur.pecas; return acc; }, {});
+    charts.dentista._fullNames = fullNames;
+
+        // Ajustar altura do canvas para que cada barra tenha espaço vertical suficiente
+        try {
+            const canvas = document.getElementById('dentista-chart');
+            if (canvas) {
+                const perBar = 40; // px por item
+                const computedHeight = Math.max(300, labels.length * perBar + 80);
+                // Set the canvas height attribute (not CSS) so Chart.js recalculates
+                canvas.height = computedHeight;
+            }
+        } catch (e) {
+            console.warn('Não foi possível ajustar a altura do canvas do dentista:', e);
+        }
+
         charts.dentista.update();
     };
 
@@ -859,7 +987,14 @@ const generateProducaoPDF = () => {
             return dataDespesa >= startDate && dataDespesa <= endDate;
         });
     
-        const faturamentoBruto = producaoDoMes.reduce((acc, p) => acc + ((state.valores || []).find(v => v.tipo === p.tipo)?.valor || 0) * p.qtd, 0);
+        const faturamentoBruto = producaoDoMes.reduce((acc, p) => {
+            const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
+            const valorDentista = dentista ? (dentista.valores || []).find(v => v.tipo === p.tipo) : null;
+            const valorGlobal = (state.valores || []).find(v => v.tipo === p.tipo);
+            const valorFinal = valorDentista || valorGlobal;
+            const faturamento = valorFinal ? valorFinal.valor * p.qtd : 0;
+            return acc + faturamento;
+        }, 0);
         const totalDespesas = despesasDoMes.reduce((acc, d) => acc + d.valor, 0);
         kpiFaturamentoMes.textContent = formatarMoeda(faturamentoBruto);
         kpiLucroMes.textContent = formatarMoeda(faturamentoBruto - totalDespesas);
@@ -948,9 +1083,12 @@ const generateProducaoPDF = () => {
             producaoFiltrada.forEach(producao => {
                 const dentista = (state.dentistas || []).find(d => d.id === producao.dentista);
                 const dentistaName = dentista ? dentista.nome : 'Dentista desconhecido';
-                const valor = (state.valores || []).find(v => v.tipo === producao.tipo);
-                const valorTotal = valor ? valor.valor * producao.qtd : 0;
                 
+                const valorDentista = dentista ? (dentista.valores || []).find(v => v.tipo === producao.tipo) : null;
+                const valorGlobal = (state.valores || []).find(v => v.tipo === producao.tipo);
+                const valorFinal = valorDentista || valorGlobal;
+                const valorTotal = valorFinal ? valorFinal.valor * producao.qtd : 0;
+
                 totalPecas += producao.qtd;
                 totalFaturamento += valorTotal;
                 
@@ -1032,8 +1170,12 @@ const generateProducaoPDF = () => {
         producaoFiltrada.forEach(producao => {
             const dentista = (state.dentistas || []).find(d => d.id === producao.dentista);
             const dentistaName = dentista ? dentista.nome : 'Desconhecido';
-            const valor = (state.valores || []).find(v => v.tipo === producao.tipo);
-            const valorTotal = valor ? valor.valor * producao.qtd : 0;
+
+            const valorDentista = dentista ? (dentista.valores || []).find(v => v.tipo === producao.tipo) : null;
+            const valorGlobal = (state.valores || []).find(v => v.tipo === producao.tipo);
+            const valorFinal = valorDentista || valorGlobal;
+            const valorTotal = valorFinal ? valorFinal.valor * producao.qtd : 0;
+
             const statusClass = {
                 'Pendente': 'text-red-400',
                 'Em Andamento': 'text-yellow-400',
@@ -1135,8 +1277,12 @@ const generateProducaoPDF = () => {
         
         const totalPecasValue = producaoDoMes.reduce((acc, p) => acc + p.qtd, 0);
         const faturamentoBruto = producaoDoMes.reduce((acc, p) => {
-            const valor = (state.valores || []).find(v => v.tipo === p.tipo);
-            return acc + (valor ? valor.valor * p.qtd : 0);
+            const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
+            const valorDentista = dentista ? (dentista.valores || []).find(v => v.tipo === p.tipo) : null;
+            const valorGlobal = (state.valores || []).find(v => v.tipo === p.tipo);
+            const valorFinal = valorDentista || valorGlobal;
+            const faturamento = valorFinal ? valorFinal.valor * p.qtd : 0;
+            return acc + faturamento;
         }, 0);
         const totalDespesasValue = despesasDoMes.reduce((acc, d) => acc + d.valor, 0);
         const lucroLiquido = faturamentoBruto - totalDespesasValue;
@@ -1200,9 +1346,11 @@ const generateProducaoPDF = () => {
             if (!analise[dentista.nome]) {
                 analise[dentista.nome] = { id: dentista.id, pecas: 0, faturamento: 0 };
             }
-            
-            const valor = (state.valores || []).find(v => v.tipo === p.tipo);
-            const faturamento = valor ? valor.valor * p.qtd : 0;
+
+            const valorDentista = (dentista.valores || []).find(v => v.tipo === p.tipo);
+            const valorGlobal = (state.valores || []).find(v => v.tipo === p.tipo);
+            const valorFinal = valorDentista || valorGlobal;
+            const faturamento = valorFinal ? valorFinal.valor * p.qtd : 0;
             
             analise[dentista.nome].pecas += p.qtd;
             analise[dentista.nome].faturamento += faturamento;
@@ -1438,6 +1586,136 @@ const generateProducaoPDF = () => {
         producaoQtdInput.value = 1;
     };
 
+    const renderizarSelectTiposTrabalhoDentista = (dentistaId) => {
+        const dentista = state.dentistas.find(d => d.id === dentistaId);
+        if (!dentista || !dentistaTipoTrabalhoSelect) return;
+    
+        const tiposJaDefinidos = (dentista.valores || []).map(v => v.tipo);
+        let tiposDisponiveis = (state.valores || []).filter(v => !tiposJaDefinidos.includes(v.tipo));
+    
+        // Se estiver editando, adicione o tipo de trabalho atual à lista de disponíveis
+        if (editingValorIndex !== null && dentista.valores[editingValorIndex]) {
+            const tipoEmEdicao = dentista.valores[editingValorIndex].tipo;
+            tiposDisponiveis.unshift({ tipo: tipoEmEdicao, valor: 0 }); // Adiciona no início
+        }
+    
+        dentistaTipoTrabalhoSelect.innerHTML = '<option value="">Selecione o tipo de trabalho</option>';
+    
+        tiposDisponiveis.forEach(valor => {
+            const option = document.createElement('option');
+            option.value = valor.tipo;
+            option.textContent = valor.tipo;
+            dentistaTipoTrabalhoSelect.appendChild(option);
+        });
+    
+        const submitButton = formDentistaValores.querySelector('button[type="submit"]');
+        if (tiposDisponiveis.length === 0) {
+            dentistaTipoTrabalhoSelect.innerHTML = '<option value="">Todos os preços já foram definidos</option>';
+            dentistaTipoTrabalhoSelect.disabled = true;
+            if (submitButton) submitButton.disabled = true;
+        } else {
+            dentistaTipoTrabalhoSelect.disabled = false;
+            if (submitButton) submitButton.disabled = false;
+        }
+    };
+
+    const renderizarValoresDentista = (dentistaId) => {
+        const dentista = state.dentistas.find(d => d.id === dentistaId);
+        
+        renderizarSelectTiposTrabalhoDentista(dentistaId);
+
+        if (!dentista || !dentista.valores) {
+            listaDentistaValores.innerHTML = '<p class="text-center text-gemini-secondary text-sm">Nenhum preço personalizado.</p>';
+            return;
+        }
+
+        listaDentistaValores.innerHTML = '';
+        if (dentista.valores.length === 0) {
+            listaDentistaValores.innerHTML = '<p class="text-center text-gemini-secondary text-sm">Nenhum preço personalizado.</p>';
+            return;
+        }
+
+        dentista.valores.forEach((valor, index) => {
+            const valorEl = document.createElement('div');
+            valorEl.className = 'flex justify-between items-center p-2 rounded hover:bg-gray-700 transition-colors';
+            valorEl.innerHTML = `
+                <div>
+                    <span class="font-medium">${valor.tipo}</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-accent-green font-semibold monetary-value">${formatarMoeda(valor.valor)}</span>
+                    <button class="edit-dentista-valor-btn p-1 rounded hover:bg-gray-700 transition-colors text-gray-400" data-index="${index}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
+                    <button class="remove-dentista-valor-btn p-1 rounded hover:bg-red-700 transition-colors text-red-400" data-index="${index}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;">
+                            <polyline points="3,6 5,6 21,6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                    </button>
+                </div>
+            `;
+            listaDentistaValores.appendChild(valorEl);
+        });
+        toggleValuesVisibility();
+    };
+
+    let editingValorIndex = null; // Para rastrear a edição de preços de dentistas
+
+    const cancelEditDentistaValor = () => {
+        editingValorIndex = null;
+        formDentistaValores.reset();
+        
+        const submitBtn = formDentistaValores.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.textContent = 'Adicionar';
+        }
+
+        const cancelBtn = document.getElementById('cancel-dentista-valor-btn');
+        if (cancelBtn) {
+            cancelBtn.remove();
+        }
+
+        // Re-renderizar o select para remover o tipo que estava em edição (se for o caso)
+        const dentistaId = parseInt(dentistaEditIdInput.value);
+        if(dentistaId) {
+            renderizarSelectTiposTrabalhoDentista(dentistaId);
+        }
+    };
+
+    const startEditDentistaValor = (dentistaId, index) => {
+        const dentista = state.dentistas.find(d => d.id === dentistaId);
+        if (!dentista || !dentista.valores || !dentista.valores[index]) return;
+
+        editingValorIndex = index;
+        const valorData = dentista.valores[index];
+
+        renderizarSelectTiposTrabalhoDentista(dentistaId);
+
+        dentistaTipoTrabalhoSelect.value = valorData.tipo;
+        dentistaValorTrabalhoInput.value = valorData.valor;
+
+        const submitBtn = formDentistaValores.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.textContent = 'Salvar Alteração';
+        }
+
+        if (!document.getElementById('cancel-dentista-valor-btn')) {
+            const cancelBtn = document.createElement('button');
+            cancelBtn.type = 'button';
+            cancelBtn.id = 'cancel-dentista-valor-btn';
+            cancelBtn.textContent = 'Cancelar';
+            cancelBtn.className = 'btn btn-secondary';
+            cancelBtn.addEventListener('click', cancelEditDentistaValor);
+            formDentistaValores.querySelector('div').appendChild(cancelBtn);
+        }
+
+        formDentistaValores.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+
     const startEditDentista = (id) => {
         const dentista = (state.dentistas || []).find(d => d.id === id);
         if (!dentista) return;
@@ -1452,6 +1730,9 @@ const generateProducaoPDF = () => {
         formDentistaSubmitBtn.textContent = 'Atualizar';
         formDentistaCancelBtn.classList.remove('hidden');
         
+        dentistaValoresSection.classList.remove('hidden');
+        renderizarValoresDentista(dentista.id);
+        
         document.getElementById('form-dentista').scrollIntoView({ behavior: 'smooth' });
     };
 
@@ -1461,6 +1742,8 @@ const generateProducaoPDF = () => {
         formDentistaTitle.textContent = 'Adicionar Dentista';
         formDentistaSubmitBtn.textContent = 'Adicionar';
         formDentistaCancelBtn.classList.add('hidden');
+        dentistaValoresSection.classList.add('hidden');
+        listaDentistaValores.innerHTML = '';
     };
 
     const startEditDespesa = (id) => {
@@ -1549,6 +1832,17 @@ const generateProducaoPDF = () => {
             const isHidden = document.body.classList.contains('values-hidden');
             toggleValuesBtn.setAttribute('aria-pressed', isHidden);
             toggleValuesVisibility();
+        });
+    }
+
+    // Toggle Top15 / Todos no gráfico de dentistas
+    if (toggleDentistaShowAllBtn) {
+        // Inicializa o texto conforme o estado
+        toggleDentistaShowAllBtn.textContent = state.showAllDentistas ? 'Mostrar Top 15' : 'Mostrar todos';
+        toggleDentistaShowAllBtn.addEventListener('click', () => {
+            state.showAllDentistas = !state.showAllDentistas;
+            toggleDentistaShowAllBtn.textContent = state.showAllDentistas ? 'Mostrar Top 15' : 'Mostrar todos';
+            updateDentistaChart();
         });
     }
 
@@ -1748,17 +2042,90 @@ const generateProducaoPDF = () => {
             const id = dentistaEditIdInput.value ? parseInt(dentistaEditIdInput.value) : Date.now();
             const nome = dentistaNomeInput.value.trim();
             if (!nome) { showToast("O nome do dentista é obrigatório."); return; }
-            const dentistaData = { id, nome, clinica: dentistaClinicaInput.value.trim(), telefone: dentistaTelefoneInput.value.trim(), email: dentistaEmailInput.value.trim() };
+            
             if (dentistaEditIdInput.value) {
                 const index = state.dentistas.findIndex(d => d.id === id);
-                if (index !== -1) { state.dentistas[index] = dentistaData; showToast("Dentista atualizado com sucesso!", "success"); }
-            } else { state.dentistas.push(dentistaData); showToast("Dentista adicionado com sucesso!", "success"); }
+                if (index !== -1) {
+                    // Mantém a estrutura de valores existente ao editar
+                    const existingValores = state.dentistas[index].valores || [];
+                    state.dentistas[index] = { ...state.dentistas[index], id, nome, clinica: dentistaClinicaInput.value.trim(), telefone: dentistaTelefoneInput.value.trim(), email: dentistaEmailInput.value.trim(), valores: existingValores };
+                    showToast("Dentista atualizado com sucesso!", "success");
+                }
+            } else {
+                // Adiciona um novo dentista com uma lista de valores vazia
+                const dentistaData = { id, nome, clinica: dentistaClinicaInput.value.trim(), telefone: dentistaTelefoneInput.value.trim(), email: dentistaEmailInput.value.trim(), valores: [] };
+                state.dentistas.push(dentistaData); 
+                showToast("Dentista adicionado com sucesso!", "success");
+            }
             saveDataToFirestore(formDentistaSubmitBtn);
             cancelEditDentista();
         });
     }
 
     if(formDentistaCancelBtn) formDentistaCancelBtn.addEventListener('click', cancelEditDentista);
+
+    if (formDentistaValores) {
+        formDentistaValores.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const dentistaId = parseInt(dentistaEditIdInput.value);
+            if (!dentistaId) return;
+
+            const tipo = dentistaTipoTrabalhoSelect.value;
+            const valor = parseFloat(dentistaValorTrabalhoInput.value);
+
+            if (!tipo || isNaN(valor) || valor < 0) {
+                showToast("Por favor, selecione um tipo de trabalho e insira um valor válido.");
+                return;
+            }
+
+            const dentista = state.dentistas.find(d => d.id === dentistaId);
+            if (!dentista) return;
+
+            if (editingValorIndex !== null) {
+                // Atualizando um valor existente
+                if (dentista.valores && dentista.valores[editingValorIndex]) {
+                    dentista.valores[editingValorIndex] = { tipo, valor };
+                    showToast("Preço atualizado com sucesso!", "success");
+                }
+            } else {
+                // Adicionando um novo valor
+                if (!dentista.valores) dentista.valores = [];
+                dentista.valores.push({ tipo, valor });
+                showToast("Preço adicionado com sucesso!", "success");
+            }
+
+            renderizarValoresDentista(dentistaId);
+            cancelEditDentistaValor(); // Reseta o formulário e o estado de edição
+        });
+    }
+
+    if (listaDentistaValores) {
+        listaDentistaValores.addEventListener('click', async (e) => {
+            const removeBtn = e.target.closest('.remove-dentista-valor-btn');
+            const editBtn = e.target.closest('.edit-dentista-valor-btn');
+            const dentistaId = parseInt(dentistaEditIdInput.value);
+
+            if (editBtn) {
+                const index = parseInt(editBtn.dataset.index);
+                startEditDentistaValor(dentistaId, index);
+            } else if (removeBtn) {
+                const index = parseInt(removeBtn.dataset.index);
+                const dentista = state.dentistas.find(d => d.id === dentistaId);
+                if (dentista && dentista.valores && dentista.valores[index]) {
+                    const confirmed = await showConfirmationModal(
+                        'Confirmar Exclusão',
+                        'Tem certeza que quer remover este preço personalizado?'
+                    );
+                    if (confirmed) {
+                        dentista.valores.splice(index, 1);
+                        renderizarValoresDentista(dentistaId);
+                        showToast("Preço removido.", "success");
+                    }
+                }
+            }
+        });
+    }
+
     if(listaDentistas) {
     listaDentistas.addEventListener('click', async (e) => { // [MODIFICADO] Adicionado 'async'
         const editButton = e.target.closest('.edit-dentista-btn');

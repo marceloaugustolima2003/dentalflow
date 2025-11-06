@@ -421,6 +421,7 @@
                                     </div>
                                 </form>
                             </section>
+
                         </div>
 
                         <div class="lg:col-span-2 space-y-6">
@@ -530,7 +531,7 @@
 
                 <div id="view-dentistas" class="view-container hidden">
                     <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-3xl font-bold gradient-text">Gestão de Dentistas</h2>
+                        <h2 class="text-3xl font-bold gradient-text">Gestão de Clientes</h2>
                         <button id="export-dentistas-pdf" class="bg-accent-purple hover:bg-accent-purple-hover text-white font-semibold py-2 px-4 rounded-lg transition-all active:scale-95">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mr-2">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -555,6 +556,20 @@
                                         <button id="form-dentista-cancel-btn" type="button" class="px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white font-bold rounded-lg transition-all active:scale-95 hidden">Cancelar</button>
                                     </div>
                                 </form>
+                            </section>
+                            <section id="dentista-valores-section" class="card-enhanced p-6 hidden">
+                                <h2 class="text-xl font-semibold mb-4 border-b border-gemini-border pb-3">Preços Personalizados</h2>
+                                <p class="text-sm text-gemini-secondary mb-4">
+                                    Adicione preços específicos para este dentista. Se um preço não for definido aqui, o valor global do Admin será usado.
+                                </p>
+                                <form id="form-dentista-valores" class="space-y-4 mb-6">
+                                    <select id="dentista-tipo-trabalho-select" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                        <option value="">Selecione o tipo de trabalho</option>
+                                    </select>
+                                    <input type="number" id="dentista-valor-trabalho-input" placeholder="Valor (R$)" step="0.01" min="0" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                    <button type="submit" class="w-full bg-accent-purple hover:bg-accent-purple-hover text-white font-bold py-3 px-4 rounded-lg transition-all active:scale-95">Adicionar Preço</button>
+                                </form>
+                                <div id="lista-dentista-valores" class="space-y-2 max-h-60 overflow-y-auto dark-scrollbar"></div>
                             </section>
                         </div>
 
@@ -584,8 +599,12 @@
                     
                     <div class="grid grid-cols-1 gap-8">
                         <div class="chart-container">
-                            <h3 class="font-semibold mb-4 text-lg">Faturamento por Dentista (Mês Atual)</h3>
-                            <canvas id="dentista-chart" width="400" height="200"></canvas>
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-semibold text-lg">Faturamento por Dentista (Mês Atual)</h3>
+                            </div>
+                            <div class="chart-canvas-wrapper">
+                                <canvas id="dentista-chart" width="400" height="200"></canvas>
+                            </div>
                         </div>
                         
                         <section class="card-enhanced p-6">
