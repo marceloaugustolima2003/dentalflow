@@ -2467,14 +2467,22 @@ const generateProducaoPDF = () => {
             auth = getAuth(app);
             storage = getStorage(app);
             functions = getFunctions(app, 'southamerica-east1'); 
-            onAuthStateChanged(auth, (user) => {
+            onAuthStateChanged(auth, async (user) => {
                 initialLoadingOverlay.classList.add('hidden');
                 if (user) {
                     userId = user.uid;
                     userEmailDisplay.textContent = user.email;
-                    authScreen.classList.add('hidden');
-                    appContent.classList.remove('hidden');
-                    setupFirestoreListener(userId);
+
+                    const idTokenResult = await user.getIdTokenResult(true);
+                    const claims = idTokenResult.claims;
+
+                    if (claims.activeSubscription === true || claims.role === 'admin') {
+                        authScreen.classList.add('hidden');
+                        appContent.classList.remove('hidden');
+                        setupFirestoreListener(userId);
+                    } else {
+                        window.location.href = 'subscription.html';
+                    }
                 } else {
                     userId = null;
                     if (unsubscribeFromFirestore) unsubscribeFromFirestore();
@@ -2488,6 +2496,66 @@ const generateProducaoPDF = () => {
         }
     }
 
-	    initApp();
-	    initializeFirebase();
-	});
+    initApp();
+    initializeFirebase();
+
+    // --- Subscription Logic ---
+    let stripe;
+
+    const getStripePublishableKey = httpsCallable(functions, 'getPublishableKey');
+    getStripePublishableKey().then(result => {
+        const { publishableKey } = result.data;
+        if (publishableKey) {
+            stripe = Stripe(publishableKey);
+        } else {
+            console.error("Publishable key not found.");
+        }
+    }).catch(error => {
+        console.error("Could not fetch Stripe publishable key:", error);
+    });
+
+    const startSubscriptionBtn = document.getElementById('start-subscription-btn');
+    if (startSubscriptionBtn) {
+        startSubscriptionBtn.addEventListener('click', async () => {
+            if (!userId) {
+                showToast("Por favor, faça login para iniciar uma assinatura.");
+                return;
+            }
+            const createCheckout = httpsCallable(functions, 'api-create-checkout-session');
+            try {
+                const response = await createCheckout({ uid: userId });
+                const { id: sessionId } = response.data;
+                if (stripe && sessionId) {
+                    await stripe.redirectToCheckout({ sessionId });
+                } else {
+                    showToast("Não foi possível iniciar o checkout. Tente novamente.");
+                }
+            } catch (error) {
+                console.error("Stripe checkout error:", error);
+                showToast("Erro ao criar sessão de checkout.");
+            }
+        });
+    }
+
+    const manageSubscriptionBtn = document.getElementById('manage-subscription-btn');
+    if (manageSubscriptionBtn) {
+        manageSubscriptionBtn.addEventListener('click', async () => {
+            if (!userId) {
+                showToast("Por favor, faça login para gerenciar sua assinatura.");
+                return;
+            }
+            const createPortal = httpsCallable(functions, 'api-create-portal-session');
+            try {
+                const response = await createPortal({ uid: userId });
+                if (response.data.url) {
+                    window.location.href = response.data.url;
+                } else {
+                     showToast("Não foi possível abrir o portal de gerenciamento.");
+                }
+            } catch (error) {
+                console.error("Customer portal error:", error);
+                showToast("Erro ao abrir o portal de gerenciamento.");
+            }
+        });
+    }
+});
