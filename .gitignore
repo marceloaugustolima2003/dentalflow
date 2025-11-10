@@ -1,0 +1,11 @@
+
+# Firebase
+.firebase
+firebase.json
+database.rules.json
+storage.rules
+.firebaserc
+
+# Dependencies
+node_modules
+functions/node_modules

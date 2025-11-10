@@ -5,7 +5,11 @@ const stripe = require('stripe')(functions.config().stripe.secret);
 
 admin.initializeApp();
 
+const cors = require('cors');
 const app = express();
+
+// Automatically allow cross-origin requests
+app.use(cors({ origin: true }));
 
 app.post('/create-checkout-session', async (req, res) => {
     const { uid } = req.body;
