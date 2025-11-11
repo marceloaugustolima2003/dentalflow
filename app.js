@@ -606,7 +606,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const canvas = document.getElementById('dentista-chart');
             if (canvas) {
                 const perBar = 40; // px por item
-                const computedHeight = Math.max(300, labels.length * perBar + 80);
+                const computedHeight = Math.max(300, shortlabels.length * perBar + 80);
                 // Set the canvas height attribute (not CSS) so Chart.js recalculates
                 canvas.height = computedHeight;
             }
