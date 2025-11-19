@@ -109,6 +109,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const kpiLucroMes = document.getElementById('kpi-lucro-mes');
     const kpiPecasMes = document.getElementById('kpi-pecas-mes');
     const kpiDespesasMes = document.getElementById('kpi-despesas-mes');
+    const kpiFaturamentoTrend = document.getElementById('kpi-faturamento-trend');
+    const kpiLucroTrend = document.getElementById('kpi-lucro-trend');
     const listaEntregasProximas = document.getElementById('lista-entregas-proximas');
     const actionAddProducao = document.getElementById('action-add-producao');
     const actionAddDespesa = document.getElementById('action-add-despesa');
@@ -173,6 +175,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmationMessage = document.getElementById('confirmation-message');
     const confirmYesBtn = document.getElementById('confirm-yes-btn');
     const confirmNoBtn = document.getElementById('confirm-no-btn');
+
+    // Elementos do Modal de Adicionar Produção Rápida
+    const addProductionModal = document.getElementById('add-production-modal');
+    const closeAddProductionModalBtn = document.getElementById('close-add-production-modal-btn');
+    const quickAddProductionForm = document.getElementById('quick-add-production-form');
+    const quickProducaoDentistaSelect = document.getElementById('quick-producao-dentista-select');
+    const quickProducaoPacienteInput = document.getElementById('quick-producao-paciente-input');
+    const quickProducaoTipoSelect = document.getElementById('quick-producao-tipo-select');
+    const quickProducaoQtdInput = document.getElementById('quick-producao-qtd-input');
+    const quickProducaoObsInput = document.getElementById('quick-producao-obs-input');
+    const quickProducaoDataInput = document.getElementById('quick-producao-data-input');
+    const quickEntregaDataInput = document.getElementById('quick-entrega-data-input');
+    const quickAddProductionCancelBtn = document.getElementById('quick-add-production-cancel-btn');
+    const quickAddProductionSubmitBtn = document.getElementById('quick-add-production-submit-btn');
 
     // Elementos do Modal de Adicionar Dentista Rápido
     const addDentistaModal = document.getElementById('add-dentista-modal');
@@ -981,24 +997,15 @@ const generateProducaoPDF = () => {
         renderQuickNotesUI(); // Redesenha a UI
     };
 	
-	    const renderizarDashboard = () => {
-        updateMonthDisplay();
-    
-        const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
-    
-        const producaoDoMes = (state.producao || []).filter(p => {
+    // --- FUNÇÃO DE CÁLCULO DE FATURAMENTO PARA INDICADORES DE TENDÊNCIA ---
+    const calculateFaturamentoForPeriod = (startDate, endDate) => {
+        const producaoDoPeriodo = (state.producao || []).filter(p => {
             if (!p.data) return false;
             const dataProducao = new Date(p.data + "T00:00:00");
             return dataProducao >= startDate && dataProducao <= endDate;
         });
-    
-        const despesasDoMes = (state.despesas || []).filter(d => {
-            if (!d.data) return false;
-            const dataDespesa = new Date(d.data + "T00:00:00");
-            return dataDespesa >= startDate && dataDespesa <= endDate;
-        });
-    
-        const faturamentoBruto = producaoDoMes.reduce((acc, p) => {
+
+        return producaoDoPeriodo.reduce((acc, p) => {
             const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
             const valorDentista = dentista ? (dentista.valores || []).find(v => v.tipo === p.tipo) : null;
             const valorGlobal = (state.valores || []).find(v => v.tipo === p.tipo);
@@ -1006,11 +1013,76 @@ const generateProducaoPDF = () => {
             const faturamento = valorFinal ? valorFinal.valor * p.qtd : 0;
             return acc + faturamento;
         }, 0);
+    };
+
+	    const renderizarDashboard = () => {
+        updateMonthDisplay();
+    
+        // Período Atual
+        const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
+    
+        // Período Anterior
+        const previousMonthDate = new Date(state.mesAtual);
+        previousMonthDate.setMonth(previousMonthDate.getMonth() - 1);
+        const { startDate: prevStartDate, endDate: prevEndDate } = getBillingPeriod(previousMonthDate);
+    
+        // Calcular Faturamentos
+        const faturamentoBruto = calculateFaturamentoForPeriod(startDate, endDate);
+        const faturamentoAnterior = calculateFaturamentoForPeriod(prevStartDate, prevEndDate);
+    
+        // Despesas do Mês Atual
+        const despesasDoMes = (state.despesas || []).filter(d => {
+            if (!d.data) return false;
+            const dataDespesa = new Date(d.data + "T00:00:00");
+            return dataDespesa >= startDate && dataDespesa <= endDate;
+        });
         const totalDespesas = despesasDoMes.reduce((acc, d) => acc + d.valor, 0);
+
+        // Produção do Mês Atual
+        const producaoDoMes = (state.producao || []).filter(p => {
+            if (!p.data) return false;
+            const dataProducao = new Date(p.data + "T00:00:00");
+            return dataProducao >= startDate && dataProducao <= endDate;
+        });
+    
+        // Atualizar KPIs
         kpiFaturamentoMes.textContent = formatarMoeda(faturamentoBruto);
-        kpiLucroMes.textContent = formatarMoeda(faturamentoBruto - totalDespesas);
+        kpiLucroMes.textContent = formatarMoeda(faturamentoBruto); // Lucro = Faturamento, como solicitado
         kpiPecasMes.textContent = producaoDoMes.reduce((acc, p) => acc + p.qtd, 0);
         kpiDespesasMes.textContent = formatarMoeda(totalDespesas);
+    
+        // Renderizar Indicador de Tendência
+        const renderTrend = (current, previous, element) => {
+            if (!element) return;
+            // Limpa o conteúdo anterior
+            element.innerHTML = ''; 
+        
+            if (previous === 0) {
+                if (current > 0) {
+                    element.innerHTML = `<span class="text-green-400 font-bold">↑ 100%</span> <span class="text-gemini-secondary">vs. mês anterior</span>`;
+                } else {
+                    element.innerHTML = `<span class="text-gemini-secondary">-</span>`;
+                }
+                return;
+            }
+        
+            const percentageChange = ((current - previous) / previous) * 100;
+            // Evita exibir "-0%" se a mudança for muito pequena
+            if (Math.abs(percentageChange) < 0.1) {
+                 element.innerHTML = `<span class="text-gemini-secondary">→ 0% vs. mês anterior</span>`;
+                 return;
+            }
+            const absPercentage = Math.abs(percentageChange).toFixed(0);
+        
+            if (percentageChange > 0) {
+                element.innerHTML = `<span class="text-green-400 font-bold">↑ ${absPercentage}%</span> <span class="text-gemini-secondary">vs. mês anterior</span>`;
+            } else {
+                element.innerHTML = `<span class="text-red-400 font-bold">↓ ${absPercentage}%</span> <span class="text-gemini-secondary">vs. mês anterior</span>`;
+            }
+        };
+        
+        renderTrend(faturamentoBruto, faturamentoAnterior, kpiFaturamentoTrend);
+        renderTrend(faturamentoBruto, faturamentoAnterior, kpiLucroTrend); // Usa o mesmo cálculo para o lucro
     
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
@@ -1420,30 +1492,42 @@ const generateProducaoPDF = () => {
     };
 
     const renderizarSelects = () => {
-        // Renderizar select de tipos de trabalho
-        producaoTipoSelect.innerHTML = '<option value="">Selecione o tipo de trabalho</option>';
+        // Limpar todos os selects primeiro
+        const selects = [
+            producaoTipoSelect, 
+            producaoDentistaSelect, 
+            filterDentistaSelect, 
+            quickProducaoTipoSelect, 
+            quickProducaoDentistaSelect
+        ];
+        selects.forEach(select => {
+            if (select) select.innerHTML = '';
+        });
+    
+        // Adicionar as opções padrão
+        if (producaoTipoSelect) producaoTipoSelect.innerHTML = '<option value="">Selecione o tipo de trabalho</option>';
+        if (producaoDentistaSelect) producaoDentistaSelect.innerHTML = '<option value="">Selecione o Dentista</option>';
+        if (filterDentistaSelect) filterDentistaSelect.innerHTML = '<option value="">Selecione um dentista para ver a produção</option>';
+        if (quickProducaoTipoSelect) quickProducaoTipoSelect.innerHTML = '<option value="">Selecione o tipo de trabalho</option>';
+        if (quickProducaoDentistaSelect) quickProducaoDentistaSelect.innerHTML = '<option value="">Selecione o Dentista</option>';
+    
+        // Popular tipos de trabalho
         (state.valores || []).forEach(valor => {
             const option = document.createElement('option');
             option.value = valor.tipo;
             option.textContent = valor.tipo;
-            producaoTipoSelect.appendChild(option);
+            if (producaoTipoSelect) producaoTipoSelect.appendChild(option.cloneNode(true));
+            if (quickProducaoTipoSelect) quickProducaoTipoSelect.appendChild(option.cloneNode(true));
         });
         
-        // Renderizar select de dentistas nos formulários
-        producaoDentistaSelect.innerHTML = '<option value="">Selecione o Dentista</option>';
-        // Renderizar select de dentistas no filtro de produção
-        filterDentistaSelect.innerHTML = '<option value="">Selecione um dentista para ver a produção</option>';
-
+        // Popular dentistas
         (state.dentistas || []).forEach(dentista => {
-            const optionForm = document.createElement('option');
-            optionForm.value = dentista.id;
-            optionForm.textContent = dentista.nome;
-            producaoDentistaSelect.appendChild(optionForm);
-
-            const optionFilter = document.createElement('option');
-            optionFilter.value = dentista.id;
-            optionFilter.textContent = dentista.nome;
-            filterDentistaSelect.appendChild(optionFilter);
+            const option = document.createElement('option');
+            option.value = dentista.id;
+            option.textContent = dentista.nome;
+            if (producaoDentistaSelect) producaoDentistaSelect.appendChild(option.cloneNode(true));
+            if (filterDentistaSelect) filterDentistaSelect.appendChild(option.cloneNode(true));
+            if (quickProducaoDentistaSelect) quickProducaoDentistaSelect.appendChild(option.cloneNode(true));
         });
     };
 
@@ -2023,7 +2107,85 @@ const generateProducaoPDF = () => {
     if (exportDentistaProducaoPdfBtn) exportDentistaProducaoPdfBtn.addEventListener('click', generateProducaoDentistaPDF);
 
     // Ações rápidas
-    if (actionAddProducao) actionAddProducao.addEventListener('click', () => navigateToView('view-producao'));
+    // --- LÓGICA DO MODAL DE ADIÇÃO RÁPIDA DE PRODUÇÃO ---
+
+    const openQuickAddModal = () => {
+        quickAddProductionForm.reset();
+        quickProducaoQtdInput.value = 1; // Reseta a quantidade para 1
+        
+        // Popular dentistas
+        quickProducaoDentistaSelect.innerHTML = '<option value="">Selecione o Dentista</option>';
+        (state.dentistas || []).forEach(dentista => {
+            const option = document.createElement('option');
+            option.value = dentista.id;
+            option.textContent = dentista.nome;
+            quickProducaoDentistaSelect.appendChild(option);
+        });
+        
+        // Popular tipos de trabalho
+        quickProducaoTipoSelect.innerHTML = '<option value="">Selecione o tipo de trabalho</option>';
+        (state.valores || []).forEach(valor => {
+            const option = document.createElement('option');
+            option.value = valor.tipo;
+            option.textContent = valor.tipo;
+            quickProducaoTipoSelect.appendChild(option);
+        });
+        
+        // Definir datas padrão
+        const hoje = new Date();
+        quickProducaoDataInput.valueAsDate = hoje;
+        quickEntregaDataInput.valueAsDate = hoje;
+        
+        addProductionModal.classList.remove('hidden');
+    };
+
+    if (actionAddProducao) {
+        actionAddProducao.addEventListener('click', openQuickAddModal);
+    }
+    
+    // Listeners do Modal Adicionar Produção Rápida
+    if (addProductionModal) {
+        closeAddProductionModalBtn.addEventListener('click', () => addProductionModal.classList.add('hidden'));
+        quickAddProductionCancelBtn.addEventListener('click', () => addProductionModal.classList.add('hidden'));
+    
+        quickAddProductionForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const originalButtonText = quickAddProductionSubmitBtn.textContent;
+            setButtonLoading(quickAddProductionSubmitBtn, true, originalButtonText);
+    
+            const producaoData = {
+                id: Date.now(),
+                tipo: quickProducaoTipoSelect.value,
+                dentista: parseInt(quickProducaoDentistaSelect.value),
+                nomePaciente: quickProducaoPacienteInput.value.trim(),
+                qtd: parseInt(quickProducaoQtdInput.value) || 1,
+                status: 'Pendente', // Status Padrão
+                obs: quickProducaoObsInput.value.trim(),
+                data: quickProducaoDataInput.value,
+                entrega: quickEntregaDataInput.value,
+                anexoURL: null
+            };
+    
+            if (producaoData.tipo && producaoData.dentista && producaoData.nomePaciente && producaoData.data && producaoData.entrega && producaoData.qtd > 0) {
+                state.producao.push(producaoData);
+                try {
+                    await saveDataToFirestore();
+                    showToast("Produção adicionada com sucesso!", "success");
+                    addProductionModal.classList.add('hidden');
+                    renderAllUIComponents(); // Atualiza o dashboard
+                    updateCharts();
+                } catch (error) {
+                    state.producao.pop(); // Reverte a adição local em caso de erro
+                    showToast("Erro ao salvar a produção.");
+                } finally {
+                    setButtonLoading(quickAddProductionSubmitBtn, false);
+                }
+            } else {
+                showToast("Por favor, preencha todos os campos obrigatórios e a quantidade deve ser maior que zero.");
+                setButtonLoading(quickAddProductionSubmitBtn, false);
+            }
+        });
+    }
     const actionAddDentista = document.getElementById('action-add-dentista');
     if (actionAddDentista) {
         actionAddDentista.addEventListener('click', () => {
