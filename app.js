@@ -174,6 +174,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmYesBtn = document.getElementById('confirm-yes-btn');
     const confirmNoBtn = document.getElementById('confirm-no-btn');
 
+    // Elementos do Modal de Adicionar Dentista Rápido
+    const addDentistaModal = document.getElementById('add-dentista-modal');
+    const closeAddDentistaModalBtn = document.getElementById('close-add-dentista-modal-btn');
+    const quickAddDentistaForm = document.getElementById('quick-add-dentista-form');
+    const quickDentistaNomeInput = document.getElementById('quick-dentista-nome-input');
+    const quickDentistaClinicaInput = document.getElementById('quick-dentista-clinica-input');
+    const quickDentistaTelefoneInput = document.getElementById('quick-dentista-telefone-input');
+    const quickDentistaEmailInput = document.getElementById('quick-dentista-email-input');
+    const quickAddDentistaCancelBtn = document.getElementById('quick-add-dentista-cancel-btn');
+
     // --- FALLBACK: adicionar/remover classe 'modal-open' no <body> quando qualquer modal estiver visível
     // Isso é usado como fallback para navegadores que não suportam backdrop-filter.
     const updateBodyModalOpen = () => {
@@ -823,6 +833,7 @@ const generateProducaoPDF = () => {
     // --- LÓGICA DE DADOS (FIRESTORE) ---
     async function saveDataToFirestore(button = null) {
         if (!userId) return;
+
         if(button) setButtonLoading(button, true);
         try {
             const stateToSave = {
@@ -2013,7 +2024,62 @@ const generateProducaoPDF = () => {
 
     // Ações rápidas
     if (actionAddProducao) actionAddProducao.addEventListener('click', () => navigateToView('view-producao'));
+    const actionAddDentista = document.getElementById('action-add-dentista');
+    if (actionAddDentista) {
+        actionAddDentista.addEventListener('click', () => {
+            if (addDentistaModal) {
+                quickAddDentistaForm.reset();
+                addDentistaModal.classList.remove('hidden');
+                quickDentistaNomeInput.focus();
+            } else {
+                navigateToView('view-dentistas');
+            }
+        });
+    }
     if (actionAddDespesa) actionAddDespesa.addEventListener('click', () => navigateToView('view-admin'));
+
+    // Listeners do Modal Adicionar Dentista
+    if (addDentistaModal) {
+        closeAddDentistaModalBtn.addEventListener('click', () => addDentistaModal.classList.add('hidden'));
+        quickAddDentistaCancelBtn.addEventListener('click', () => addDentistaModal.classList.add('hidden'));
+
+        quickAddDentistaForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitButton = e.submitter;
+            setButtonLoading(submitButton, true, 'Salvar');
+
+            const nome = quickDentistaNomeInput.value.trim();
+            if (!nome) {
+                showToast("O nome do dentista é obrigatório.");
+                setButtonLoading(submitButton, false);
+                return;
+            }
+
+            const dentistaData = {
+                id: Date.now(),
+                nome,
+                clinica: quickDentistaClinicaInput.value.trim(),
+                telefone: quickDentistaTelefoneInput.value.trim(),
+                email: quickDentistaEmailInput.value.trim(),
+                valores: []
+            };
+
+            state.dentistas.push(dentistaData);
+
+            try {
+                await saveDataToFirestore();
+                showToast("Dentista adicionado com sucesso!", "success");
+                addDentistaModal.classList.add('hidden');
+                renderAllUIComponents(); // Re-renderiza a UI para mostrar o novo dentista
+            } catch (error) {
+                // Se falhar, remove o dentista que foi adicionado localmente
+                state.dentistas.pop();
+                showToast("Erro ao salvar o dentista.");
+            } finally {
+                setButtonLoading(submitButton, false);
+            }
+        });
+    }
 
     // Formulários
     if (formFechamento) {
