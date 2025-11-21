@@ -200,6 +200,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const quickDentistaEmailInput = document.getElementById('quick-dentista-email-input');
     const quickAddDentistaCancelBtn = document.getElementById('quick-add-dentista-cancel-btn');
 
+    // Elementos do Modal de Adicionar Despesa Rápida
+    const addDespesaModal = document.getElementById('add-despesa-modal');
+    const closeAddDespesaModalBtn = document.getElementById('close-add-despesa-modal-btn');
+    const quickAddDespesaForm = document.getElementById('quick-add-despesa-form');
+    const quickDespesaDescInput = document.getElementById('quick-despesa-desc-input');
+    const quickDespesaCategoriaSelect = document.getElementById('quick-despesa-categoria-select');
+    const quickDespesaValorInput = document.getElementById('quick-despesa-valor-input');
+    const quickDespesaDataInput = document.getElementById('quick-despesa-data-input');
+    const quickDespesaRecorrenteCheckbox = document.getElementById('quick-despesa-recorrente-checkbox');
+    const quickAddDespesaCancelBtn = document.getElementById('quick-add-despesa-cancel-btn');
+    const quickAddDespesaSubmitBtn = document.getElementById('quick-add-despesa-submit-btn');
+
     // --- FALLBACK: adicionar/remover classe 'modal-open' no <body> quando qualquer modal estiver visível
     // Isso é usado como fallback para navegadores que não suportam backdrop-filter.
     const updateBodyModalOpen = () => {
@@ -2209,7 +2221,66 @@ const generateProducaoPDF = () => {
             }
         });
     }
-    if (actionAddDespesa) actionAddDespesa.addEventListener('click', () => navigateToView('view-admin'));
+    if (actionAddDespesa) {
+        actionAddDespesa.addEventListener('click', () => {
+            if (addDespesaModal) {
+                quickAddDespesaForm.reset();
+                // Definir data padrão como hoje
+                quickDespesaDataInput.valueAsDate = new Date();
+                addDespesaModal.classList.remove('hidden');
+                quickDespesaDescInput.focus();
+            } else {
+                navigateToView('view-admin');
+            }
+        });
+    }
+
+    // Listeners do Modal Adicionar Despesa Rápida
+    if (addDespesaModal) {
+        closeAddDespesaModalBtn.addEventListener('click', () => addDespesaModal.classList.add('hidden'));
+        quickAddDespesaCancelBtn.addEventListener('click', () => addDespesaModal.classList.add('hidden'));
+
+        quickAddDespesaForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitButton = quickAddDespesaSubmitBtn;
+            const originalText = submitButton.textContent;
+            setButtonLoading(submitButton, true, originalText);
+
+            const desc = quickDespesaDescInput.value.trim();
+            const valor = parseFloat(quickDespesaValorInput.value);
+            const data = quickDespesaDataInput.value;
+
+            if (!desc || isNaN(valor) || !data) {
+                showToast("Preencha todos os campos obrigatórios da despesa.");
+                setButtonLoading(submitButton, false);
+                return;
+            }
+
+            const despesaData = {
+                id: Date.now(),
+                desc,
+                categoria: quickDespesaCategoriaSelect.value,
+                valor,
+                data,
+                recorrente: quickDespesaRecorrenteCheckbox.checked
+            };
+
+            state.despesas.push(despesaData);
+
+            try {
+                await saveDataToFirestore();
+                showToast("Despesa adicionada com sucesso!", "success");
+                addDespesaModal.classList.add('hidden');
+                renderAllUIComponents(); // Atualiza o dashboard e listas
+            } catch (error) {
+                state.despesas.pop(); // Reverte em caso de erro
+                showToast("Erro ao salvar a despesa.");
+                console.error(error);
+            } finally {
+                setButtonLoading(submitButton, false);
+            }
+        });
+    }
 
     // Listeners do Modal Adicionar Dentista
     if (addDentistaModal) {
@@ -2607,11 +2678,22 @@ const generateProducaoPDF = () => {
     if(verTodasDespesasBtn) verTodasDespesasBtn.addEventListener('click', () => { renderizarListaDespesasDetalhada(); despesasModal.classList.remove('hidden'); });
     if(closeDespesasModalBtn) closeDespesasModalBtn.addEventListener('click', () => { despesasModal.classList.add('hidden'); });
     if(listaDespesasDetalhada) {
-        listaDespesasDetalhada.addEventListener('click', (e) => {
+        listaDespesasDetalhada.addEventListener('click', async (e) => {
             const editButton = e.target.closest('.edit-despesa-btn');
-            if (editButton) { startEditDespesa(parseInt(editButton.dataset.id)); }
+            if (editButton) { startEditDespesa(Number(editButton.dataset.id)); }
             const removeButton = e.target.closest('.remove-despesa-btn');
-            if (removeButton) { if (confirm('Tem certeza?')) { state.despesas = state.despesas.filter(d => d.id !== parseInt(removeButton.dataset.id)); saveDataToFirestore(); renderizarListaDespesasDetalhada(); showToast("Despesa removida.", "success"); } }
+            if (removeButton) { 
+                const confirmed = await showConfirmationModal(
+                    'Confirmar Exclusão', 
+                    'Tem certeza que quer excluir esta despesa?'
+                );
+                if (confirmed) { 
+                    state.despesas = state.despesas.filter(d => d.id !== Number(removeButton.dataset.id)); 
+                    saveDataToFirestore(); 
+                    renderizarListaDespesasDetalhada(); 
+                    showToast("Despesa removida.", "success"); 
+                } 
+            }
         });
     }
 
