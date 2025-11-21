@@ -644,7 +644,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const canvas = document.getElementById('dentista-chart');
             if (canvas) {
                 const perBar = 40; // px por item
-                const computedHeight = Math.max(300, shortlabels.length * perBar + 80);
+                const computedHeight = Math.max(300, shortLabels.length * perBar + 80);
                 // Set the canvas height attribute (not CSS) so Chart.js recalculates
                 canvas.height = computedHeight;
             }
@@ -758,6 +758,85 @@ const generateProducaoPDF = () => {
     };
 
     const generateProducaoDentistaPDF = () => {
+        const selectedDentistaId = filterDentistaSelect.value;
+        
+        if (!selectedDentistaId) {
+            showToast("Selecione um dentista para exportar o PDF.");
+            return;
+        }
+        
+        const dentista = (state.dentistas || []).find(d => d.id == selectedDentistaId);
+        if (!dentista) {
+             showToast("Dentista não encontrado.");
+             return;
+        }
+        
+        const producaoFiltrada = (state.producao || []).filter(p => p.dentista == selectedDentistaId);
+        
+        if (producaoFiltrada.length === 0) {
+            showToast("Nenhuma produção encontrada para este dentista.");
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        let totalValor = 0;
+        
+        const tableColumns = ["PACIENTE", "DENTISTA", "TIPO DE TRABALHO", "OBS.", "STATUS", "QUANTIDADE", "VALOR"];
+        const tableRows = [];
+
+        producaoFiltrada.forEach(p => {
+             // Calculate value
+            const valorDentista = (dentista.valores || []).find(v => v.tipo === p.tipo);
+            const valorGlobal = (state.valores || []).find(v => v.tipo === p.tipo);
+            const valorFinal = valorDentista || valorGlobal;
+            const valorUnitario = valorFinal ? valorFinal.valor : 0;
+            const valorTotal = valorUnitario * p.qtd;
+            
+            totalValor += valorTotal;
+            
+            const row = [
+                p.nomePaciente || '',
+                dentista.nome,
+                p.tipo,
+                p.obs || '',
+                p.status,
+                p.qtd.toString(),
+                formatarMoeda(valorTotal)
+            ];
+            tableRows.push(row);
+        });
+        
+        // Title
+        doc.setFontSize(16);
+        doc.text(`Relatório de Produção - ${dentista.nome}`, 14, 15);
+        doc.setFontSize(10);
+        doc.text(`Data de Emissão: ${new Date().toLocaleDateString('pt-BR')}`, 14, 20);
+        
+        doc.autoTable({
+            head: [tableColumns],
+            body: tableRows,
+            startY: 25,
+            styles: { fontSize: 9, cellPadding: 2, overflow: 'ellipsize' },
+            headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
+            columnStyles: {
+                0: { cellWidth: 40 }, // Paciente
+                1: { cellWidth: 40 }, // Dentista
+                2: { cellWidth: 30 }, // Tipo
+                3: { cellWidth: 30 }, // Obs
+                4: { cellWidth: 20 }, // Status
+                5: { cellWidth: 10, halign: 'center' }, // Qtd
+                6: { cellWidth: 20, halign: 'right' } // Valor
+            }
+        });
+        
+        const finalY = doc.autoTable.previous.finalY;
+        
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`TOTAL: ${formatarMoeda(totalValor)}`, 14, finalY + 10);
+        
+        doc.save(`producao_${dentista.nome.replace(/\s+/g, '_').toLowerCase()}.pdf`);
     };
 
     // --- FILTROS AVANÇADOS ---
