@@ -125,6 +125,10 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 9v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9"/><path d="M20 7.5a2.5 2.5 0 0 0-5 0A2.5 2.5 0 0 0 10 10V5c0-1.7 1.3-3 3-3s3 1.3 3 3v2.5Z"/><path d="M4 7.5a2.5 2.5 0 0 1 5 0A2.5 2.5 0 0 1 14 10V5c0-1.7-1.3-3-3-3S8 3.3 8 5v2.5Z"/><path d="M9 21V9"/><path d="m15 21-3-9"/></svg>
                     <span>Estoque</span>
                 </a>
+                <a href="#" data-view="view-despesas" class="nav-link flex items-center space-x-3 p-3 rounded-lg transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                    <span>Despesas</span>
+                </a>
                 <a href="#" data-view="view-dentistas" class="nav-link flex items-center space-x-3 p-3 rounded-lg transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                     <span>Dentistas</span>
@@ -529,6 +533,52 @@
                     </div>
                 </div>
 
+                <div id="view-despesas" class="view-container hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold gradient-text">Gestão de Despesas</h2>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div class="lg:col-span-1 space-y-6">
+                            <section class="card-enhanced p-6">
+                                <h2 id="form-despesa-title" class="text-xl font-semibold mb-4 border-b border-gemini-border pb-3">Adicionar Despesa</h2>
+                                <form id="form-despesas" class="space-y-4">
+                                    <input type="hidden" id="despesa-edit-id">
+                                    <input type="text" id="despesa-desc-input" placeholder="Descrição da despesa" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                    <select id="despesa-categoria-select" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                        <option value="">Selecione a categoria</option>
+                                        <option value="Material">Material</option>
+                                        <option value="Equipamento">Equipamento</option>
+                                        <option value="Manutenção">Manutenção</option>
+                                        <option value="Transporte">Transporte</option>
+                                        <option value="Outros">Outros</option>
+                                    </select>
+                                    <input type="number" id="despesa-valor-input" placeholder="Valor (R$)" step="0.01" min="0" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                    <input type="date" id="despesa-data-input" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                    <div class="flex items-center space-x-2">
+                                        <input type="checkbox" id="despesa-recorrente-checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                        <label for="despesa-recorrente-checkbox" class="text-sm text-gemini-secondary">Despesa Recorrente (Mensal)</label>
+                                    </div>
+                                    <div class="flex space-x-3">
+                                        <button id="form-despesa-submit-btn" type="submit" class="flex-1 bg-accent-blue hover:bg-accent-blue-hover text-white font-bold py-3 px-4 rounded-lg transition-all active:scale-95">Adicionar</button>
+                                        <button id="form-despesa-cancel-btn" type="button" class="px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white font-bold rounded-lg transition-all active:scale-95 hidden">Cancelar</button>
+                                    </div>
+                                </form>
+                            </section>
+                        </div>
+
+                        <div class="lg:col-span-2 space-y-6">
+                            <section class="card-enhanced p-6">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h3 class="font-semibold text-lg">Despesas Cadastradas</h3>
+                                    <input type="text" id="search-despesas-input" placeholder="Buscar despesa..." class="p-2 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg">
+                                </div>
+                                <div id="lista-despesas-completa" class="space-y-3 max-h-96 overflow-y-auto dark-scrollbar"></div>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="view-dentistas" class="view-container hidden">
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-3xl font-bold gradient-text">Gestão de Clientes</h2>
@@ -722,7 +772,8 @@
                                 </form>
                                 <div id="lista-valores" class="space-y-2 max-h-60 overflow-y-auto dark-scrollbar"></div>
                             </section>
-
+                        </div>
+                        <div>
                             <section class="card-enhanced p-6">
                                 <h2 class="text-xl font-semibold mb-4 border-b border-gemini-border pb-3">Configurações do Ciclo</h2>
                                 <form id="form-fechamento" class="space-y-4">
@@ -743,32 +794,6 @@
                                 </form>
                             </section>
                         </div>
-
-                        <section class="card-enhanced p-6">
-                            <h2 id="form-despesa-title" class="text-xl font-semibold mb-4 border-b border-gemini-border pb-3">Adicionar Despesa</h2>
-                            <form id="form-despesas" class="space-y-4">
-                                <input type="hidden" id="despesa-edit-id">
-                                <input type="text" id="despesa-desc-input" placeholder="Descrição da despesa" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
-                                <select id="despesa-categoria-select" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
-                                    <option value="">Selecione a categoria</option>
-                                    <option value="Material">Material</option>
-                                    <option value="Equipamento">Equipamento</option>
-                                    <option value="Manutenção">Manutenção</option>
-                                    <option value="Transporte">Transporte</option>
-                                    <option value="Outros">Outros</option>
-                                </select>
-                                <input type="number" id="despesa-valor-input" placeholder="Valor (R$)" step="0.01" min="0" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
-                                <input type="date" id="despesa-data-input" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
-                                <div class="flex items-center space-x-2">
-                                    <input type="checkbox" id="despesa-recorrente-checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                                    <label for="despesa-recorrente-checkbox" class="text-sm text-gemini-secondary">Despesa Recorrente (Mensal)</label>
-                                </div>
-                                <div class="flex space-x-3">
-                                    <button id="form-despesa-submit-btn" type="submit" class="flex-1 bg-accent-blue hover:bg-accent-blue-hover text-white font-bold py-3 px-4 rounded-lg transition-all active:scale-95">Adicionar</button>
-                                    <button id="form-despesa-cancel-btn" type="button" class="px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white font-bold rounded-lg transition-all active:scale-95 hidden">Cancelar</button>
-                                </div>
-                            </form>
-                        </section>
                     </div>
                 </div>
             </main>

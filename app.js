@@ -45,6 +45,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const despesaRecorrenteCheckbox = document.getElementById('despesa-recorrente-checkbox');
     const formDespesaSubmitBtn = document.getElementById('form-despesa-submit-btn');
     const formDespesaCancelBtn = document.getElementById('form-despesa-cancel-btn');
+    const listaDespesasCompleta = document.getElementById('lista-despesas-completa');
+    const searchDespesasInput = document.getElementById('search-despesas-input');
     const formProducao = document.getElementById('form-producao');
     const producaoTipoSelect = document.getElementById('producao-tipo-select');
     const producaoDentistaSelect = document.getElementById('producao-dentista-select');
@@ -249,6 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
         searchTermProducao: '',
         searchTermDentistas: '',
         searchTermEstoque: '',
+        searchTermDespesas: '',
         notifications: [],
         showAllDentistas: false // controla Top 15 / Todos no gráfico
     };
@@ -940,6 +943,7 @@ const generateProducaoPDF = () => {
     // --- LÓGICA DE DADOS (FIRESTORE) ---
     async function saveDataToFirestore(button = null) {
         if (!userId) return;
+        if (!db) return; // Safety check for test mode or init failures
 
         if(button) setButtonLoading(button, true);
         try {
@@ -1634,6 +1638,7 @@ const generateProducaoPDF = () => {
     };
 
     const renderizarListaDespesasDetalhada = () => {
+        if (!listaDespesasDetalhada) return;
         const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
         
         const despesasDoMes = (state.despesas || []).filter(d => {
@@ -1678,6 +1683,65 @@ const generateProducaoPDF = () => {
                 </div>
             `;
             listaDespesasDetalhada.appendChild(despesaEl);
+        });
+        toggleValuesVisibility();
+    };
+
+    const renderizarListaDespesasCompleta = () => {
+        if (!listaDespesasCompleta) return;
+
+        let despesasFiltradas = [...(state.despesas || [])];
+
+        if (state.searchTermDespesas) {
+            despesasFiltradas = despesasFiltradas.filter(d =>
+                d.desc.toLowerCase().includes(state.searchTermDespesas.toLowerCase()) ||
+                d.categoria.toLowerCase().includes(state.searchTermDespesas.toLowerCase())
+            );
+        }
+
+        // Ordenar por data (mais recente primeiro)
+        despesasFiltradas.sort((a, b) => new Date(b.data) - new Date(a.data));
+
+        listaDespesasCompleta.innerHTML = '';
+
+        if (despesasFiltradas.length === 0) {
+            listaDespesasCompleta.innerHTML = '<p class="text-center text-gemini-secondary">Nenhuma despesa encontrada</p>';
+            return;
+        }
+
+        despesasFiltradas.forEach(despesa => {
+            const despesaEl = document.createElement('div');
+            despesaEl.className = 'card-enhanced p-4 hover-effect';
+            despesaEl.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <h4 class="font-semibold text-gemini-primary">${despesa.desc}</h4>
+                        <div class="flex space-x-2 mt-1">
+                            <span class="text-xs px-2 py-1 rounded bg-gray-700 text-gemini-secondary">${despesa.categoria}</span>
+                            ${despesa.recorrente ? '<span class="text-xs px-2 py-1 rounded bg-indigo-500/20 text-indigo-400">Recorrente</span>' : ''}
+                        </div>
+                        <p class="text-xs text-gemini-secondary mt-2">Data: ${new Date(despesa.data + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
+                    </div>
+                    <div class="flex flex-col items-end space-y-2">
+                        <span class="text-lg font-semibold text-red-400 monetary-value">${formatarMoeda(despesa.valor)}</span>
+                        <div class="flex space-x-1">
+                            <button class="edit-despesa-btn p-2 rounded hover:bg-gray-700 transition-colors" data-id="${despesa.id}">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                            </button>
+                            <button class="remove-despesa-btn p-2 rounded hover:bg-red-700 transition-colors text-red-400" data-id="${despesa.id}">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="3,6 5,6 21,6"></polyline>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            listaDespesasCompleta.appendChild(despesaEl);
         });
         toggleValuesVisibility();
     };
@@ -1745,6 +1809,7 @@ const generateProducaoPDF = () => {
         renderizarListaValores();
         renderizarSelects();
         renderizarEstoque();
+        renderizarListaDespesasCompleta();
     };
 
     // --- FUNÇÕES DE EDIÇÃO ---
@@ -1959,7 +2024,7 @@ const generateProducaoPDF = () => {
         formDespesaCancelBtn.classList.remove('hidden');
         
         despesasModal.classList.add('hidden');
-        navigateToView('view-admin');
+        navigateToView('view-despesas');
         
         setTimeout(() => {
             document.getElementById('form-despesas').scrollIntoView({ behavior: 'smooth' });
@@ -2170,6 +2235,7 @@ const generateProducaoPDF = () => {
     if (searchProducaoInput) searchProducaoInput.addEventListener('input', (e) => { state.searchTermProducao = e.target.value; renderizarProducaoDia(); });
     if (searchDentistasInput) searchDentistasInput.addEventListener('input', (e) => { state.searchTermDentistas = e.target.value; renderizarListaDentistas(); });
     if (searchEstoqueInput) searchEstoqueInput.addEventListener('input', (e) => { state.searchTermEstoque = e.target.value; renderizarEstoque(); });
+    if (searchDespesasInput) searchDespesasInput.addEventListener('input', (e) => { state.searchTermDespesas = e.target.value; renderizarListaDespesasCompleta(); });
     if (filterStatusSelect) filterStatusSelect.addEventListener('change', renderizarProducaoDia);
     if (filterDataInicio) filterDataInicio.addEventListener('change', renderizarProducaoDia);
     if (filterDataFim) filterDataFim.addEventListener('change', renderizarProducaoDia);
@@ -2675,6 +2741,7 @@ const generateProducaoPDF = () => {
                     state.despesas.push(despesaData); 
                     showToast("Despesa adicionada com sucesso!", "success"); 
                 }
+                renderAllUIComponents();
                 saveDataToFirestore(formDespesaSubmitBtn);
                 cancelEditDespesa();
             } else { showToast("Preencha todos os campos da despesa."); }
@@ -2754,8 +2821,31 @@ const generateProducaoPDF = () => {
     if(dashboardPrevMonthBtn) dashboardPrevMonthBtn.addEventListener('click', () => changeMonth(-1));
     if(dashboardNextMonthBtn) dashboardNextMonthBtn.addEventListener('click', () => changeMonth(1));
 
-    if(verTodasDespesasBtn) verTodasDespesasBtn.addEventListener('click', () => { renderizarListaDespesasDetalhada(); despesasModal.classList.remove('hidden'); });
+    if(verTodasDespesasBtn) verTodasDespesasBtn.addEventListener('click', () => { navigateToView('view-despesas'); });
     if(closeDespesasModalBtn) closeDespesasModalBtn.addEventListener('click', () => { despesasModal.classList.add('hidden'); });
+
+    // Lista de despesas na nova aba
+    if(listaDespesasCompleta) {
+        listaDespesasCompleta.addEventListener('click', async (e) => {
+            const editButton = e.target.closest('.edit-despesa-btn');
+            if (editButton) { startEditDespesa(Number(editButton.dataset.id)); }
+            const removeButton = e.target.closest('.remove-despesa-btn');
+            if (removeButton) {
+                const confirmed = await showConfirmationModal(
+                    'Confirmar Exclusão',
+                    'Tem certeza que quer excluir esta despesa?'
+                );
+                if (confirmed) {
+                    const idToRemove = Number(removeButton.dataset.id);
+                    state.despesas = state.despesas.filter(d => d.id !== idToRemove);
+                    saveDataToFirestore();
+                    renderizarListaDespesasCompleta();
+                    showToast("Despesa removida.", "success");
+                }
+            }
+        });
+    }
+
     if(listaDespesasDetalhada) {
         listaDespesasDetalhada.addEventListener('click', async (e) => {
             const editButton = e.target.closest('.edit-despesa-btn');
@@ -2769,7 +2859,8 @@ const generateProducaoPDF = () => {
                 if (confirmed) { 
                     state.despesas = state.despesas.filter(d => d.id !== Number(removeButton.dataset.id)); 
                     saveDataToFirestore(); 
-                    renderizarListaDespesasDetalhada(); 
+                    renderizarListaDespesasDetalhada();
+                    renderizarListaDespesasCompleta();
                     showToast("Despesa removida.", "success"); 
                 } 
             }
