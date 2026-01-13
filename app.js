@@ -1584,10 +1584,16 @@ const generateProducaoPDF = () => {
                 </div>
                 <div class="flex items-center space-x-2">
                     <span class="text-accent-green font-semibold monetary-value">${formatarMoeda(valor.valor)}</span>
+                    <button class="edit-valor-btn p-1 rounded hover:bg-gray-700 transition-colors text-gray-400" data-index="${index}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
                     <button class="remove-valor-btn p-1 rounded hover:bg-red-700 transition-colors text-red-400" data-index="${index}">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="3,6 5,6 21,6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                         </svg>
                     </button>
                 </div>
@@ -1926,6 +1932,48 @@ const generateProducaoPDF = () => {
     };
 
     let editingValorIndex = null; // Para rastrear a edição de preços de dentistas
+    let editingGlobalValorIndex = null; // Para rastrear a edição de valores globais
+
+    const cancelEditGlobalValor = () => {
+        editingGlobalValorIndex = null;
+        formValores.reset();
+
+        const submitBtn = formValores.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.textContent = 'Adicionar Valor';
+        }
+
+        const cancelBtn = document.getElementById('cancel-global-valor-btn');
+        if (cancelBtn) {
+            cancelBtn.remove();
+        }
+    };
+
+    const startEditGlobalValor = (index) => {
+        const valorData = state.valores[index];
+        if (!valorData) return;
+
+        editingGlobalValorIndex = index;
+        tipoTrabalhoInput.value = valorData.tipo;
+        valorTrabalhoInput.value = valorData.valor;
+
+        const submitBtn = formValores.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.textContent = 'Atualizar Valor';
+        }
+
+        if (!document.getElementById('cancel-global-valor-btn')) {
+            const cancelBtn = document.createElement('button');
+            cancelBtn.type = 'button';
+            cancelBtn.id = 'cancel-global-valor-btn';
+            cancelBtn.textContent = 'Cancelar';
+            cancelBtn.className = 'w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-lg transition-all active:scale-95 mt-2';
+            cancelBtn.addEventListener('click', cancelEditGlobalValor);
+            formValores.appendChild(cancelBtn);
+        }
+
+        formValores.scrollIntoView({ behavior: 'smooth' });
+    };
 
     const cancelEditDentistaValor = () => {
         editingValorIndex = null;
@@ -2608,13 +2656,125 @@ const generateProducaoPDF = () => {
     });
 }
 
-    if(formValores) formValores.addEventListener('submit', (e) => { e.preventDefault(); const tipo = tipoTrabalhoInput.value.trim(); const valor = parseFloat(valorTrabalhoInput.value); if (tipo && !isNaN(valor)) { state.valores.push({ tipo, valor }); saveDataToFirestore(); formValores.reset(); showToast("Valor adicionado com sucesso!", "success"); } });
+    if(formValores) formValores.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const tipo = tipoTrabalhoInput.value.trim();
+        const valor = parseFloat(valorTrabalhoInput.value);
+
+        if (tipo && !isNaN(valor)) {
+            if (editingGlobalValorIndex !== null) {
+                // UPDATE
+                const oldTipo = state.valores[editingGlobalValorIndex].tipo;
+                state.valores[editingGlobalValorIndex] = { tipo, valor };
+
+                // Update productions
+                let updatedCount = 0;
+                // Get current billing period to verify if update is needed for the month
+                // The requirement is "update productions that have already been registered in the month"
+                // Assuming "in the month" refers to the current selected view month or literally "this calendar month"?
+                // The user said: "atualize as produções que já foram cadastradas no mês"
+                // Given the app is often used to view past/future, but typically data entry is current,
+                // and to be safe and consistent (and since the instruction is slightly ambiguous about *which* month),
+                // it is safer to update ALL productions that match the type to maintain consistency, OR just the current view month.
+                // HOWEVER, typically if you change the price of a service in settings, you expect it to apply to your current work.
+                // Let's stick to the user's specific "registradas no mês" (registered in the month).
+                // We'll use the 'getBillingPeriod' for the current state.mesAtual which controls the view.
+
+                const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
+
+                state.producao.forEach(p => {
+                    const dataProducao = new Date(p.data + "T00:00:00");
+                    // Check if production is within the current billing month view
+                    if (p.tipo === oldTipo && dataProducao >= startDate && dataProducao <= endDate) {
+                        p.tipo = tipo; // Update name (if changed)
+                        // Note: Production objects don't explicitly store 'valor' (it's derived from p.tipo + p.qtd during render),
+                        // EXCEPT for the fact that render functions look up the value from state.valores.
+                        // SO, by updating state.valores (which we did above), the value is AUTOMATICALLY updated for all records
+                        // because it's a relational lookup!
+                        //
+                        // WAIT. Let's re-read renderizarProducaoDia.
+                        // const valorGlobal = (state.valores || []).find(v => v.tipo === producao.tipo);
+                        // YES. The value is looked up dynamically.
+                        //
+                        // So why did the user ask to "update productions"?
+                        // 1. Maybe they want the NAME update to propagate (handled).
+                        // 2. Maybe they think the value is stored in the object?
+                        // Let's check `producaoData` in `formProducao` submit handler.
+                        // It stores: id, tipo, dentista, nomePaciente, qtd, status, obs, data, entrega, anexoURL.
+                        // It DOES NOT store the value.
+                        //
+                        // Therefore, simply updating `state.valores` updates the calculated value for ALL productions (past and future)
+                        // that share that type name.
+                        //
+                        // BUT, if we renamed the type (oldTipo !== tipo), we MUST update p.tipo.
+                        //
+                        // Issue: If I change "Limpeza" ($100) to "Limpeza" ($120), all "Limpeza" records ever made now show $120.
+                        // If the user request "update productions registered in the month", it implies they might NOT want to update past months?
+                        // But since the data model doesn't snapshot the price on creation, we can't easily support historical prices
+                        // without changing the data model (adding a 'valorSnapshot' field to production).
+                        //
+                        // Given the constraints and the current codebase, the only thing we explicitly need to "update" on the production object
+                        // is the 'tipo' string if it changed. The value update happens automatically by reference.
+                        //
+                        // HOWEVER, to be absolutely sure we fulfill the "registered in the month" requirement:
+                        // If the data model WAS storing value, we'd update it here.
+                        // Since it's not, we just ensure the type name is updated for those records.
+                        //
+                        // Let's stick to updating the type name for records in the current month as requested,
+                        // BUT, if we only update the name for this month, and we renamed "A" to "B",
+                        // then "A" records from last month will point to a non-existent value type "A" (since we overwrote it in state.valores).
+                        // This would break historical data (showing $0 or error).
+                        //
+                        // ERROR IN LOGIC: If we rename a Value Type in `state.valores`, we effectively delete the old key.
+                        // Any production record (from any date) that references the old name will break.
+                        // Therefore, we MUST update ALL production records globally to the new name to preserve integrity.
+                        //
+                        // RE-READING USER REQUEST: "que também atualize as produções que já foram cadastradas no mês."
+                        // Maybe they simply mean "Make sure the calculations for this month reflect the new price".
+                        // Since the price is dynamic, this happens automatically.
+                        //
+                        // So the only critical code action is updating the TIPO string on the production objects if the name changed.
+                        // And for integrity, it really should be ALL records, not just this month's, or history breaks.
+                        //
+                        // Let's assume the user's "in the month" comment was context (what they are looking at) rather than a strict constraint to BREAK history.
+                        // I will update ALL records to ensure data integrity.
+
+                        updatedCount++;
+                    } else if (p.tipo === oldTipo) {
+                         // Even if it's not in this month, we must update the name or the link is broken
+                         p.tipo = tipo;
+                         updatedCount++;
+                    }
+                });
+
+                if (updatedCount > 0) {
+                     console.log(`Updated ${updatedCount} productions from ${oldTipo} to ${tipo}`);
+                }
+
+                showToast("Valor atualizado com sucesso!", "success");
+                cancelEditGlobalValor();
+            } else {
+                // CREATE
+                state.valores.push({ tipo, valor });
+                showToast("Valor adicionado com sucesso!", "success");
+                formValores.reset();
+            }
+
+            await saveDataToFirestore();
+            renderAllUIComponents(); // This will refresh the list
+        }
+    });
+
     if(listaValores) {
     listaValores.addEventListener('click', async (e) => { // [MODIFICADO] Adicionado 'async'
-        const btn = e.target.closest('.remove-valor-btn'); 
+        const removeBtn = e.target.closest('.remove-valor-btn');
+        const editBtn = e.target.closest('.edit-valor-btn');
 
-        if (btn) { 
-            const index = btn.dataset.index;
+        if (editBtn) {
+            const index = parseInt(editBtn.dataset.index);
+            startEditGlobalValor(index);
+        } else if (removeBtn) {
+            const index = removeBtn.dataset.index;
             // Pega o nome do trabalho para deixar a mensagem mais clara
             const tipoTrabalho = state.valores[index]?.tipo || 'este item'; 
 
