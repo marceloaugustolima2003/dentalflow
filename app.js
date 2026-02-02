@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchDespesasInput = document.getElementById('search-despesas-input');
     const formProducao = document.getElementById('form-producao');
     const producaoTipoSelect = document.getElementById('producao-tipo-select');
-    const producaoDentistaSelect = document.getElementById('producao-dentista-select');
+    const producaoDentistaInput = document.getElementById('producao-dentista-input');
     const producaoPacienteInput = document.getElementById('producao-paciente-input');
     const producaoQtdInput = document.getElementById('producao-qtd-input');
     const producaoStatusSelect = document.getElementById('producao-status-select');
@@ -183,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const addProductionModal = document.getElementById('add-production-modal');
     const closeAddProductionModalBtn = document.getElementById('close-add-production-modal-btn');
     const quickAddProductionForm = document.getElementById('quick-add-production-form');
-    const quickProducaoDentistaSelect = document.getElementById('quick-producao-dentista-select');
+    const quickProducaoDentistaInput = document.getElementById('quick-producao-dentista-input');
     const quickProducaoPacienteInput = document.getElementById('quick-producao-paciente-input');
     const quickProducaoTipoSelect = document.getElementById('quick-producao-tipo-select');
     const quickProducaoQtdInput = document.getElementById('quick-producao-qtd-input');
@@ -1647,10 +1647,8 @@ const generateProducaoPDF = () => {
         // Limpar todos os selects primeiro
         const selects = [
             producaoTipoSelect, 
-            producaoDentistaSelect, 
             filterDentistaSelect, 
-            quickProducaoTipoSelect, 
-            quickProducaoDentistaSelect
+            quickProducaoTipoSelect
         ];
         selects.forEach(select => {
             if (select) select.innerHTML = '';
@@ -1658,10 +1656,8 @@ const generateProducaoPDF = () => {
     
         // Adicionar as opções padrão
         if (producaoTipoSelect) producaoTipoSelect.innerHTML = '<option value="">Selecione o tipo de trabalho</option>';
-        if (producaoDentistaSelect) producaoDentistaSelect.innerHTML = '<option value="">Selecione o Dentista</option>';
         if (filterDentistaSelect) filterDentistaSelect.innerHTML = '<option value="">Selecione um dentista para ver a produção</option>';
         if (quickProducaoTipoSelect) quickProducaoTipoSelect.innerHTML = '<option value="">Selecione o tipo de trabalho</option>';
-        if (quickProducaoDentistaSelect) quickProducaoDentistaSelect.innerHTML = '<option value="">Selecione o Dentista</option>';
     
         // Popular tipos de trabalho
         (state.valores || []).forEach(valor => {
@@ -1672,15 +1668,37 @@ const generateProducaoPDF = () => {
             if (quickProducaoTipoSelect) quickProducaoTipoSelect.appendChild(option.cloneNode(true));
         });
         
-        // Popular dentistas
-        (state.dentistas || []).forEach(dentista => {
-            const option = document.createElement('option');
-            option.value = dentista.id;
-            option.textContent = dentista.nome;
-            if (producaoDentistaSelect) producaoDentistaSelect.appendChild(option.cloneNode(true));
-            if (filterDentistaSelect) filterDentistaSelect.appendChild(option.cloneNode(true));
-            if (quickProducaoDentistaSelect) quickProducaoDentistaSelect.appendChild(option.cloneNode(true));
+        // Popular selects de dentistas (Filtro) e datalist (Inputs)
+        const dentistasList = document.getElementById('dentistas-list');
+        if (dentistasList) dentistasList.innerHTML = '';
+
+        const dentistasOrdenados = [...(state.dentistas || [])].sort((a, b) => a.nome.localeCompare(b.nome));
+        
+        dentistasOrdenados.forEach(dentista => {
+            // Para o Select de Filtro (usa ID)
+            const optionSelect = document.createElement('option');
+            optionSelect.value = dentista.id;
+            optionSelect.textContent = dentista.nome;
+            if (filterDentistaSelect) filterDentistaSelect.appendChild(optionSelect);
+
+            // Para o Datalist (usa Nome)
+            const optionDatalist = document.createElement('option');
+            optionDatalist.value = dentista.nome;
+            if (dentistasList) dentistasList.appendChild(optionDatalist);
         });
+
+        // Popular datalist de pacientes
+        const pacientesList = document.getElementById('pacientes-list');
+        if (pacientesList) {
+            pacientesList.innerHTML = '';
+            const uniquePatients = [...new Set((state.producao || []).map(p => p.nomePaciente).filter(p => p && p.trim() !== ''))].sort((a, b) => a.localeCompare(b));
+            
+            uniquePatients.forEach(nome => {
+                const option = document.createElement('option');
+                option.value = nome;
+                pacientesList.appendChild(option);
+            });
+        }
     };
 
     const renderizarListaDespesasDetalhada = () => {
@@ -1864,9 +1882,11 @@ const generateProducaoPDF = () => {
         const producao = (state.producao || []).find(p => p.id === id);
         if (!producao) return;
         
+        const dentista = (state.dentistas || []).find(d => d.id === producao.dentista);
+
         producaoEditIdInput.value = producao.id;
         producaoTipoSelect.value = producao.tipo;
-        producaoDentistaSelect.value = producao.dentista;
+        producaoDentistaInput.value = dentista ? dentista.nome : '';
         producaoPacienteInput.value = producao.nomePaciente || '';
         producaoQtdInput.value = producao.qtd;
         producaoStatusSelect.value = producao.status;
@@ -2373,15 +2393,6 @@ const generateProducaoPDF = () => {
         quickAddProductionForm.reset();
         quickProducaoQtdInput.value = 1; // Reseta a quantidade para 1
         
-        // Popular dentistas
-        quickProducaoDentistaSelect.innerHTML = '<option value="">Selecione o Dentista</option>';
-        (state.dentistas || []).forEach(dentista => {
-            const option = document.createElement('option');
-            option.value = dentista.id;
-            option.textContent = dentista.nome;
-            quickProducaoDentistaSelect.appendChild(option);
-        });
-        
         // Popular tipos de trabalho
         quickProducaoTipoSelect.innerHTML = '<option value="">Selecione o tipo de trabalho</option>';
         (state.valores || []).forEach(valor => {
@@ -2413,10 +2424,19 @@ const generateProducaoPDF = () => {
             const originalButtonText = quickAddProductionSubmitBtn.textContent;
             setButtonLoading(quickAddProductionSubmitBtn, true, originalButtonText);
     
+            const dentistaNome = quickProducaoDentistaInput.value.trim();
+            const dentistaObj = (state.dentistas || []).find(d => d.nome === dentistaNome);
+            
+            if (!dentistaObj) {
+                showToast("Dentista não encontrado. Selecione um da lista.");
+                setButtonLoading(quickAddProductionSubmitBtn, false);
+                return;
+            }
+
             const producaoData = {
                 id: Date.now(),
                 tipo: quickProducaoTipoSelect.value,
-                dentista: parseInt(quickProducaoDentistaSelect.value),
+                dentista: dentistaObj.id,
                 nomePaciente: quickProducaoPacienteInput.value.trim(),
                 qtd: parseInt(quickProducaoQtdInput.value) || 1,
                 status: 'Pendente', // Status Padrão
@@ -2859,10 +2879,20 @@ const generateProducaoPDF = () => {
             }
             
             const editId = producaoEditIdInput.value ? parseInt(producaoEditIdInput.value) : null;
+            
+            const dentistaNome = producaoDentistaInput.value.trim();
+            const dentistaObj = (state.dentistas || []).find(d => d.nome === dentistaNome);
+            
+            if (!dentistaObj) {
+                showToast("Dentista não encontrado. Selecione um da lista.");
+                setButtonLoading(producaoSubmitBtn, false);
+                return;
+            }
+
             const producaoData = { 
                 id: editId || Date.now(), 
                 tipo: producaoTipoSelect.value, 
-                dentista: parseInt(producaoDentistaSelect.value), 
+                dentista: dentistaObj.id, 
                 nomePaciente: producaoPacienteInput.value.trim(),
                 qtd: parseInt(producaoQtdInput.value), 
                 status: producaoStatusSelect.value, 
