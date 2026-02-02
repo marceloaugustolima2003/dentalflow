@@ -404,7 +404,7 @@
                                     <select id="producao-dentista-select" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
                                         <option value="">Selecione o Dentista</option>
                                     </select>
-                                    <input type="text" id="producao-paciente-input" placeholder="Nome do Paciente" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                                    <input type="text" id="producao-paciente-input" list="pacientes-list" placeholder="Nome do Paciente" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
                                     
                                     <input type="number" id="producao-qtd-input" placeholder="Quantidade" value="1" min="1" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
                                     <select id="producao-status-select" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
@@ -855,7 +855,7 @@
                 <select id="quick-producao-dentista-select" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
                     <option value="">Selecione o Dentista</option>
                 </select>
-                <input type="text" id="quick-producao-paciente-input" placeholder="Nome do Paciente" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
+                <input type="text" id="quick-producao-paciente-input" list="pacientes-list" placeholder="Nome do Paciente" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
                 <select id="quick-producao-tipo-select" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
                     <option value="">Selecione o tipo de trabalho</option>
                 </select>
@@ -918,6 +918,8 @@
             </form>
         </div>
     </div>
+
+    <datalist id="pacientes-list"></datalist>
 
     <script type="module" src="app.js"></script>
 
