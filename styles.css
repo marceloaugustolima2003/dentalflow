@@ -9,25 +9,25 @@ html, body {
     overflow-x: hidden;
 }
 
-.dark-scrollbar::-webkit-scrollbar { 
-    width: 8px; 
+.dark-scrollbar::-webkit-scrollbar {
+    width: 8px;
 }
 
-.dark-scrollbar::-webkit-scrollbar-track { 
-    background: transparent; 
+.dark-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
 }
 
-.dark-scrollbar::-webkit-scrollbar-thumb { 
-    background-color: #3c4043; 
-    border-radius: 4px; 
+.dark-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #3c4043;
+    border-radius: 4px;
 }
 
-.dark-scrollbar::-webkit-scrollbar-thumb:hover { 
-    background-color: #5f6368; 
+.dark-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: #5f6368;
 }
 
 /* Tema Escuro Aprimorado */
-.bg-gemini-dark { 
+.bg-gemini-dark {
     background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
     position: relative;
 }
@@ -44,28 +44,28 @@ html, body {
     pointer-events: none;
 }
 
-.bg-gemini-dark-card { 
+.bg-gemini-dark-card {
     background: linear-gradient(145deg, #1c2128 0%, #22272e 100%);
     border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(12px);
 }
 
-.border-gemini-border { 
-    border-color: rgba(255, 255, 255, 0.1); 
+.border-gemini-border {
+    border-color: rgba(255, 255, 255, 0.1);
 }
 
-.text-gemini-primary { 
-    color: #ffffff; 
+.text-gemini-primary {
+    color: #ffffff;
     font-weight: 500;
 }
 
-.text-gemini-secondary { 
-    color: #a0a0a0; 
+.text-gemini-secondary {
+    color: #a0a0a0;
     font-weight: 400;
 }
 
-.bg-gemini-input { 
+.bg-gemini-input {
     background: linear-gradient(145deg, #2a2b2c 0%, #303134 100%);
     border: 1px solid rgba(255, 255, 255, 0.1);
     transition: all 0.3s ease;
@@ -77,17 +77,17 @@ html, body {
     transform: translateY(-1px);
 }
 
-.text-gemini-input { 
-    color: #ffffff; 
+.text-gemini-input {
+    color: #ffffff;
 }
 
 /* Paleta de Cores Aprimorada */
-.bg-accent-blue { 
+.bg-accent-blue {
     background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
     box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
 }
 
-.hover\:bg-accent-blue-hover:hover { 
+.hover\:bg-accent-blue-hover:hover {
     background: linear-gradient(135deg, #5b5cf6 0%, #4338ca 100%);
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
@@ -115,12 +115,12 @@ html, body {
     box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4);
 }
 
-.focus\:ring-accent-blue:focus { 
-    --tw-ring-color: rgba(99, 102, 241, 0.5); 
+.focus\:ring-accent-blue:focus {
+    --tw-ring-color: rgba(99, 102, 241, 0.5);
 }
 
-.text-orange-400 { 
-    color: #fb923c; 
+.text-orange-400 {
+    color: #fb923c;
     font-weight: 600;
 }
 
@@ -339,23 +339,23 @@ button:hover:after, .btn:hover:after {
 }
 
 /* Modais Aprimorados */
-.modal-enter { 
-    opacity: 0; 
-    transform: scale(0.95) translateY(-20px); 
+.modal-enter {
+    opacity: 0;
+    transform: scale(0.95) translateY(-20px);
     backdrop-filter: blur(0);
 }
 
-.modal-enter-active { 
-    opacity: 1; 
-    transform: scale(1) translateY(0); 
-    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); 
+.modal-enter-active {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     backdrop-filter: blur(12px);
 }
 
-.modal-leave-active { 
-    opacity: 0; 
-    transform: scale(0.95) translateY(-20px); 
-    transition: all 0.3s ease-in; 
+.modal-leave-active {
+    opacity: 0;
+    transform: scale(0.95) translateY(-20px);
+    transition: all 0.3s ease-in;
     backdrop-filter: blur(0);
 }
 
@@ -572,11 +572,11 @@ select {
         margin: 0.5rem;
         border-radius: 12px;
     }
-    
+
     .text-3xl {
         font-size: 1.75rem;
     }
-    
+
     .text-2xl {
         font-size: 1.5rem;
     }
@@ -654,12 +654,40 @@ select {
 }
 
 /* Estiliza a aparência do select quando não está aberto */
-select#producao-tipo-select, 
+select#producao-tipo-select,
 select#producao-dentista-select,
 select#producao-status-select,
 select#despesa-categoria-select,
-select#filter-status-select {
+select#filter-status-select,
+input#producao-dentista-input,
+input#quick-producao-dentista-input {
     color-scheme: dark;
+}
+
+/* Adiciona a seta de dropdown também aos inputs de dentista (datalist) para manter a identidade visual */
+input#producao-dentista-input,
+input#quick-producao-dentista-input {
+    background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+                      linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position: calc(100% - 20px) calc(1em + 2px),
+                         calc(100% - 15px) calc(1em + 2px);
+    background-size: 5px 5px,
+                    5px 5px;
+    background-repeat: no-repeat;
+    cursor: pointer; /* Sugere que é clicável como um dropdown */
+}
+
+/* Tenta ocultar o indicador nativo do datalist no Chrome para não duplicar setas,
+   mas mantendo a funcionalidade (area clicavel) */
+input#producao-dentista-input::-webkit-calendar-picker-indicator,
+input#quick-producao-dentista-input::-webkit-calendar-picker-indicator {
+    opacity: 0;
+    cursor: pointer;
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 2.5rem; /* Área clicável sobre a nossa seta customizada */
 }
 
 select option {
@@ -694,7 +722,7 @@ select option {
     font-weight: 600;
     border-color: var(--gemini-border-color, rgba(255, 255, 255, 0.1));
     /* Levanta a aba 1px para conectar com  a textarea */
-    transform: translateY(1px); 
+    transform: translateY(1px);
     border-bottom: 1px solid var(--gemini-input-bg, #303134); /* Esconde a borda de baixo */
 }
 
