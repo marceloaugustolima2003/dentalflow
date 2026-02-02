@@ -72,6 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalDespesasMes = document.getElementById('total-despesas-mes');
     const lucroLiquidoMes = document.getElementById('lucro-liquido-mes');
     const despesasContainer = document.getElementById('despesas-container');
+    const resumoTiposContainer = document.getElementById('resumo-tipos-container');
     const despesasBar = document.getElementById('despesas-bar');
     const faturamentoBar = document.getElementById('faturamento-bar');
     const despesasBarLabel = document.getElementById('despesas-bar-label');
@@ -1515,6 +1516,43 @@ const generateProducaoPDF = () => {
                 despesasContainer.appendChild(despesaEl);
             });
         }
+        
+        // Renderizar quantidade por tipo de trabalho
+        if (resumoTiposContainer) {
+            const resumoTipos = {};
+            producaoDoMes.forEach(p => {
+                const qtd = Number(p.qtd) || 0;
+                resumoTipos[p.tipo] = (resumoTipos[p.tipo] || 0) + qtd;
+            });
+            
+            const resumoTiposArray = Object.entries(resumoTipos)
+                .map(([tipo, qtd]) => ({ tipo, qtd }))
+                .sort((a, b) => b.qtd - a.qtd);
+                
+            resumoTiposContainer.innerHTML = '';
+            if (resumoTiposArray.length === 0) {
+                 resumoTiposContainer.innerHTML = '<p class="text-center text-gemini-secondary col-span-full">Nenhuma produção no mês</p>';
+            } else {
+                resumoTiposArray.forEach(item => {
+                    const el = document.createElement('div');
+                    el.className = 'flex justify-between items-center p-3 rounded bg-gemini-input border border-gemini-border';
+                    
+                    const typeSpan = document.createElement('span');
+                    typeSpan.className = 'font-medium text-gemini-primary truncate mr-2';
+                    typeSpan.title = item.tipo;
+                    typeSpan.textContent = item.tipo;
+                    
+                    const qtySpan = document.createElement('span');
+                    qtySpan.className = 'font-bold text-accent-purple';
+                    qtySpan.textContent = item.qtd;
+                    
+                    el.appendChild(typeSpan);
+                    el.appendChild(qtySpan);
+                    resumoTiposContainer.appendChild(el);
+                });
+            }
+        }
+        
         toggleValuesVisibility();
     };
 
