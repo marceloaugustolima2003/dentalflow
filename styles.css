@@ -4,9 +4,15 @@
     min-height: 48px;
 }
 
-html, body {
+html {
+    background-color: #0d1117; /* Ensure dark background behind body (fixes mobile overscroll white flash) */
     height: 100%;
+}
+
+body {
+    min-height: 100%; /* Changed from height:100% to allow expansion */
     overflow-x: hidden;
+    position: relative; /* Ensure background works correctly */
 }
 
 .dark-scrollbar::-webkit-scrollbar { 
