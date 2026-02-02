@@ -1190,6 +1190,8 @@ const generateProducaoPDF = () => {
         
         renderTrend(faturamentoBruto, faturamentoAnterior, kpiFaturamentoTrend);
         renderTrend(lucroLiquido, lucroAnterior, kpiLucroTrend);
+
+        toggleValuesVisibility();
     
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
@@ -1854,6 +1856,7 @@ const generateProducaoPDF = () => {
         renderizarSelects();
         renderizarEstoque();
         renderizarListaDespesasCompleta();
+        toggleValuesVisibility();
     };
 
     // --- FUNÇÕES DE EDIÇÃO ---
