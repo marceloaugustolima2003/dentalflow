@@ -401,9 +401,7 @@
                                     <select id="producao-tipo-select" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
                                         <option value="">Selecione o tipo de trabalho</option>
                                     </select>
-                                    <select id="producao-dentista-select" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
-                                        <option value="">Selecione o Dentista</option>
-                                    </select>
+                                    <input id="producao-dentista-input" list="dentistas-list" placeholder="Selecione o Dentista" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
                                     <input type="text" id="producao-paciente-input" list="pacientes-list" placeholder="Nome do Paciente" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
                                     
                                     <input type="number" id="producao-qtd-input" placeholder="Quantidade" value="1" min="1" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
@@ -852,9 +850,7 @@
                 </button>
             </div>
             <form id="quick-add-production-form" class="space-y-4">
-                <select id="quick-producao-dentista-select" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
-                    <option value="">Selecione o Dentista</option>
-                </select>
+                <input id="quick-producao-dentista-input" list="dentistas-list" placeholder="Selecione o Dentista" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
                 <input type="text" id="quick-producao-paciente-input" list="pacientes-list" placeholder="Nome do Paciente" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
                 <select id="quick-producao-tipo-select" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
                     <option value="">Selecione o tipo de trabalho</option>
@@ -920,6 +916,7 @@
     </div>
 
     <datalist id="pacientes-list"></datalist>
+    <datalist id="dentistas-list"></datalist>
 
     <script type="module" src="app.js"></script>
 
