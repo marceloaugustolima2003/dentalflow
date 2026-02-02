@@ -4,8 +4,13 @@ import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWith
 import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
+import { translations } from "./translations.js";
 
 document.addEventListener('DOMContentLoaded', () => {
+
+    // Helper para tradução
+    let currentLang = localStorage.getItem('dentalflow_lang') || 'pt';
+    const t = (key) => (translations[currentLang] && translations[currentLang][key]) || key;
     
     let db, auth, functions, storage, userId;
     let unsubscribeFromFirestore;
@@ -141,6 +146,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const listaEstoque = document.getElementById('lista-estoque');
     const searchEstoqueInput = document.getElementById('search-estoque-input');
 
+    // Work Type Details Modal
+    const workTypeDetailsModal = document.getElementById('work-type-details-modal');
+    const workTypeDetailsTitle = document.getElementById('work-type-details-title');
+    const workTypeDetailsList = document.getElementById('work-type-details-list');
+    const closeWorkTypeModalBtn = document.getElementById('close-work-type-modal-btn');
+    const closeWorkTypeModalFooterBtn = document.getElementById('close-work-type-modal-footer-btn');
 
     // Novos elementos para funcionalidades avançadas
     const notificationsBtn = document.getElementById('notifications-btn');
@@ -261,6 +272,85 @@ document.addEventListener('DOMContentLoaded', () => {
     const toastNotification = document.getElementById('toast-notification');
     const toastMessage = document.getElementById('toast-message');
     let toastTimeout;
+
+    // --- INTERNACIONALIZAÇÃO (i18n) ---
+    const getFlagSVG = (lang) => {
+        const svgs = {
+            pt: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 5 36 26" preserveAspectRatio="none" class="w-full h-full object-cover"><path fill="#009b3a" d="M36 27a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4V9a4 4 0 0 1 4-4h28a4 4 0 0 1 4 4v18z"/><path fill="#fedf00" d="M32.73 18L18 29.09 3.27 18 18 6.91z"/><circle fill="#002776" cx="18" cy="18" r="6.5"/><path fill="#fff" d="M12.63 19.34a7.6 7.6 0 0 0 10.9-1.5l.62.77a8.59 8.59 0 0 1-12.28 1.69z"/></svg>',
+            en: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 5 36 26" preserveAspectRatio="none" class="w-full h-full object-cover"><path fill="#bd3d44" d="M32 5H4a4 4 0 0 0-4 4v18a4 4 0 0 0 4 4h28a4 4 0 0 0 4-4V9a4 4 0 0 0-4-4z"/><path fill="#fff" d="M0 9a4 4 0 0 1 4-4h28a4 4 0 0 1 4 4v1.86H0zm0 5.43h36v3.71H0zm0 7.43h36v3.71H0z"/><path fill="#192f5d" d="M0 5a4 4 0 0 0 4 4h12.57V5z"/><path fill="#192f5d" d="M0 14.43h16.57V9H0z"/></svg>',
+            es: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 5 36 26" preserveAspectRatio="none" class="w-full h-full object-cover"><path fill="#c60b1e" d="M36 27a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4V9a4 4 0 0 1 4-4h28a4 4 0 0 1 4 4v18z"/><path fill="#ffc400" d="M0 12h36v12H0z"/><path fill="#c60b1e" d="M9 14h3v3H9z"/><path fill="#c60b1e" d="M9 19h3v3H9z"/></svg>'
+        };
+        return svgs[lang] || svgs.pt;
+    };
+
+    const updateLanguage = (lang) => {
+        currentLang = lang;
+        localStorage.setItem('dentalflow_lang', lang);
+        
+        // Atualiza textos estáticos
+        const elements = document.querySelectorAll('[data-i18n]');
+        elements.forEach(element => {
+            const key = element.dataset.i18n;
+            if (translations[lang] && translations[lang][key]) {
+                element.textContent = translations[lang][key];
+            }
+        });
+
+        // Atualiza placeholders
+        const placeholderElements = document.querySelectorAll('[data-i18n-placeholder]');
+        placeholderElements.forEach(element => {
+            const key = element.dataset.i18nPlaceholder;
+            if (translations[lang] && translations[lang][key]) {
+                element.placeholder = translations[lang][key];
+            }
+        });
+
+        // Atualiza ícone do botão principal
+        const currentBtn = document.getElementById('current-language-btn');
+        if (currentBtn) {
+            currentBtn.innerHTML = getFlagSVG(lang);
+        }
+
+        // Esconde o menu se estiver aberto
+        const languageOptions = document.getElementById('language-options');
+        if (languageOptions) {
+            languageOptions.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+        }
+
+        // Atualiza UI dinâmica
+        updateAuthUI();
+    };
+
+    const initLanguage = () => {
+        const savedLang = localStorage.getItem('dentalflow_lang') || 'pt';
+        updateLanguage(savedLang);
+        
+        const currentBtn = document.getElementById('current-language-btn');
+        const languageOptions = document.getElementById('language-options');
+        const optionsBtns = document.querySelectorAll('.lang-option-btn');
+
+        if (currentBtn && languageOptions) {
+            currentBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                languageOptions.classList.toggle('opacity-0');
+                languageOptions.classList.toggle('translate-y-4');
+                languageOptions.classList.toggle('pointer-events-none');
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!currentBtn.contains(e.target) && !languageOptions.contains(e.target)) {
+                    languageOptions.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+                }
+            });
+        }
+
+        optionsBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const lang = btn.dataset.lang;
+                updateLanguage(lang);
+            });
+        });
+    };
 
     const showToast = (message, type = 'error') => {
         clearTimeout(toastTimeout);
@@ -409,7 +499,7 @@ document.addEventListener('DOMContentLoaded', () => {
         notificationsList.innerHTML = '';
         
         if (state.notifications.length === 0) {
-            notificationsList.innerHTML = '<div class="p-4 text-center text-gemini-secondary">Nenhuma notificação</div>';
+            notificationsList.innerHTML = `<div class="p-4 text-center text-gemini-secondary">${t('notifications_empty')}</div>`;
             return;
         }
         
@@ -698,7 +788,7 @@ const generateProducaoPDF = () => {
         producaoDoMes.forEach(p => {
             // Busca o nome do dentista
             const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
-            const dentistaName = dentista ? dentista.nome : 'Dentista Desconhecido';
+            const dentistaName = dentista ? dentista.nome : t('dentist_unknown');
 
             // Busca o valor unitário
             const valorItem = (state.valores || []).find(v => v.tipo === p.tipo);
@@ -711,7 +801,7 @@ const generateProducaoPDF = () => {
             const obsConteudo = (p.obs || '-'); 
 
             const producaoData = [
-                p.nomePaciente || 'Não Informado',
+                p.nomePaciente || t('patient_not_informed'),
                 dentistaName,
                 p.tipo,
                 obsConteudo,
@@ -724,9 +814,9 @@ const generateProducaoPDF = () => {
         
         // Título e Período
         doc.setFontSize(16);
-        doc.text(`Relatório de Produção Mensal`, 14, 15);
+        doc.text(t('pdf_production_report_title'), 14, 15);
         doc.setFontSize(10);
-        doc.text(`Período de Referência: ${mesAno}`, 14, 20);
+        doc.text(`${t('pdf_reference_period')}: ${mesAno}`, 14, 20);
 
         // Tabela
         doc.autoTable({ 
@@ -756,7 +846,7 @@ const generateProducaoPDF = () => {
         // VALOR TOTAL (em destaque)
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
-        doc.text(`VALOR TOTAL (BRUTO): ${formatarMoeda(totalFaturamentoMes)}`, 14, finalY + 10);
+        doc.text(`${t('pdf_total_value_gross')}: ${formatarMoeda(totalFaturamentoMes)}`, 14, finalY + 10);
 
         doc.save(`producao-mensal-${mesAno.replace(/\s+/g, '_').toLowerCase()}.pdf`);
     };
@@ -765,20 +855,20 @@ const generateProducaoPDF = () => {
         const selectedDentistaId = filterDentistaSelect.value;
         
         if (!selectedDentistaId) {
-            showToast("Selecione um dentista para exportar o PDF.");
+            showToast(t('toast_select_dentist_pdf'));
             return;
         }
         
         const dentista = (state.dentistas || []).find(d => d.id == selectedDentistaId);
         if (!dentista) {
-             showToast("Dentista não encontrado.");
+             showToast(t('toast_dentist_not_found'));
              return;
         }
         
         const producaoFiltrada = (state.producao || []).filter(p => p.dentista == selectedDentistaId);
         
         if (producaoFiltrada.length === 0) {
-            showToast("Nenhuma produção encontrada para este dentista.");
+            showToast(t('toast_no_production_dentist'));
             return;
         }
 
@@ -813,9 +903,9 @@ const generateProducaoPDF = () => {
         
         // Title
         doc.setFontSize(16);
-        doc.text(`Relatório de Produção - ${dentista.nome}`, 14, 15);
+        doc.text(`${t('pdf_dentist_production_report')} - ${dentista.nome}`, 14, 15);
         doc.setFontSize(10);
-        doc.text(`Data de Emissão: ${new Date().toLocaleDateString('pt-BR')}`, 14, 20);
+        doc.text(`${t('pdf_emission_date')}: ${new Date().toLocaleDateString('pt-BR')}`, 14, 20);
         
         doc.autoTable({
             head: [tableColumns],
@@ -900,9 +990,9 @@ const generateProducaoPDF = () => {
 
     // --- LÓGICA DE AUTENTICAÇÃO ---
     function updateAuthUI() { 
-        authTitle.textContent = isLoginMode ? 'Entrar' : 'Criar Conta';
-        authButton.textContent = isLoginMode ? 'Entrar' : 'Registar';
-        toggleAuthMode.textContent = isLoginMode ? 'Ainda não tem conta? Registe-se' : 'Já tem conta? Entrar';
+        authTitle.textContent = isLoginMode ? t('auth_title_login') : t('auth_title_register');
+        authButton.textContent = isLoginMode ? t('auth_button_login') : t('auth_button_register');
+        toggleAuthMode.textContent = isLoginMode ? t('auth_toggle_register') : t('auth_toggle_login');
         authErrorMessage.classList.add('hidden');
     }
     
@@ -934,11 +1024,11 @@ const generateProducaoPDF = () => {
     
     passwordResetButton.addEventListener('click', async () => { 
         const email = emailInput.value; 
-        if (!email) { showToast("Por favor, insira o seu e-mail no campo acima."); return; }
+        if (!email) { showToast(t('toast_email_required')); return; }
         try { 
             await sendPasswordResetEmail(auth, email); 
-            showToast("E-mail de recuperação enviado com sucesso!", "success"); 
-        } catch (error) { showToast("Não foi possível enviar o e-mail de recuperação."); }
+            showToast(t('toast_recovery_email_sent'), "success"); 
+        } catch (error) { showToast(t('toast_recovery_email_failed')); }
     });
 
     // --- LÓGICA DE DADOS (FIRESTORE) ---
@@ -956,7 +1046,7 @@ const generateProducaoPDF = () => {
             await setDoc(docRef, stateToSave, { merge: true });
         } catch (error) {
             console.error("Erro ao salvar dados no Firestore: ", error);
-            showToast("Erro ao salvar dados. Verifique sua conexão.");
+            showToast(t('toast_error_generic'));
         } finally {
             if(button) setButtonLoading(button, false);
         }
@@ -1452,6 +1542,58 @@ const generateProducaoPDF = () => {
         });
     };
 
+    const showWorkTypeDetails = (tipo, producaoDoMes) => {
+        // Filter by type
+        const filtered = producaoDoMes.filter(p => p.tipo === tipo);
+        
+        // Sort by date desc
+        filtered.sort((a, b) => new Date(b.data) - new Date(a.data));
+        
+        workTypeDetailsTitle.textContent = `${t('summary_chart_types')}: ${tipo}`;
+        workTypeDetailsList.innerHTML = '';
+        
+        if (filtered.length === 0) {
+            workTypeDetailsList.innerHTML = '<p class="text-center text-gemini-secondary">Nenhum registro encontrado.</p>';
+        } else {
+            filtered.forEach(p => {
+                const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
+                const dentistaName = dentista ? dentista.nome : 'Desconhecido';
+                const dataFormatada = new Date(p.data + 'T00:00:00').toLocaleDateString('pt-BR');
+                
+                // Calculate value if needed, or just show basic info
+                const valorDentista = dentista ? (dentista.valores || []).find(v => v.tipo === p.tipo) : null;
+                const valorGlobal = (state.valores || []).find(v => v.tipo === p.tipo);
+                const valorFinal = valorDentista || valorGlobal;
+                const valorTotal = valorFinal ? valorFinal.valor * p.qtd : 0;
+
+                const itemEl = document.createElement('div');
+                itemEl.className = 'card-enhanced p-3 border border-gemini-border';
+                
+                itemEl.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-medium text-gemini-primary">${p.nomePaciente || 'Paciente não informado'}</p>
+                            <p class="text-sm text-gemini-secondary">${dentistaName}</p>
+                            <p class="text-xs text-gemini-secondary mt-1">Data: ${dataFormatada}</p>
+                        </div>
+                        <div class="text-right">
+                             <div class="font-bold text-accent-purple">${p.qtd} un.</div>
+                             <div class="text-sm text-accent-green monetary-value">${formatarMoeda(valorTotal)}</div>
+                             <div class="text-xs text-gemini-secondary mt-1">${p.status}</div>
+                        </div>
+                    </div>
+                    ${p.obs ? `<div class="mt-2 text-xs text-gemini-secondary border-t border-gemini-border pt-1">Obs: ${p.obs}</div>` : ''}
+                `;
+                workTypeDetailsList.appendChild(itemEl);
+            });
+        }
+        
+        // Ensure values visibility is correct
+        toggleValuesVisibility();
+        
+        workTypeDetailsModal.classList.remove('hidden');
+    };
+
     const renderizarResumoMensal = () => {
         updateMonthDisplay();
     
@@ -1537,7 +1679,7 @@ const generateProducaoPDF = () => {
             } else {
                 resumoTiposArray.forEach(item => {
                     const el = document.createElement('div');
-                    el.className = 'flex justify-between items-center p-3 rounded bg-gemini-input border border-gemini-border';
+                    el.className = 'flex justify-between items-center p-3 rounded bg-gemini-input border border-gemini-border cursor-pointer hover:bg-gray-700 transition-colors';
                     
                     const typeSpan = document.createElement('span');
                     typeSpan.className = 'font-medium text-gemini-primary truncate mr-2';
@@ -1550,6 +1692,11 @@ const generateProducaoPDF = () => {
                     
                     el.appendChild(typeSpan);
                     el.appendChild(qtySpan);
+                    
+                    el.addEventListener('click', () => {
+                         showWorkTypeDetails(item.tipo, producaoDoMes);
+                    });
+
                     resumoTiposContainer.appendChild(el);
                 });
             }
@@ -1866,7 +2013,7 @@ const generateProducaoPDF = () => {
 	        renderizarProducaoDia();
 	        renderQuickNotesUI();
 	        renderizarProducaoPorDentista();
-        renderizarProducaoPorDentista();
+        // Removed duplicate call to renderizarProducaoPorDentista();
         renderizarListaDentistas();
         renderizarResumoMensal();
         renderizarAnaliseDentista();
@@ -1875,6 +2022,10 @@ const generateProducaoPDF = () => {
         renderizarEstoque();
         renderizarListaDespesasCompleta();
         toggleValuesVisibility();
+        
+        // Atualizar idioma após renderização
+        const currentLang = localStorage.getItem('dentalflow_lang') || 'pt';
+        updateLanguage(currentLang);
     };
 
     // --- FUNÇÕES DE EDIÇÃO ---
@@ -2224,7 +2375,7 @@ const generateProducaoPDF = () => {
 	        saveQuickNotesBtn.addEventListener('click', async () => {
                 const activeNoteIndex = state.quickNotes.findIndex(n => n.id === state.activeQuickNoteId);
                 if (activeNoteIndex === -1) {
-                    showToast("Nenhuma nota selecionada para salvar.");
+                    showToast(t('toast_no_note_selected'));
                     return;
                 }
                 
@@ -2242,11 +2393,11 @@ const generateProducaoPDF = () => {
 	            try {
 	                // 3. Salvar o estado inteiro no Firestore
 	                await saveDataToFirestore();
-	                showToast("Nota salva com sucesso!", "success");
+	                showToast(t('toast_note_saved'), "success");
 	                
 	                // 5. Feedback visual localizado
 	                if (quickNotesFeedback) {
-	                    quickNotesFeedback.textContent = 'Salvo!';
+	                    quickNotesFeedback.textContent = t('toast_save_success');
 	                    quickNotesFeedback.classList.remove('hidden', 'text-red-400');
 	                    quickNotesFeedback.classList.add('text-green-400');
 	                    setTimeout(() => quickNotesFeedback.classList.add('hidden'), 2000);
@@ -2254,9 +2405,9 @@ const generateProducaoPDF = () => {
 
 	            } catch (error) {
 	                console.error("Erro ao salvar notas:", error);
-	                showToast("Erro ao salvar notas.");
+	                showToast(t('toast_error_save_note'));
 	                if (quickNotesFeedback) {
-	                    quickNotesFeedback.textContent = 'Erro ao salvar.';
+	                    quickNotesFeedback.textContent = t('toast_error_generic');
 	                    quickNotesFeedback.classList.remove('hidden', 'text-green-400');
 	                    quickNotesFeedback.classList.add('text-red-400');
 	                }
@@ -2304,7 +2455,7 @@ const generateProducaoPDF = () => {
 
         // [MODIFICADO] Chamando o novo modal
         const confirmed = await showConfirmationModal(
-            'Confirmar Exclusão', 
+            t('modal_confirm_title'), 
             `Tem certeza que quer apagar a nota "${activeNote.title}"?`
         );
 
@@ -2368,7 +2519,7 @@ const generateProducaoPDF = () => {
                 
                 // [MODIFICADO] Chamando o novo modal
                 const confirmed = await showConfirmationModal(
-                    'Confirmar Exclusão', 
+                    t('modal_confirm_title'), 
                     'Tem certeza que quer excluir este trabalho?'
                 );
 
@@ -2413,6 +2564,12 @@ const generateProducaoPDF = () => {
     if (actionAddProducao) {
         actionAddProducao.addEventListener('click', openQuickAddModal);
     }
+
+    if (workTypeDetailsModal) {
+        const closeLogic = () => workTypeDetailsModal.classList.add('hidden');
+        if (closeWorkTypeModalBtn) closeWorkTypeModalBtn.addEventListener('click', closeLogic);
+        if (closeWorkTypeModalFooterBtn) closeWorkTypeModalFooterBtn.addEventListener('click', closeLogic);
+    }
     
     // Listeners do Modal Adicionar Produção Rápida
     if (addProductionModal) {
@@ -2428,7 +2585,7 @@ const generateProducaoPDF = () => {
             const dentistaObj = (state.dentistas || []).find(d => d.nome === dentistaNome);
             
             if (!dentistaObj) {
-                showToast("Dentista não encontrado. Selecione um da lista.");
+                showToast(t('toast_dentist_not_found'));
                 setButtonLoading(quickAddProductionSubmitBtn, false);
                 return;
             }
@@ -2450,18 +2607,18 @@ const generateProducaoPDF = () => {
                 state.producao.push(producaoData);
                 try {
                     await saveDataToFirestore();
-                    showToast("Produção adicionada com sucesso!", "success");
+                    showToast(t('toast_success_production_add'), "success");
                     addProductionModal.classList.add('hidden');
                     renderAllUIComponents(); // Atualiza o dashboard
                     updateCharts();
                 } catch (error) {
                     state.producao.pop(); // Reverte a adição local em caso de erro
-                    showToast("Erro ao salvar a produção.");
+                    showToast(t('toast_error_save_production'));
                 } finally {
                     setButtonLoading(quickAddProductionSubmitBtn, false);
                 }
             } else {
-                showToast("Por favor, preencha todos os campos obrigatórios e a quantidade deve ser maior que zero.");
+                showToast(t('toast_fill_all_fields'));
                 setButtonLoading(quickAddProductionSubmitBtn, false);
             }
         });
@@ -2508,7 +2665,7 @@ const generateProducaoPDF = () => {
             const data = quickDespesaDataInput.value;
 
             if (!desc || isNaN(valor) || !data) {
-                showToast("Preencha todos os campos obrigatórios da despesa.");
+                showToast(t('toast_fill_expense_fields'));
                 setButtonLoading(submitButton, false);
                 return;
             }
@@ -2526,12 +2683,12 @@ const generateProducaoPDF = () => {
 
             try {
                 await saveDataToFirestore();
-                showToast("Despesa adicionada com sucesso!", "success");
+                showToast(t('toast_success_expense_add'), "success");
                 addDespesaModal.classList.add('hidden');
                 renderAllUIComponents(); // Atualiza o dashboard e listas
             } catch (error) {
                 state.despesas.pop(); // Reverte em caso de erro
-                showToast("Erro ao salvar a despesa.");
+                showToast(t('toast_error_save_expense'));
                 console.error(error);
             } finally {
                 setButtonLoading(submitButton, false);
@@ -2551,7 +2708,7 @@ const generateProducaoPDF = () => {
 
             const nome = quickDentistaNomeInput.value.trim();
             if (!nome) {
-                showToast("O nome do dentista é obrigatório.");
+                showToast(t('toast_fill_dentist_name'));
                 setButtonLoading(submitButton, false);
                 return;
             }
@@ -2569,13 +2726,13 @@ const generateProducaoPDF = () => {
 
             try {
                 await saveDataToFirestore();
-                showToast("Dentista adicionado com sucesso!", "success");
+                showToast(t('toast_success_dentist_add'), "success");
                 addDentistaModal.classList.add('hidden');
                 renderAllUIComponents(); // Re-renderiza a UI para mostrar o novo dentista
             } catch (error) {
                 // Se falhar, remove o dentista que foi adicionado localmente
                 state.dentistas.pop();
-                showToast("Erro ao salvar o dentista.");
+                showToast(t('toast_error_save_dentist'));
             } finally {
                 setButtonLoading(submitButton, false);
             }
@@ -2593,12 +2750,12 @@ const generateProducaoPDF = () => {
                 state.closingDayStart = diaInicio;
                 state.closingDayEnd = diaFim;
                 saveDataToFirestore().then(() => {
-                    showToast("Ciclo de fechamento salvo com sucesso!", "success");
+                    showToast(t('toast_success_cycle_save'), "success");
                     renderAllUIComponents();
                     updateCharts();
                 });
             } else {
-                showToast("Por favor, insira dias válidos (1-31).");
+                showToast(t('toast_invalid_days'));
             }
         });
     }
@@ -2608,7 +2765,7 @@ const generateProducaoPDF = () => {
             e.preventDefault();
             const id = dentistaEditIdInput.value ? parseInt(dentistaEditIdInput.value) : Date.now();
             const nome = dentistaNomeInput.value.trim();
-            if (!nome) { showToast("O nome do dentista é obrigatório."); return; }
+            if (!nome) { showToast(t('toast_fill_dentist_name')); return; }
             
             if (dentistaEditIdInput.value) {
                 const index = state.dentistas.findIndex(d => d.id === id);
@@ -2616,13 +2773,13 @@ const generateProducaoPDF = () => {
                     // Mantém a estrutura de valores existente ao editar
                     const existingValores = state.dentistas[index].valores || [];
                     state.dentistas[index] = { ...state.dentistas[index], id, nome, clinica: dentistaClinicaInput.value.trim(), telefone: dentistaTelefoneInput.value.trim(), email: dentistaEmailInput.value.trim(), valores: existingValores };
-                    showToast("Dentista atualizado com sucesso!", "success");
+                    showToast(t('toast_success_dentist_update'), "success");
                 }
             } else {
                 // Adiciona um novo dentista com uma lista de valores vazia
                 const dentistaData = { id, nome, clinica: dentistaClinicaInput.value.trim(), telefone: dentistaTelefoneInput.value.trim(), email: dentistaEmailInput.value.trim(), valores: [] };
                 state.dentistas.push(dentistaData); 
-                showToast("Dentista adicionado com sucesso!", "success");
+                showToast(t('toast_success_dentist_add'), "success");
             }
             saveDataToFirestore(formDentistaSubmitBtn);
             cancelEditDentista();
@@ -2641,7 +2798,7 @@ const generateProducaoPDF = () => {
             const valor = parseFloat(dentistaValorTrabalhoInput.value);
 
             if (!tipo || isNaN(valor) || valor < 0) {
-                showToast("Por favor, selecione um tipo de trabalho e insira um valor válido.");
+                showToast(t('toast_fill_all_fields'));
                 return;
             }
 
@@ -2652,13 +2809,13 @@ const generateProducaoPDF = () => {
                 // Atualizando um valor existente
                 if (dentista.valores && dentista.valores[editingValorIndex]) {
                     dentista.valores[editingValorIndex] = { tipo, valor };
-                    showToast("Preço atualizado com sucesso!", "success");
+                    showToast(t('toast_success_price_update'), "success");
                 }
             } else {
                 // Adicionando um novo valor
                 if (!dentista.valores) dentista.valores = [];
                 dentista.valores.push({ tipo, valor });
-                showToast("Preço adicionado com sucesso!", "success");
+                showToast(t('toast_success_price_add'), "success");
             }
 
             renderizarValoresDentista(dentistaId);
@@ -2680,13 +2837,13 @@ const generateProducaoPDF = () => {
                 const dentista = state.dentistas.find(d => d.id === dentistaId);
                 if (dentista && dentista.valores && dentista.valores[index]) {
                     const confirmed = await showConfirmationModal(
-                        'Confirmar Exclusão',
-                        'Tem certeza que quer remover este preço personalizado?'
+                        t('modal_confirm_title'),
+                        t('toast_confirm_remove_price')
                     );
                     if (confirmed) {
                         dentista.valores.splice(index, 1);
                         renderizarValoresDentista(dentistaId);
-                        showToast("Preço removido.", "success");
+                        showToast(t('toast_success_price_remove'), "success");
                     }
                 }
             }
@@ -2707,14 +2864,14 @@ const generateProducaoPDF = () => {
 
             // [MODIFICADO] Chamando o novo modal
             const confirmed = await showConfirmationModal(
-                'Confirmar Exclusão', 
-                'Tem certeza que quer remover este dentista?'
+                t('modal_confirm_title'), 
+                t('toast_confirm_remove_dentist')
             );
 
             if (confirmed) { 
                 state.dentistas = state.dentistas.filter(d => d.id !== dentistaId); 
                 saveDataToFirestore(); 
-                showToast("Dentista removido.", "success"); 
+                showToast(t('toast_success_dentist_remove'), "success"); 
             } 
         }
     });
@@ -2815,12 +2972,12 @@ const generateProducaoPDF = () => {
                      console.log(`Updated ${updatedCount} productions from ${oldTipo} to ${tipo}`);
                 }
                 
-                showToast("Valor atualizado com sucesso!", "success");
+                showToast(t('toast_success_value_update'), "success");
                 cancelEditGlobalValor();
             } else {
                 // CREATE
                 state.valores.push({ tipo, valor }); 
-                showToast("Valor adicionado com sucesso!", "success");
+                showToast(t('toast_success_value_add'), "success");
                 formValores.reset(); 
             }
             
@@ -2844,14 +3001,14 @@ const generateProducaoPDF = () => {
 
             // [MODIFICADO] Chamando o novo modal
             const confirmed = await showConfirmationModal(
-                'Confirmar Exclusão', 
-                `Tem certeza que quer remover o valor de "${tipoTrabalho}"?`
+                t('modal_confirm_title'), 
+                `${t('toast_confirm_remove_value')} "${tipoTrabalho}"?`
             );
 
             if (confirmed) {
                 state.valores.splice(index, 1); 
                 saveDataToFirestore(); 
-                showToast("Valor removido.", "success"); 
+                showToast(t('toast_success_value_remove'), "success"); 
             }
         } 
     });
@@ -2872,7 +3029,7 @@ const generateProducaoPDF = () => {
                     anexoURL = await getDownloadURL(snapshot.ref);
                 } catch (error) {
                     console.error("Erro no upload: ", error);
-                    showToast("Falha no upload do anexo.");
+                    showToast(t('toast_upload_fail'));
                     setButtonLoading(producaoSubmitBtn, false);
                     return;
                 }
@@ -2884,7 +3041,7 @@ const generateProducaoPDF = () => {
             const dentistaObj = (state.dentistas || []).find(d => d.nome === dentistaNome);
             
             if (!dentistaObj) {
-                showToast("Dentista não encontrado. Selecione um da lista.");
+                showToast(t('toast_dentist_not_found'));
                 setButtonLoading(producaoSubmitBtn, false);
                 return;
             }
@@ -2908,16 +3065,16 @@ const generateProducaoPDF = () => {
                     if (index !== -1) {
                         producaoData.anexoURL = anexoURL || state.producao[index].anexoURL; // Mantém anexo antigo se não houver novo
                         state.producao[index] = producaoData; 
-                        showToast("Produção atualizada com sucesso!", "success");
+                        showToast(t('toast_success_production_update'), "success");
                     } 
                 } else { 
                     state.producao.push(producaoData); 
-                    showToast("Produção adicionada com sucesso!", "success");
+                    showToast(t('toast_success_production_add'), "success");
                 }
                 await saveDataToFirestore();
                 cancelEditProducao();
             } else { 
-                showToast("Por favor, preencha todos os campos obrigatórios."); 
+                showToast(t('toast_fill_all_fields')); 
             }
             setButtonLoading(producaoSubmitBtn, false);
         });
@@ -2934,14 +3091,14 @@ const generateProducaoPDF = () => {
 
             // [MODIFICADO] Chamando o novo modal
             const confirmed = await showConfirmationModal(
-                'Confirmar Exclusão', 
-                'Tem certeza que quer excluir este trabalho?'
+                t('modal_confirm_title'), 
+                t('toast_confirm_remove_production')
             );
 
             if (confirmed) { 
                 state.producao = state.producao.filter(p => p.id !== producaoId); 
                 saveDataToFirestore(); 
-                showToast("Produção removida.", "success"); 
+                showToast(t('toast_success_production_remove'), "success"); 
             }
         }
 
@@ -2969,16 +3126,16 @@ const generateProducaoPDF = () => {
                     const index = state.despesas.findIndex(d => d.id === editId); 
                     if (index !== -1) { 
                         state.despesas[index] = despesaData; 
-                        showToast("Despesa atualizada com sucesso!", "success"); 
+                        showToast(t('toast_success_expense_update'), "success"); 
                     } 
                 } else { 
                     state.despesas.push(despesaData); 
-                    showToast("Despesa adicionada com sucesso!", "success"); 
+                    showToast(t('toast_success_expense_add'), "success"); 
                 }
                 renderAllUIComponents();
                 saveDataToFirestore(formDespesaSubmitBtn);
                 cancelEditDespesa();
-            } else { showToast("Preencha todos os campos da despesa."); }
+            } else { showToast(t('toast_fill_expense_fields')); }
         });
     }
 
@@ -2999,7 +3156,7 @@ const generateProducaoPDF = () => {
                 preco: parseFloat(estoquePrecoInput.value)
             };
             if (!itemData.nome || isNaN(itemData.qtd) || !itemData.unidade || isNaN(itemData.min)) {
-                showToast("Preencha os campos obrigatórios do material.");
+                showToast(t('toast_fill_material_fields'));
                 return;
             }
             if (estoqueEditIdInput.value) {
@@ -3010,7 +3167,7 @@ const generateProducaoPDF = () => {
             }
             saveDataToFirestore(formEstoqueSubmitBtn);
             cancelEditEstoque();
-            showToast("Material salvo com sucesso!", "success");
+            showToast(t('toast_success_material_save'), "success");
         });
     }
     if (formEstoqueCancelBtn) formEstoqueCancelBtn.addEventListener('click', cancelEditEstoque);
@@ -3027,14 +3184,14 @@ const generateProducaoPDF = () => {
 
             // [MODIFICADO] Chamando o novo modal
             const confirmed = await showConfirmationModal(
-                'Confirmar Exclusão', 
-                'Tem certeza que quer remover este material do estoque?'
+                t('modal_confirm_title'), 
+                t('toast_confirm_remove_material')
             );
 
             if (confirmed) {
                 state.estoque = state.estoque.filter(i => i.id !== itemId);
                 saveDataToFirestore();
-                showToast("Material removido.", "success");
+                showToast(t('toast_success_material_remove'), "success");
             }
         }
     });
@@ -3066,15 +3223,15 @@ const generateProducaoPDF = () => {
             const removeButton = e.target.closest('.remove-despesa-btn');
             if (removeButton) {
                 const confirmed = await showConfirmationModal(
-                    'Confirmar Exclusão',
-                    'Tem certeza que quer excluir esta despesa?'
+                    t('modal_confirm_title'),
+                    t('toast_confirm_remove_expense')
                 );
                 if (confirmed) {
                     const idToRemove = Number(removeButton.dataset.id);
                     state.despesas = state.despesas.filter(d => d.id !== idToRemove);
                     saveDataToFirestore();
                     renderizarListaDespesasCompleta();
-                    showToast("Despesa removida.", "success");
+                    showToast(t('toast_success_expense_remove'), "success");
                 }
             }
         });
@@ -3087,15 +3244,15 @@ const generateProducaoPDF = () => {
             const removeButton = e.target.closest('.remove-despesa-btn');
             if (removeButton) { 
                 const confirmed = await showConfirmationModal(
-                    'Confirmar Exclusão', 
-                    'Tem certeza que quer excluir esta despesa?'
+                    t('modal_confirm_title'), 
+                    t('toast_confirm_remove_expense')
                 );
                 if (confirmed) { 
                     state.despesas = state.despesas.filter(d => d.id !== Number(removeButton.dataset.id)); 
                     saveDataToFirestore(); 
                     renderizarListaDespesasDetalhada();
                     renderizarListaDespesasCompleta();
-                    showToast("Despesa removida.", "success"); 
+                    showToast(t('toast_success_expense_remove'), "success"); 
                 } 
             }
         });
@@ -3113,7 +3270,7 @@ const generateProducaoPDF = () => {
                 if (producaoIndex !== -1) {
                     state.producao[producaoIndex].status = 'Finalizado';
                     saveDataToFirestore();
-                    showToast("Produção finalizada com sucesso!", "success");
+                    showToast(t('toast_success_production_update'), "success");
                 }
             }
            // [NOVO] Lógica para expandir
@@ -3174,6 +3331,7 @@ const generateProducaoPDF = () => {
         entregaDataInput.valueAsDate = hoje;
         despesaDataInput.valueAsDate = hoje;
         
+        initLanguage();
         setTimeout(initializeCharts, 100);
     };
 
@@ -3215,4 +3373,9 @@ const generateProducaoPDF = () => {
 
 	    initApp();
 	    initializeFirebase();
+
+        // EXPOSE FOR TESTING
+        window.appState = state;
+        window.appRender = renderAllUIComponents;
+        window.appUpdateState = (newState) => { state = {...state, ...newState}; };
 	});
