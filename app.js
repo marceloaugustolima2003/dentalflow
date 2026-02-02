@@ -4,80 +4,13 @@ import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWith
 import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
+import { translations } from "./translations.js";
 
 document.addEventListener('DOMContentLoaded', () => {
 
-    const translations = {
-        pt: {
-            menu_dashboard: "Dashboard",
-            menu_production: "Produção",
-            menu_stock: "Estoque",
-            menu_expenses: "Despesas",
-            menu_dentists: "Dentistas",
-            menu_analysis: "Análise por Dentista",
-            menu_summary: "Resumo Mensal",
-            menu_admin: "Admin",
-            header_logout: "Sair",
-            dashboard_title: "Dashboard Analítico",
-            dashboard_kpi_revenue: "Faturamento do Mês",
-            dashboard_kpi_profit: "Lucro do Mês",
-            dashboard_kpi_items: "Peças no Mês",
-            dashboard_kpi_expenses: "Despesas do Mês",
-            production_title: "Gestão de Produção",
-            stock_title: "Controle de Estoque",
-            expenses_title: "Gestão de Despesas",
-            dentists_title: "Gestão de Clientes",
-            analysis_title: "Análise por Dentista",
-            summary_title: "Resumo Mensal",
-            admin_title: "Administração"
-        },
-        en: {
-            menu_dashboard: "Dashboard",
-            menu_production: "Production",
-            menu_stock: "Stock",
-            menu_expenses: "Expenses",
-            menu_dentists: "Dentists",
-            menu_analysis: "Dentist Analysis",
-            menu_summary: "Monthly Summary",
-            menu_admin: "Admin",
-            header_logout: "Logout",
-            dashboard_title: "Analytical Dashboard",
-            dashboard_kpi_revenue: "Monthly Revenue",
-            dashboard_kpi_profit: "Monthly Profit",
-            dashboard_kpi_items: "Monthly Items",
-            dashboard_kpi_expenses: "Monthly Expenses",
-            production_title: "Production Management",
-            stock_title: "Stock Control",
-            expenses_title: "Expense Management",
-            dentists_title: "Client Management",
-            analysis_title: "Dentist Analysis",
-            summary_title: "Monthly Summary",
-            admin_title: "Administration"
-        },
-        es: {
-            menu_dashboard: "Tablero",
-            menu_production: "Producción",
-            menu_stock: "Inventario",
-            menu_expenses: "Gastos",
-            menu_dentists: "Dentistas",
-            menu_analysis: "Análisis por Dentista",
-            menu_summary: "Resumen Mensual",
-            menu_admin: "Admin",
-            header_logout: "Salir",
-            dashboard_title: "Tablero Analítico",
-            dashboard_kpi_revenue: "Facturación Mensual",
-            dashboard_kpi_profit: "Lucro Mensual",
-            dashboard_kpi_items: "Piezas Mensuales",
-            dashboard_kpi_expenses: "Gastos Mensuales",
-            production_title: "Gestión de Producción",
-            stock_title: "Control de Inventario",
-            expenses_title: "Gestión de Gastos",
-            dentists_title: "Gestión de Clientes",
-            analysis_title: "Análisis por Dentista",
-            summary_title: "Resumen Mensual",
-            admin_title: "Administración"
-        }
-    };
+    // Helper para tradução
+    let currentLang = localStorage.getItem('dentalflow_lang') || 'pt';
+    const t = (key) => (translations[currentLang] && translations[currentLang][key]) || key;
     
     let db, auth, functions, storage, userId;
     let unsubscribeFromFirestore;
@@ -336,6 +269,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- INTERNACIONALIZAÇÃO (i18n) ---
     const updateLanguage = (lang) => {
+        currentLang = lang;
+        localStorage.setItem('dentalflow_lang', lang);
+
+        // Atualiza textos estáticos
         const elements = document.querySelectorAll('[data-i18n]');
         elements.forEach(element => {
             const key = element.dataset.i18n;
@@ -343,9 +280,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 element.textContent = translations[lang][key];
             }
         });
-        localStorage.setItem('dentalflow_lang', lang);
+
+        // Atualiza placeholders
+        const placeholderElements = document.querySelectorAll('[data-i18n-placeholder]');
+        placeholderElements.forEach(element => {
+            const key = element.dataset.i18nPlaceholder;
+            if (translations[lang] && translations[lang][key]) {
+                element.placeholder = translations[lang][key];
+            }
+        });
+
+        // Atualiza select de idioma
         const languageSelect = document.getElementById('language-select');
         if (languageSelect) languageSelect.value = lang;
+
+        // Atualiza UI dinâmica
+        updateAuthUI();
     };
 
     const initLanguage = () => {
@@ -998,9 +948,9 @@ const generateProducaoPDF = () => {
 
     // --- LÓGICA DE AUTENTICAÇÃO ---
     function updateAuthUI() { 
-        authTitle.textContent = isLoginMode ? 'Entrar' : 'Criar Conta';
-        authButton.textContent = isLoginMode ? 'Entrar' : 'Registar';
-        toggleAuthMode.textContent = isLoginMode ? 'Ainda não tem conta? Registe-se' : 'Já tem conta? Entrar';
+        authTitle.textContent = isLoginMode ? t('auth_title_login') : t('auth_title_register');
+        authButton.textContent = isLoginMode ? t('auth_button_login') : t('auth_button_register');
+        toggleAuthMode.textContent = isLoginMode ? t('auth_toggle_register') : t('auth_toggle_login');
         authErrorMessage.classList.add('hidden');
     }
     
@@ -2406,7 +2356,7 @@ const generateProducaoPDF = () => {
 
         // [MODIFICADO] Chamando o novo modal
         const confirmed = await showConfirmationModal(
-            'Confirmar Exclusão', 
+            t('modal_confirm_title'),
             `Tem certeza que quer apagar a nota "${activeNote.title}"?`
         );
 
@@ -2470,7 +2420,7 @@ const generateProducaoPDF = () => {
                 
                 // [MODIFICADO] Chamando o novo modal
                 const confirmed = await showConfirmationModal(
-                    'Confirmar Exclusão', 
+                    t('modal_confirm_title'),
                     'Tem certeza que quer excluir este trabalho?'
                 );
 
@@ -2782,7 +2732,7 @@ const generateProducaoPDF = () => {
                 const dentista = state.dentistas.find(d => d.id === dentistaId);
                 if (dentista && dentista.valores && dentista.valores[index]) {
                     const confirmed = await showConfirmationModal(
-                        'Confirmar Exclusão',
+                        t('modal_confirm_title'),
                         'Tem certeza que quer remover este preço personalizado?'
                     );
                     if (confirmed) {
@@ -2809,7 +2759,7 @@ const generateProducaoPDF = () => {
 
             // [MODIFICADO] Chamando o novo modal
             const confirmed = await showConfirmationModal(
-                'Confirmar Exclusão', 
+                t('modal_confirm_title'),
                 'Tem certeza que quer remover este dentista?'
             );
 
@@ -2946,7 +2896,7 @@ const generateProducaoPDF = () => {
 
             // [MODIFICADO] Chamando o novo modal
             const confirmed = await showConfirmationModal(
-                'Confirmar Exclusão', 
+                t('modal_confirm_title'),
                 `Tem certeza que quer remover o valor de "${tipoTrabalho}"?`
             );
 
@@ -3036,7 +2986,7 @@ const generateProducaoPDF = () => {
 
             // [MODIFICADO] Chamando o novo modal
             const confirmed = await showConfirmationModal(
-                'Confirmar Exclusão', 
+                t('modal_confirm_title'),
                 'Tem certeza que quer excluir este trabalho?'
             );
 
@@ -3129,7 +3079,7 @@ const generateProducaoPDF = () => {
 
             // [MODIFICADO] Chamando o novo modal
             const confirmed = await showConfirmationModal(
-                'Confirmar Exclusão', 
+                t('modal_confirm_title'),
                 'Tem certeza que quer remover este material do estoque?'
             );
 
@@ -3168,7 +3118,7 @@ const generateProducaoPDF = () => {
             const removeButton = e.target.closest('.remove-despesa-btn');
             if (removeButton) {
                 const confirmed = await showConfirmationModal(
-                    'Confirmar Exclusão',
+                    t('modal_confirm_title'),
                     'Tem certeza que quer excluir esta despesa?'
                 );
                 if (confirmed) {
@@ -3189,7 +3139,7 @@ const generateProducaoPDF = () => {
             const removeButton = e.target.closest('.remove-despesa-btn');
             if (removeButton) { 
                 const confirmed = await showConfirmationModal(
-                    'Confirmar Exclusão', 
+                    t('modal_confirm_title'),
                     'Tem certeza que quer excluir esta despesa?'
                 );
                 if (confirmed) { 
