@@ -1521,7 +1521,8 @@ const generateProducaoPDF = () => {
         if (resumoTiposContainer) {
             const resumoTipos = {};
             producaoDoMes.forEach(p => {
-                resumoTipos[p.tipo] = (resumoTipos[p.tipo] || 0) + p.qtd;
+                const qtd = Number(p.qtd) || 0;
+                resumoTipos[p.tipo] = (resumoTipos[p.tipo] || 0) + qtd;
             });
 
             const resumoTiposArray = Object.entries(resumoTipos)
@@ -1535,10 +1536,18 @@ const generateProducaoPDF = () => {
                 resumoTiposArray.forEach(item => {
                     const el = document.createElement('div');
                     el.className = 'flex justify-between items-center p-3 rounded bg-gemini-input border border-gemini-border';
-                    el.innerHTML = `
-                        <span class="font-medium text-gemini-primary truncate mr-2" title="${item.tipo}">${item.tipo}</span>
-                        <span class="font-bold text-accent-purple">${item.qtd}</span>
-                    `;
+
+                    const typeSpan = document.createElement('span');
+                    typeSpan.className = 'font-medium text-gemini-primary truncate mr-2';
+                    typeSpan.title = item.tipo;
+                    typeSpan.textContent = item.tipo;
+
+                    const qtySpan = document.createElement('span');
+                    qtySpan.className = 'font-bold text-accent-purple';
+                    qtySpan.textContent = item.qtd;
+
+                    el.appendChild(typeSpan);
+                    el.appendChild(qtySpan);
                     resumoTiposContainer.appendChild(el);
                 });
             }
