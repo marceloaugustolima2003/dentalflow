@@ -741,4 +741,9 @@ select option {
     border-radius: 2px;
 }
 
+#language-select {
+    min-width: 80px;
+    backdrop-filter: blur(8px);
+}
+
 /* final do arquivo */
