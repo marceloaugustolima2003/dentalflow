@@ -6,6 +6,78 @@ import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstati
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
 document.addEventListener('DOMContentLoaded', () => {
+
+    const translations = {
+        pt: {
+            menu_dashboard: "Dashboard",
+            menu_production: "Produção",
+            menu_stock: "Estoque",
+            menu_expenses: "Despesas",
+            menu_dentists: "Dentistas",
+            menu_analysis: "Análise por Dentista",
+            menu_summary: "Resumo Mensal",
+            menu_admin: "Admin",
+            header_logout: "Sair",
+            dashboard_title: "Dashboard Analítico",
+            dashboard_kpi_revenue: "Faturamento do Mês",
+            dashboard_kpi_profit: "Lucro do Mês",
+            dashboard_kpi_items: "Peças no Mês",
+            dashboard_kpi_expenses: "Despesas do Mês",
+            production_title: "Gestão de Produção",
+            stock_title: "Controle de Estoque",
+            expenses_title: "Gestão de Despesas",
+            dentists_title: "Gestão de Clientes",
+            analysis_title: "Análise por Dentista",
+            summary_title: "Resumo Mensal",
+            admin_title: "Administração"
+        },
+        en: {
+            menu_dashboard: "Dashboard",
+            menu_production: "Production",
+            menu_stock: "Stock",
+            menu_expenses: "Expenses",
+            menu_dentists: "Dentists",
+            menu_analysis: "Dentist Analysis",
+            menu_summary: "Monthly Summary",
+            menu_admin: "Admin",
+            header_logout: "Logout",
+            dashboard_title: "Analytical Dashboard",
+            dashboard_kpi_revenue: "Monthly Revenue",
+            dashboard_kpi_profit: "Monthly Profit",
+            dashboard_kpi_items: "Monthly Items",
+            dashboard_kpi_expenses: "Monthly Expenses",
+            production_title: "Production Management",
+            stock_title: "Stock Control",
+            expenses_title: "Expense Management",
+            dentists_title: "Client Management",
+            analysis_title: "Dentist Analysis",
+            summary_title: "Monthly Summary",
+            admin_title: "Administration"
+        },
+        es: {
+            menu_dashboard: "Tablero",
+            menu_production: "Producción",
+            menu_stock: "Inventario",
+            menu_expenses: "Gastos",
+            menu_dentists: "Dentistas",
+            menu_analysis: "Análisis por Dentista",
+            menu_summary: "Resumen Mensual",
+            menu_admin: "Admin",
+            header_logout: "Salir",
+            dashboard_title: "Tablero Analítico",
+            dashboard_kpi_revenue: "Facturación Mensual",
+            dashboard_kpi_profit: "Lucro Mensual",
+            dashboard_kpi_items: "Piezas Mensuales",
+            dashboard_kpi_expenses: "Gastos Mensuales",
+            production_title: "Gestión de Producción",
+            stock_title: "Control de Inventario",
+            expenses_title: "Gestión de Gastos",
+            dentists_title: "Gestión de Clientes",
+            analysis_title: "Análisis por Dentista",
+            summary_title: "Resumen Mensual",
+            admin_title: "Administración"
+        }
+    };
     
     let db, auth, functions, storage, userId;
     let unsubscribeFromFirestore;
@@ -261,6 +333,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const toastNotification = document.getElementById('toast-notification');
     const toastMessage = document.getElementById('toast-message');
     let toastTimeout;
+
+    // --- INTERNACIONALIZAÇÃO (i18n) ---
+    const updateLanguage = (lang) => {
+        const elements = document.querySelectorAll('[data-i18n]');
+        elements.forEach(element => {
+            const key = element.dataset.i18n;
+            if (translations[lang] && translations[lang][key]) {
+                element.textContent = translations[lang][key];
+            }
+        });
+        localStorage.setItem('dentalflow_lang', lang);
+        const languageSelect = document.getElementById('language-select');
+        if (languageSelect) languageSelect.value = lang;
+    };
+
+    const initLanguage = () => {
+        const savedLang = localStorage.getItem('dentalflow_lang') || 'pt';
+        updateLanguage(savedLang);
+
+        const languageSelect = document.getElementById('language-select');
+        if (languageSelect) {
+            languageSelect.addEventListener('change', (e) => {
+                updateLanguage(e.target.value);
+            });
+        }
+    };
 
     const showToast = (message, type = 'error') => {
         clearTimeout(toastTimeout);
@@ -1866,7 +1964,7 @@ const generateProducaoPDF = () => {
 	        renderizarProducaoDia();
 	        renderQuickNotesUI();
 	        renderizarProducaoPorDentista();
-        renderizarProducaoPorDentista();
+        // Removed duplicate call to renderizarProducaoPorDentista();
         renderizarListaDentistas();
         renderizarResumoMensal();
         renderizarAnaliseDentista();
@@ -1875,6 +1973,10 @@ const generateProducaoPDF = () => {
         renderizarEstoque();
         renderizarListaDespesasCompleta();
         toggleValuesVisibility();
+
+        // Atualizar idioma após renderização
+        const currentLang = localStorage.getItem('dentalflow_lang') || 'pt';
+        updateLanguage(currentLang);
     };
 
     // --- FUNÇÕES DE EDIÇÃO ---
@@ -3174,6 +3276,7 @@ const generateProducaoPDF = () => {
         entregaDataInput.valueAsDate = hoje;
         despesaDataInput.valueAsDate = hoje;
         
+        initLanguage();
         setTimeout(initializeCharts, 100);
     };
 
