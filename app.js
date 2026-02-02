@@ -1190,6 +1190,8 @@ const generateProducaoPDF = () => {
         
         renderTrend(faturamentoBruto, faturamentoAnterior, kpiFaturamentoTrend);
         renderTrend(lucroLiquido, lucroAnterior, kpiLucroTrend);
+
+        toggleValuesVisibility();
     
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
@@ -1854,6 +1856,7 @@ const generateProducaoPDF = () => {
         renderizarSelects();
         renderizarEstoque();
         renderizarListaDespesasCompleta();
+        toggleValuesVisibility();
     };
 
     // --- FUNÇÕES DE EDIÇÃO ---
@@ -2161,7 +2164,10 @@ const generateProducaoPDF = () => {
         const isHidden = document.body.classList.contains('values-hidden');
         document.querySelectorAll('.monetary-value').forEach(el => {
             if (isHidden) {
-                const originalValue = el.dataset.originalValue || el.textContent;
+                // Se houver novo conteúdo textual (atualizado enquanto oculto), atualizamos o dataset
+                const hasNewContent = el.textContent && el.textContent.trim() !== '';
+                const originalValue = hasNewContent ? el.textContent : (el.dataset.originalValue || el.textContent);
+                
                 el.dataset.originalValue = originalValue;
                 el.textContent = ''; // O CSS fará o resto com o ::before
             } else {
