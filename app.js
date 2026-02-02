@@ -1673,7 +1673,9 @@ const generateProducaoPDF = () => {
         });
         
         // Popular dentistas
-        (state.dentistas || []).forEach(dentista => {
+        const dentistasOrdenados = [...(state.dentistas || [])].sort((a, b) => a.nome.localeCompare(b.nome));
+
+        dentistasOrdenados.forEach(dentista => {
             const option = document.createElement('option');
             option.value = dentista.id;
             option.textContent = dentista.nome;
@@ -1681,6 +1683,19 @@ const generateProducaoPDF = () => {
             if (filterDentistaSelect) filterDentistaSelect.appendChild(option.cloneNode(true));
             if (quickProducaoDentistaSelect) quickProducaoDentistaSelect.appendChild(option.cloneNode(true));
         });
+
+        // Popular datalist de pacientes
+        const pacientesList = document.getElementById('pacientes-list');
+        if (pacientesList) {
+            pacientesList.innerHTML = '';
+            const uniquePatients = [...new Set((state.producao || []).map(p => p.nomePaciente).filter(p => p && p.trim() !== ''))].sort((a, b) => a.localeCompare(b));
+
+            uniquePatients.forEach(nome => {
+                const option = document.createElement('option');
+                option.value = nome;
+                pacientesList.appendChild(option);
+            });
+        }
     };
 
     const renderizarListaDespesasDetalhada = () => {
