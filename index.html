@@ -108,8 +108,8 @@
         <aside id="side-menu" class="fixed top-0 left-0 h-full w-64 bg-gemini-dark-card shadow-lg z-40 transform -translate-x-full lg:translate-x-0 lg:sticky lg:h-screen lg:flex-shrink-0">
             <div class="p-4 border-b border-gemini-border flex justify-between items-center">
                 <h2 class="text-xl font-bold gradient-text" data-i18n="menu_title">Menu</h2>
-                <button id="menu-close-btn" class="p-2 rounded-full hover:bg-gray-700 lg:hidden">
-                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                <button id="menu-close-btn" class="p-2 rounded-full hover:bg-gray-700 lg:hidden" aria-label="Fechar menu">
+                     <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
             </div>
             <nav class="p-4 space-y-2">
@@ -152,8 +152,8 @@
              <header class="bg-gemini-dark shadow-md sticky top-0 z-10 flex-shrink-0">
                 <div class="container mx-auto px-4 lg:px-8 py-3 flex justify-between items-center">
                     <div class="flex items-center space-x-3">
-                        <button id="menu-toggle-btn" class="p-2 rounded-full hover:bg-gray-700 lg:hidden">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                        <button id="menu-toggle-btn" class="p-2 rounded-full hover:bg-gray-700 lg:hidden" aria-label="Abrir menu">
+                            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
                         </button>
                         <div class="flex items-center space-x-2">
                             <img src="logo.png" alt="DentalFlow Logo" class="h-10 w-10 rounded-lg object-contain">
@@ -161,20 +161,20 @@
                         </div>
                     </div>
                     <div class="flex items-center space-x-2 md:space-x-4">
-                        <button id="toggle-values-btn" title="Ocultar/Mostrar valores" class="p-2 rounded-full hover:bg-gray-700 transition-colors" aria-pressed="false">
-                            <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <button id="toggle-values-btn" title="Ocultar/Mostrar valores" class="p-2 rounded-full hover:bg-gray-700 transition-colors" aria-pressed="false" aria-label="Alternar visibilidade dos valores">
+                            <svg aria-hidden="true" id="eye-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                 <circle cx="12" cy="12" r="3"></circle>
                             </svg>
-                            <svg id="eye-off-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden">
+                            <svg aria-hidden="true" id="eye-off-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden">
                                 <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
                                 <line x1="1" y1="1" x2="23" y2="23"></line>
                             </svg>
                         </button>
 
                         <div class="relative">
-                            <button id="notifications-btn" class="p-2 rounded-full hover:bg-gray-700 transition-colors relative">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <button id="notifications-btn" class="p-2 rounded-full hover:bg-gray-700 transition-colors relative" aria-label="Notificações">
+                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
                                     <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
                                 </svg>
@@ -205,18 +205,18 @@
                         <div class="flex flex-col md:flex-row items-center w-full md:w-auto gap-4 md:gap-0">
                             <h2 class="text-2xl md:text-3xl font-bold gradient-text text-center md:text-left" data-i18n="dashboard_title">Dashboard Analítico</h2>
                             <div class="flex items-center justify-center space-x-2 md:ml-4 w-full md:w-auto">
-                                <button id="dashboard-prev-month" class="p-2 rounded-lg bg-gemini-dark-card hover:bg-gray-700 transition-colors" title="Mês Anterior">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15,18 9,12 15,6"></polyline></svg>
+                                <button id="dashboard-prev-month" class="p-2 rounded-lg bg-gemini-dark-card hover:bg-gray-700 transition-colors" title="Mês Anterior" aria-label="Mês anterior">
+                                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15,18 9,12 15,6"></polyline></svg>
                                 </button>
                                 <span id="dashboard-mes-ano-atual" class="text-lg font-semibold px-4 w-48 text-center bg-gemini-input rounded-lg md:bg-transparent"></span>
-                                <button id="dashboard-next-month" class="p-2 rounded-lg bg-gemini-dark-card hover:bg-gray-700 transition-colors" title="Próximo Mês">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,18 15,12 9,6"></polyline></svg>
+                                <button id="dashboard-next-month" class="p-2 rounded-lg bg-gemini-dark-card hover:bg-gray-700 transition-colors" title="Próximo Mês" aria-label="Próximo mês">
+                                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,18 15,12 9,6"></polyline></svg>
                                 </button>
                             </div>
                         </div>
                         <div class="flex space-x-2 w-full md:w-auto justify-center md:justify-end">
                             <button id="export-dashboard-pdf" class="w-full md:w-auto bg-accent-purple hover:bg-accent-purple-hover text-white font-semibold py-3 md:py-2 px-4 rounded-lg transition-all active:scale-95 flex items-center justify-center" data-i18n="btn_export_pdf">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mr-2">
+                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mr-2">
                                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                     <polyline points="14,2 14,8 20,8"></polyline>
                                     <line x1="16" y1="13" x2="8" y2="13"></line>
@@ -378,7 +378,7 @@
                     <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                         <h2 class="text-2xl md:text-3xl font-bold gradient-text text-center md:text-left" data-i18n="production_title">Gestão de Produção</h2>
                         <button id="export-producao-pdf" class="w-full md:w-auto bg-accent-purple hover:bg-accent-purple-hover text-white font-semibold py-3 md:py-2 px-4 rounded-lg transition-all active:scale-95 flex items-center justify-center" data-i18n="btn_export_pdf">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mr-2">
+                            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mr-2">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                 <polyline points="14,2 14,8 20,8"></polyline>
                             </svg>
@@ -575,7 +575,7 @@
                     <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                         <h2 class="text-2xl md:text-3xl font-bold gradient-text text-center md:text-left" data-i18n="dentists_title">Gestão de Clientes</h2>
                         <button id="export-dentistas-pdf" class="w-full md:w-auto bg-accent-purple hover:bg-accent-purple-hover text-white font-semibold py-3 md:py-2 px-4 rounded-lg transition-all active:scale-95 flex items-center justify-center" data-i18n="btn_export_pdf">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mr-2">
+                            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mr-2">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                 <polyline points="14,2 14,8 20,8"></polyline>
                             </svg>
@@ -631,7 +631,7 @@
                     <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                         <h2 class="text-2xl md:text-3xl font-bold gradient-text text-center md:text-left" data-i18n="analysis_title">Análise por Dentista</h2>
                         <button id="export-analise-pdf" class="w-full md:w-auto bg-accent-purple hover:bg-accent-purple-hover text-white font-semibold py-3 md:py-2 px-4 rounded-lg transition-all active:scale-95 flex items-center justify-center" data-i18n="btn_export_pdf">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mr-2">
+                            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mr-2">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                 <polyline points="14,2 14,8 20,8"></polyline>
                             </svg>
@@ -674,20 +674,20 @@
                         <h2 class="text-2xl md:text-3xl font-bold gradient-text text-center md:text-left" data-i18n="summary_title">Resumo Mensal</h2>
                         <div class="flex flex-col md:flex-row items-center w-full md:w-auto gap-4 md:gap-4">
                             <div class="flex items-center justify-center space-x-2 w-full md:w-auto">
-                                <button id="prev-month" class="p-2 rounded-lg bg-gemini-dark-card hover:bg-gray-700 transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <button id="prev-month" class="p-2 rounded-lg bg-gemini-dark-card hover:bg-gray-700 transition-colors" aria-label="Mês anterior">
+                                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <polyline points="15,18 9,12 15,6"></polyline>
                                     </svg>
                                 </button>
                                 <span id="mes-ano-atual" class="text-lg font-semibold px-4 text-center bg-gemini-input rounded-lg md:bg-transparent"></span>
-                                <button id="next-month" class="p-2 rounded-lg bg-gemini-dark-card hover:bg-gray-700 transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <button id="next-month" class="p-2 rounded-lg bg-gemini-dark-card hover:bg-gray-700 transition-colors" aria-label="Próximo mês">
+                                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <polyline points="9,18 15,12 9,6"></polyline>
                                     </svg>
                                 </button>
                             </div>
                             <button id="export-resumo-pdf" class="w-full md:w-auto bg-accent-purple hover:bg-accent-purple-hover text-white font-semibold py-3 md:py-2 px-4 rounded-lg transition-all active:scale-95 flex items-center justify-center" data-i18n="btn_export_pdf">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mr-2">
+                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mr-2">
                                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                     <polyline points="14,2 14,8 20,8"></polyline>
                                 </svg>
@@ -839,8 +839,8 @@
         <div class="bg-gemini-dark-card p-6 rounded-xl shadow-lg max-w-md w-full mx-4">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold text-gemini-primary" data-i18n="production_form_title_add">Adicionar Produção Rápida</h3>
-                <button id="close-add-production-modal-btn" class="p-2 rounded-full hover:bg-gray-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                <button id="close-add-production-modal-btn" class="p-2 rounded-full hover:bg-gray-700" aria-label="Fechar">
+                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
             </div>
             <form id="quick-add-production-form" class="space-y-4">
@@ -877,8 +877,8 @@
         <div class="bg-gemini-dark-card p-6 rounded-xl shadow-lg max-w-md w-full mx-4">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold text-gemini-primary" data-i18n="expenses_form_title_add">Adicionar Despesa Rápida</h3>
-                <button id="close-add-despesa-modal-btn" class="p-2 rounded-full hover:bg-gray-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                <button id="close-add-despesa-modal-btn" class="p-2 rounded-full hover:bg-gray-700" aria-label="Fechar">
+                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
             </div>
             <form id="quick-add-despesa-form" class="space-y-4">
@@ -934,8 +934,8 @@
         <div class="bg-gemini-dark-card p-6 rounded-xl shadow-lg max-w-3xl w-full mx-4 flex flex-col max-h-[90vh]">
             <div class="flex justify-between items-center mb-4">
                 <h3 id="work-type-details-title" class="text-lg font-semibold text-gemini-primary">Detalhes</h3>
-                <button id="close-work-type-modal-btn" class="p-2 rounded-full hover:bg-gray-700">
-                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                <button id="close-work-type-modal-btn" class="p-2 rounded-full hover:bg-gray-700" aria-label="Fechar">
+                     <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
             </div>
             <div id="work-type-details-list" class="overflow-y-auto dark-scrollbar flex-1 space-y-3 p-1">
@@ -955,8 +955,8 @@
         <div class="bg-gemini-dark-card p-6 rounded-xl shadow-lg max-w-md w-full mx-4">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold text-gemini-primary" data-i18n="dentists_form_title_add">Adicionar Dentista Rápido</h3>
-                <button id="close-add-dentista-modal-btn" class="p-2 rounded-full hover:bg-gray-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                <button id="close-add-dentista-modal-btn" class="p-2 rounded-full hover:bg-gray-700" aria-label="Fechar">
+                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
             </div>
             <form id="quick-add-dentista-form" class="space-y-4">
