@@ -591,6 +591,69 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- GRÁFICOS ---
     const initializeCharts = () => {
+        // Gráfico de Faturamento Diário (Barras Verticais)
+        const faturamentoDiarioCtx = document.getElementById('faturamento-diario-chart');
+        if (faturamentoDiarioCtx) {
+            charts.faturamentoDiario = new Chart(faturamentoDiarioCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Faturamento',
+                        data: [],
+                        backgroundColor: function(context) {
+                            const chart = context.chart;
+                            const {ctx, chartArea} = chart;
+                            if (!chartArea) return null;
+                            const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+                            gradient.addColorStop(0, '#4f46e5'); // Azul
+                            gradient.addColorStop(1, '#7c3aed'); // Roxo
+                            return gradient;
+                        },
+                        borderRadius: 4,
+                        barThickness: 'flex',
+                        maxBarThickness: 30
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += formatarMoeda(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#9aa0a6' }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { 
+                                color: '#9aa0a6',
+                                callback: function(value) {
+                                    return formatarMoeda(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
         // Gráfico de Faturamento por Dentista (Barras Horizontais)
         const dentistaCtx = document.getElementById('dentista-chart');
         if (dentistaCtx) {
@@ -658,6 +721,70 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const updateCharts = () => {
         updateDentistaChart();
+        updateDailyRevenueChart();
+    };
+
+    const updateDailyRevenueChart = () => {
+        if (!charts.faturamentoDiario) return;
+
+        const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
+        const days = [];
+        const data = [];
+        const labels = [];
+        
+        // Generate all days in the billing period
+        let currentDay = new Date(startDate);
+        // Ajuste para garantir que cobrimos todo o período sem loops infinitos ou erros de fuso
+        // Definir hora para meio-dia para evitar problemas de mudança de horário de verão
+        currentDay.setHours(12, 0, 0, 0);
+        
+        const endDayCheck = new Date(endDate);
+        endDayCheck.setHours(12, 0, 0, 0);
+
+        while (currentDay <= endDayCheck) {
+            const dayStr = currentDay.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }); 
+            labels.push(dayStr.replace('.', '')); 
+            days.push(new Date(currentDay));
+            currentDay.setDate(currentDay.getDate() + 1);
+        }
+        
+        // Filter production for the period
+        const producaoDoMes = (state.producao || []).filter(p => {
+             if (!p.data) return false;
+             const dataProducao = new Date(p.data + "T00:00:00");
+             return dataProducao >= startDate && dataProducao <= endDate;
+        });
+        
+        // Group by day
+        const productionByDay = {};
+        producaoDoMes.forEach(p => {
+            const dataStr = p.data; // YYYY-MM-DD
+            if (!productionByDay[dataStr]) {
+                productionByDay[dataStr] = 0;
+            }
+            
+            const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
+            const valorDentista = dentista ? (dentista.valores || []).find(v => v.tipo === p.tipo) : null;
+            const valorGlobal = (state.valores || []).find(v => v.tipo === p.tipo);
+            const valorFinal = valorDentista || valorGlobal;
+            const valorTotal = valorFinal ? valorFinal.valor * p.qtd : 0;
+            
+            productionByDay[dataStr] += valorTotal;
+        });
+        
+        // Map to chart data
+        days.forEach(day => {
+            const yyyy = day.getFullYear();
+            const mm = String(day.getMonth() + 1).padStart(2, '0');
+            const dd = String(day.getDate()).padStart(2, '0');
+            const dateStr = `${yyyy}-${mm}-${dd}`;
+            
+            data.push(productionByDay[dateStr] || 0);
+        });
+        
+        charts.faturamentoDiario.data.labels = labels;
+        charts.faturamentoDiario.data.datasets[0].data = data;
+        charts.faturamentoDiario.update();
     };
 
     const updateDentistaChart = () => {
@@ -2537,6 +2664,27 @@ const generateProducaoPDF = () => {
     if (exportProducaoPdf) exportProducaoPdf.addEventListener('click', generateProducaoPDF);
     if (exportDentistaProducaoPdfBtn) exportDentistaProducaoPdfBtn.addEventListener('click', generateProducaoDentistaPDF);
 
+    // Atalhos de teclado globais
+    document.addEventListener('keydown', (e) => {
+        // Evita disparo ao digitar em inputs ou textareas
+        const isInput = ['INPUT', 'TEXTAREA'].includes(e.target.tagName);
+        if (isInput) return;
+
+        // Shift + P: Produção Rápida
+        if (e.shiftKey && e.key.toLowerCase() === 'p') {
+            e.preventDefault();
+            const btn = document.getElementById('action-add-producao');
+            if (btn) btn.click();
+        }
+
+        // Shift + C: Adicionar Dentista Rápido
+        if (e.shiftKey && e.key.toLowerCase() === 'c') {
+            e.preventDefault();
+            const btn = document.getElementById('action-add-dentista');
+            if (btn) btn.click();
+        }
+    });
+
     // Ações rápidas
     // --- LÓGICA DO MODAL DE ADIÇÃO RÁPIDA DE PRODUÇÃO ---
 
@@ -3300,18 +3448,32 @@ const generateProducaoPDF = () => {
             );
 
             if (!alreadyExists) {
-                const newDate = new Date(startDate);
-                newDate.setDate(new Date(recurrent.data + "T00:00:00").getDate());
+                // Determine the target date based on the recurrent day
+                // We check both possible months (start month and end month) to see where the day fits
+                const recurrentDay = new Date(recurrent.data + "T00:00:00").getDate();
+                const candidate1 = new Date(startDate.getFullYear(), startDate.getMonth(), recurrentDay);
+                const candidate2 = new Date(endDate.getFullYear(), endDate.getMonth(), recurrentDay);
 
-                const newExpense = {
-                    ...recurrent,
-                    id: Date.now() + Math.random(),
-                    data: newDate.toISOString().split('T')[0],
-                    recorrente: false // A nova despesa não é o "molde" recorrente
-                };
-                state.despesas.push(newExpense);
-                createdNewExpense = true;
-                addNotification(`Despesa recorrente '${newExpense.desc}' criada para este mês.`, 'info');
+                let targetDate = null;
+
+                // Prioritize the date that falls strictly within the billing period
+                if (candidate1 >= startDate && candidate1 <= endDate) {
+                    targetDate = candidate1;
+                } else if (candidate2 >= startDate && candidate2 <= endDate) {
+                    targetDate = candidate2;
+                }
+
+                if (targetDate) {
+                    const newExpense = {
+                        ...recurrent,
+                        id: Date.now() + Math.random(),
+                        data: targetDate.toISOString().split('T')[0],
+                        recorrente: false // A nova despesa não é o "molde" recorrente
+                    };
+                    state.despesas.push(newExpense);
+                    createdNewExpense = true;
+                    addNotification(`Despesa recorrente '${newExpense.desc}' criada para este mês.`, 'info');
+                }
             }
         });
 
