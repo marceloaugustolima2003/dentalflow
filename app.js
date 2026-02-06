@@ -3300,18 +3300,32 @@ const generateProducaoPDF = () => {
             );
 
             if (!alreadyExists) {
-                const newDate = new Date(startDate);
-                newDate.setDate(new Date(recurrent.data + "T00:00:00").getDate());
+                // Determine the target date based on the recurrent day
+                // We check both possible months (start month and end month) to see where the day fits
+                const recurrentDay = new Date(recurrent.data + "T00:00:00").getDate();
+                const candidate1 = new Date(startDate.getFullYear(), startDate.getMonth(), recurrentDay);
+                const candidate2 = new Date(endDate.getFullYear(), endDate.getMonth(), recurrentDay);
 
-                const newExpense = {
-                    ...recurrent,
-                    id: Date.now() + Math.random(),
-                    data: newDate.toISOString().split('T')[0],
-                    recorrente: false // A nova despesa não é o "molde" recorrente
-                };
-                state.despesas.push(newExpense);
-                createdNewExpense = true;
-                addNotification(`Despesa recorrente '${newExpense.desc}' criada para este mês.`, 'info');
+                let targetDate = null;
+
+                // Prioritize the date that falls strictly within the billing period
+                if (candidate1 >= startDate && candidate1 <= endDate) {
+                    targetDate = candidate1;
+                } else if (candidate2 >= startDate && candidate2 <= endDate) {
+                    targetDate = candidate2;
+                }
+
+                if (targetDate) {
+                    const newExpense = {
+                        ...recurrent,
+                        id: Date.now() + Math.random(),
+                        data: targetDate.toISOString().split('T')[0],
+                        recorrente: false // A nova despesa não é o "molde" recorrente
+                    };
+                    state.despesas.push(newExpense);
+                    createdNewExpense = true;
+                    addNotification(`Despesa recorrente '${newExpense.desc}' criada para este mês.`, 'info');
+                }
             }
         });
 
