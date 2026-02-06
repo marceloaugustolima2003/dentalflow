@@ -2666,6 +2666,36 @@ const generateProducaoPDF = () => {
 
     // Atalhos de teclado globais
     document.addEventListener('keydown', (e) => {
+        // Permitir fechar modais com ESC
+        if (e.key === 'Escape') {
+            // 1. Confirmação (Prioridade Máxima)
+            const confirmationModal = document.getElementById('confirmation-modal');
+            if (confirmationModal && !confirmationModal.classList.contains('hidden')) {
+                const noBtn = document.getElementById('confirm-no-btn');
+                if (noBtn) noBtn.click();
+                e.preventDefault();
+                return;
+            }
+
+            // 2. Outros Modais
+            const openModals = Array.from(document.querySelectorAll('[id$="-modal"]'))
+                .filter(m => !m.classList.contains('hidden') && m.id !== 'confirmation-modal' && m.id !== 'loading-modal');
+
+            if (openModals.length > 0) {
+                openModals.forEach(m => m.classList.add('hidden'));
+                e.preventDefault();
+                return;
+            }
+
+            // 3. Menu Lateral (Mobile)
+            const sideMenu = document.getElementById('side-menu');
+            if (sideMenu && !sideMenu.classList.contains('-translate-x-full')) {
+                toggleMenu();
+                e.preventDefault();
+                return;
+            }
+        }
+
         // Evita disparo ao digitar em inputs ou textareas
         const isInput = ['INPUT', 'TEXTAREA'].includes(e.target.tagName);
         if (isInput) return;
