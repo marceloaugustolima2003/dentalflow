@@ -2537,6 +2537,27 @@ const generateProducaoPDF = () => {
     if (exportProducaoPdf) exportProducaoPdf.addEventListener('click', generateProducaoPDF);
     if (exportDentistaProducaoPdfBtn) exportDentistaProducaoPdfBtn.addEventListener('click', generateProducaoDentistaPDF);
 
+    // Atalhos de teclado globais
+    document.addEventListener('keydown', (e) => {
+        // Evita disparo ao digitar em inputs ou textareas
+        const isInput = ['INPUT', 'TEXTAREA'].includes(e.target.tagName);
+        if (isInput) return;
+
+        // Shift + P: Produção Rápida
+        if (e.shiftKey && e.key.toLowerCase() === 'p') {
+            e.preventDefault();
+            const btn = document.getElementById('action-add-producao');
+            if (btn) btn.click();
+        }
+
+        // Shift + C: Adicionar Dentista Rápido
+        if (e.shiftKey && e.key.toLowerCase() === 'c') {
+            e.preventDefault();
+            const btn = document.getElementById('action-add-dentista');
+            if (btn) btn.click();
+        }
+    });
+
     // Ações rápidas
     // --- LÓGICA DO MODAL DE ADIÇÃO RÁPIDA DE PRODUÇÃO ---
 
