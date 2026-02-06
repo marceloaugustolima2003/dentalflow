@@ -591,6 +591,69 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- GRÁFICOS ---
     const initializeCharts = () => {
+        // Gráfico de Faturamento Diário (Barras Verticais)
+        const faturamentoDiarioCtx = document.getElementById('faturamento-diario-chart');
+        if (faturamentoDiarioCtx) {
+            charts.faturamentoDiario = new Chart(faturamentoDiarioCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Faturamento',
+                        data: [],
+                        backgroundColor: function(context) {
+                            const chart = context.chart;
+                            const {ctx, chartArea} = chart;
+                            if (!chartArea) return null;
+                            const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+                            gradient.addColorStop(0, '#4f46e5'); // Azul
+                            gradient.addColorStop(1, '#7c3aed'); // Roxo
+                            return gradient;
+                        },
+                        borderRadius: 4,
+                        barThickness: 'flex',
+                        maxBarThickness: 30
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += formatarMoeda(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#9aa0a6' }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: {
+                                color: '#9aa0a6',
+                                callback: function(value) {
+                                    return formatarMoeda(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
         // Gráfico de Faturamento por Dentista (Barras Horizontais)
         const dentistaCtx = document.getElementById('dentista-chart');
         if (dentistaCtx) {
@@ -658,6 +721,70 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const updateCharts = () => {
         updateDentistaChart();
+        updateDailyRevenueChart();
+    };
+
+    const updateDailyRevenueChart = () => {
+        if (!charts.faturamentoDiario) return;
+
+        const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
+        const days = [];
+        const data = [];
+        const labels = [];
+
+        // Generate all days in the billing period
+        let currentDay = new Date(startDate);
+        // Ajuste para garantir que cobrimos todo o período sem loops infinitos ou erros de fuso
+        // Definir hora para meio-dia para evitar problemas de mudança de horário de verão
+        currentDay.setHours(12, 0, 0, 0);
+
+        const endDayCheck = new Date(endDate);
+        endDayCheck.setHours(12, 0, 0, 0);
+
+        while (currentDay <= endDayCheck) {
+            const dayStr = currentDay.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+            labels.push(dayStr.replace('.', ''));
+            days.push(new Date(currentDay));
+            currentDay.setDate(currentDay.getDate() + 1);
+        }
+
+        // Filter production for the period
+        const producaoDoMes = (state.producao || []).filter(p => {
+             if (!p.data) return false;
+             const dataProducao = new Date(p.data + "T00:00:00");
+             return dataProducao >= startDate && dataProducao <= endDate;
+        });
+
+        // Group by day
+        const productionByDay = {};
+        producaoDoMes.forEach(p => {
+            const dataStr = p.data; // YYYY-MM-DD
+            if (!productionByDay[dataStr]) {
+                productionByDay[dataStr] = 0;
+            }
+
+            const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
+            const valorDentista = dentista ? (dentista.valores || []).find(v => v.tipo === p.tipo) : null;
+            const valorGlobal = (state.valores || []).find(v => v.tipo === p.tipo);
+            const valorFinal = valorDentista || valorGlobal;
+            const valorTotal = valorFinal ? valorFinal.valor * p.qtd : 0;
+
+            productionByDay[dataStr] += valorTotal;
+        });
+
+        // Map to chart data
+        days.forEach(day => {
+            const yyyy = day.getFullYear();
+            const mm = String(day.getMonth() + 1).padStart(2, '0');
+            const dd = String(day.getDate()).padStart(2, '0');
+            const dateStr = `${yyyy}-${mm}-${dd}`;
+
+            data.push(productionByDay[dateStr] || 0);
+        });
+
+        charts.faturamentoDiario.data.labels = labels;
+        charts.faturamentoDiario.data.datasets[0].data = data;
+        charts.faturamentoDiario.update();
     };
 
     const updateDentistaChart = () => {
