@@ -1567,11 +1567,21 @@ const generateProducaoPDF = () => {
                 const groupEl = document.createElement('div');
                 groupEl.className = 'card-enhanced p-4 hover-effect border-l-4 ' + (firstItem.status === 'Finalizado' ? 'border-l-accent-green' : (firstItem.status === 'Em Andamento' ? 'border-l-yellow-500' : 'border-l-red-500'));
                 
+                // Configuração para colapso se houver mais de 1 item
+                const isExpandable = group.length > 1;
+                const expandId = `items-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
                 groupEl.innerHTML = `
-                    <div class="flex justify-between items-start mb-3 border-b border-gemini-border pb-2">
+                    <div class="flex justify-between items-start mb-3 border-b border-gemini-border pb-2 ${isExpandable ? 'cursor-pointer group-header' : ''}" ${isExpandable ? `data-expand="${expandId}"` : ''}>
                         <div>
                             <div class="flex items-center gap-2 mb-1">
                                 <h4 class="font-bold text-lg text-gemini-primary tracking-tight">${firstItem.nomePaciente || 'Paciente não informado'}</h4>
+                                ${isExpandable ? `
+                                    <span class="text-xs bg-gemini-input text-gemini-secondary px-2 py-0.5 rounded-full border border-gemini-border flex items-center gap-1">
+                                        ${group.length} itens
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transform transition-transform duration-200 chevron-icon"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                    </span>
+                                ` : ''}
                             </div>
                             <p class="text-sm text-gemini-secondary flex items-center gap-1">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
@@ -1589,7 +1599,7 @@ const generateProducaoPDF = () => {
 
                     ${firstItem.obs ? `<div class="bg-blue-900/10 border border-blue-900/30 rounded p-2 mb-3 text-xs text-blue-200 flex gap-2 items-start"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-0.5 flex-shrink-0"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg><span>${firstItem.obs}</span></div>` : ''}
 
-                    <div class="space-y-0.5 mb-3">
+                    <div id="${expandId}" class="space-y-0.5 mb-3 ${isExpandable ? 'hidden' : ''}">
                         <div class="text-xs font-semibold text-gemini-secondary uppercase tracking-wider mb-1 ml-1">Itens do Pedido</div>
                         ${itemsHtml}
                     </div>
@@ -1599,6 +1609,18 @@ const generateProducaoPDF = () => {
                         <span class="text-lg font-bold text-accent-green monetary-value">${formatarMoeda(groupTotalValue)}</span>
                     </div>
                 `;
+
+                // Adicionar listener para toggle
+                if (isExpandable) {
+                    const header = groupEl.querySelector('.group-header');
+                    header.addEventListener('click', () => {
+                        const content = document.getElementById(expandId);
+                        const chevron = header.querySelector('.chevron-icon');
+                        content.classList.toggle('hidden');
+                        chevron.classList.toggle('rotate-180');
+                    });
+                }
+
                 listaProducaoDia.appendChild(groupEl);
             });
         }
