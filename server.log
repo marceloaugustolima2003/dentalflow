@@ -1,6 +1,9 @@
-127.0.0.1 - - [02/Feb/2026 17:58:07] "GET /index.html HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 17:58:07] "GET /styles.css HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 17:58:07] "GET /login-foto.jpeg HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 17:58:07] "GET /logo.png HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 17:58:07] "GET /app.js HTTP/1.1" 200 -
-127.0.0.1 - - [02/Feb/2026 17:58:08] "GET /translations.js HTTP/1.1" 200 -
+127.0.0.1 - - [10/Feb/2026 14:35:05] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [10/Feb/2026 14:35:05] "GET /styles.css HTTP/1.1" 200 -
+127.0.0.1 - - [10/Feb/2026 14:35:05] "GET /login-foto.jpeg HTTP/1.1" 200 -
+127.0.0.1 - - [10/Feb/2026 14:35:05] code 404, message File not found
+127.0.0.1 - - [10/Feb/2026 14:35:05] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [10/Feb/2026 14:35:05] "GET /app.js HTTP/1.1" 200 -
+127.0.0.1 - - [10/Feb/2026 14:35:05] code 404, message File not found
+127.0.0.1 - - [10/Feb/2026 14:35:05] "GET /logo.png HTTP/1.1" 404 -
+127.0.0.1 - - [10/Feb/2026 14:35:06] "GET /translations.js HTTP/1.1" 200 -
