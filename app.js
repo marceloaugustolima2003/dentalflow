@@ -108,6 +108,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const formDentistaSubmitBtn = document.getElementById('form-dentista-submit-btn');
     const formDentistaCancelBtn = document.getElementById('form-dentista-cancel-btn');
     const listaDentistas = document.getElementById('lista-dentistas');
+    const dentistaCicloWrapper = document.getElementById('dentista-ciclo-wrapper');
+    const dentistaCicloInicioInput = document.getElementById('dentista-ciclo-inicio-input');
+    const dentistaCicloFimInput = document.getElementById('dentista-ciclo-fim-input');
     const dentistaValoresSection = document.getElementById('dentista-valores-section');
     const formDentistaValores = document.getElementById('form-dentista-valores');
     const dentistaTipoTrabalhoSelect = document.getElementById('dentista-tipo-trabalho-select');
@@ -2391,6 +2394,11 @@ const generateProducaoPDF = () => {
         dentistaTelefoneInput.value = dentista.telefone || '';
         dentistaEmailInput.value = dentista.email || '';
         
+        // Populate custom cycle if available
+        dentistaCicloInicioInput.value = dentista.customClosingDayStart || '';
+        dentistaCicloFimInput.value = dentista.customClosingDayEnd || '';
+        dentistaCicloWrapper.classList.remove('hidden');
+
         formDentistaTitle.textContent = 'Editar Dentista';
         formDentistaSubmitBtn.textContent = 'Atualizar';
         formDentistaCancelBtn.classList.remove('hidden');
@@ -2404,6 +2412,11 @@ const generateProducaoPDF = () => {
     const cancelEditDentista = () => {
         dentistaEditIdInput.value = '';
         formDentista.reset();
+
+        dentistaCicloWrapper.classList.add('hidden');
+        dentistaCicloInicioInput.value = '';
+        dentistaCicloFimInput.value = '';
+
         formDentistaTitle.textContent = 'Adicionar Dentista';
         formDentistaSubmitBtn.textContent = 'Adicionar';
         formDentistaCancelBtn.classList.add('hidden');
@@ -3103,17 +3116,39 @@ const generateProducaoPDF = () => {
             const nome = dentistaNomeInput.value.trim();
             if (!nome) { showToast(t('toast_fill_dentist_name')); return; }
             
+            const customClosingDayStart = parseInt(dentistaCicloInicioInput.value) || '';
+            const customClosingDayEnd = parseInt(dentistaCicloFimInput.value) || '';
+
             if (dentistaEditIdInput.value) {
                 const index = state.dentistas.findIndex(d => d.id === id);
                 if (index !== -1) {
                     // Mantém a estrutura de valores existente ao editar
                     const existingValores = state.dentistas[index].valores || [];
-                    state.dentistas[index] = { ...state.dentistas[index], id, nome, clinica: dentistaClinicaInput.value.trim(), telefone: dentistaTelefoneInput.value.trim(), email: dentistaEmailInput.value.trim(), valores: existingValores };
+                    state.dentistas[index] = {
+                        ...state.dentistas[index],
+                        id,
+                        nome,
+                        clinica: dentistaClinicaInput.value.trim(),
+                        telefone: dentistaTelefoneInput.value.trim(),
+                        email: dentistaEmailInput.value.trim(),
+                        valores: existingValores,
+                        customClosingDayStart,
+                        customClosingDayEnd
+                    };
                     showToast(t('toast_success_dentist_update'), "success");
                 }
             } else {
                 // Adiciona um novo dentista com uma lista de valores vazia
-                const dentistaData = { id, nome, clinica: dentistaClinicaInput.value.trim(), telefone: dentistaTelefoneInput.value.trim(), email: dentistaEmailInput.value.trim(), valores: [] };
+                const dentistaData = {
+                    id,
+                    nome,
+                    clinica: dentistaClinicaInput.value.trim(),
+                    telefone: dentistaTelefoneInput.value.trim(),
+                    email: dentistaEmailInput.value.trim(),
+                    valores: [],
+                    customClosingDayStart,
+                    customClosingDayEnd
+                };
                 state.dentistas.push(dentistaData); 
                 showToast(t('toast_success_dentist_add'), "success");
             }
