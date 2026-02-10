@@ -1492,65 +1492,114 @@ const generateProducaoPDF = () => {
         if (producaoFiltrada.length === 0) {
             listaProducaoDia.innerHTML = '<p class="text-center text-gemini-secondary">Nenhuma produção encontrada</p>';
         } else {
-            producaoFiltrada.forEach(producao => {
-                const dentista = (state.dentistas || []).find(d => d.id === producao.dentista);
+            // Agrupar produção por dentista, paciente, entrega, status e observação
+            const groupedProduction = {};
+            producaoFiltrada.forEach(p => {
+                const key = `${p.dentista}-${p.nomePaciente}-${p.entrega}-${p.status}-${p.obs || ''}`;
+                if (!groupedProduction[key]) {
+                    groupedProduction[key] = [];
+                }
+                groupedProduction[key].push(p);
+            });
+
+            Object.values(groupedProduction).forEach(group => {
+                const firstItem = group[0];
+                const dentista = (state.dentistas || []).find(d => d.id === firstItem.dentista);
                 const dentistaName = dentista ? dentista.nome : 'Dentista desconhecido';
                 
-                const valorDentista = dentista ? (dentista.valores || []).find(v => v.tipo === producao.tipo) : null;
-                const valorGlobal = (state.valores || []).find(v => v.tipo === producao.tipo);
-                const valorFinal = valorDentista || valorGlobal;
-                const valorTotal = valorFinal ? valorFinal.valor * producao.qtd : 0;
+                // Calcular totais do grupo
+                let groupTotalValue = 0;
 
-                totalPecas += producao.qtd;
-                totalFaturamento += valorTotal;
+                // Preparar HTML dos itens
+                let itemsHtml = '';
+
+                group.forEach(producao => {
+                    const valorDentista = dentista ? (dentista.valores || []).find(v => v.tipo === producao.tipo) : null;
+                    const valorGlobal = (state.valores || []).find(v => v.tipo === producao.tipo);
+                    const valorFinal = valorDentista || valorGlobal;
+                    const valorTotal = valorFinal ? valorFinal.valor * producao.qtd : 0;
+
+                    groupTotalValue += valorTotal;
+                    totalPecas += producao.qtd;
+                    totalFaturamento += valorTotal;
+
+                    const anexoHtml = producao.anexoURL ? `
+                        <a href="${producao.anexoURL}" target="_blank" class="p-1 rounded hover:bg-blue-700 transition-colors text-blue-400" title="Ver Anexo">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                        </a>` : '';
+
+                    itemsHtml += `
+                        <div class="flex justify-between items-center py-2 border-b border-gemini-border/30 last:border-0 hover:bg-gemini-dark/20 px-2 rounded transition-colors">
+                            <div class="flex-1">
+                                <div class="flex items-center">
+                                    <span class="font-medium text-gemini-primary text-sm">${producao.tipo}</span>
+                                    <span class="text-xs text-gemini-secondary ml-2 bg-gemini-dark px-1.5 py-0.5 rounded-full border border-gemini-border/50">${producao.qtd}x</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <span class="text-sm font-semibold text-accent-green monetary-value">${formatarMoeda(valorTotal)}</span>
+                                <div class="flex space-x-1 opacity-80 hover:opacity-100">
+                                    ${anexoHtml}
+                                    <button class="edit-producao-btn p-1.5 rounded hover:bg-gray-700 transition-colors text-gray-400 hover:text-white" data-id="${producao.id}" title="Editar item">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                        </svg>
+                                    </button>
+                                    <button class="remove-producao-btn p-1.5 rounded hover:bg-red-900/50 transition-colors text-red-400 hover:text-red-300" data-id="${producao.id}" title="Remover item">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="3,6 5,6 21,6"></polyline>
+                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
                 
                 const statusClass = {
                     'Pendente': 'status-pendente',
                     'Em Andamento': 'status-andamento',
                     'Finalizado': 'status-finalizado'
-                }[producao.status] || 'status-pendente';
+                }[firstItem.status] || 'status-pendente';
 
-                const anexoHtml = producao.anexoURL ? `
-                    <a href="${producao.anexoURL}" target="_blank" class="p-1 rounded hover:bg-blue-700 transition-colors text-blue-400" title="Ver Anexo">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
-                    </a>` : '';
+                const groupEl = document.createElement('div');
+                groupEl.className = 'card-enhanced p-4 hover-effect border-l-4 ' + (firstItem.status === 'Finalizado' ? 'border-l-accent-green' : (firstItem.status === 'Em Andamento' ? 'border-l-yellow-500' : 'border-l-red-500'));
                 
-                const producaoEl = document.createElement('div');
-                producaoEl.className = 'card-enhanced p-4 hover-effect';
-                producaoEl.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div class="flex-1">
-                            <h4 class="font-semibold text-gemini-primary">${producao.tipo}</h4>
-                            <p class="text-sm text-gemini-secondary">${dentistaName}</p>
-                            <p class="text-sm text-gemini-secondary font-medium">Paciente: ${producao.nomePaciente || 'Não informado'}</p>
-                            <div class="flex items-center space-x-4 mt-2">
-                                <span class="text-sm">Qtd: <span class="font-semibold">${producao.qtd}</span></span>
-                                <span class="text-sm whitespace-nowrap">Valor: <span class="font-semibold text-accent-green monetary-value">${formatarMoeda(valorTotal)}</span></span>
+                groupEl.innerHTML = `
+                    <div class="flex justify-between items-start mb-3 border-b border-gemini-border pb-2">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <h4 class="font-bold text-lg text-gemini-primary tracking-tight">${firstItem.nomePaciente || 'Paciente não informado'}</h4>
                             </div>
-                            <p class="text-xs text-gemini-secondary mt-1">Entrega: ${new Date(producao.entrega + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
-                            ${producao.obs ? `<p class="text-xs text-gemini-secondary mt-1">${producao.obs}</p>` : ''}
+                            <p class="text-sm text-gemini-secondary flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                                ${dentistaName}
+                            </p>
                         </div>
-                        <div class="flex flex-col items-end space-y-2">
-                            <span class="status-badge ${statusClass}">${producao.status}</span>
-                            <div class="flex space-x-1">
-                                ${anexoHtml}
-                                <button class="edit-producao-btn p-1 rounded hover:bg-gray-700 transition-colors" data-id="${producao.id}">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                    </svg>
-                                </button>
-                                <button class="remove-producao-btn p-1 rounded hover:bg-red-700 transition-colors text-red-400" data-id="${producao.id}">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <polyline points="3,6 5,6 21,6"></polyline>
-                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                    </svg>
-                                </button>
-                            </div>
+                        <div class="flex flex-col items-end gap-1">
+                            <span class="status-badge ${statusClass} text-xs uppercase tracking-wider font-bold px-2 py-0.5">${firstItem.status}</span>
+                            <span class="text-xs text-gemini-secondary flex items-center gap-1 bg-gemini-dark px-2 py-1 rounded">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                ${new Date(firstItem.entrega + 'T00:00:00').toLocaleDateString('pt-BR')}
+                            </span>
                         </div>
                     </div>
+
+                    ${firstItem.obs ? `<div class="bg-blue-900/10 border border-blue-900/30 rounded p-2 mb-3 text-xs text-blue-200 flex gap-2 items-start"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-0.5 flex-shrink-0"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg><span>${firstItem.obs}</span></div>` : ''}
+
+                    <div class="space-y-0.5 mb-3">
+                        <div class="text-xs font-semibold text-gemini-secondary uppercase tracking-wider mb-1 ml-1">Itens do Pedido</div>
+                        ${itemsHtml}
+                    </div>
+
+                    <div class="flex justify-end items-center pt-2 border-t border-gemini-border gap-2">
+                        <span class="text-xs text-gemini-secondary uppercase font-semibold">Total</span>
+                        <span class="text-lg font-bold text-accent-green monetary-value">${formatarMoeda(groupTotalValue)}</span>
+                    </div>
                 `;
-                listaProducaoDia.appendChild(producaoEl);
+                listaProducaoDia.appendChild(groupEl);
             });
         }
         
