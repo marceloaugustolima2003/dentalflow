@@ -53,10 +53,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const listaDespesasCompleta = document.getElementById('lista-despesas-completa');
     const searchDespesasInput = document.getElementById('search-despesas-input');
     const formProducao = document.getElementById('form-producao');
-    const producaoTipoSelect = document.getElementById('producao-tipo-select');
+    const producaoItemsContainer = document.getElementById('producao-items-container');
+    const formProducaoAddItemBtn = document.getElementById('form-producao-add-item-btn');
     const producaoDentistaInput = document.getElementById('producao-dentista-input');
     const producaoPacienteInput = document.getElementById('producao-paciente-input');
-    const producaoQtdInput = document.getElementById('producao-qtd-input');
     const producaoStatusSelect = document.getElementById('producao-status-select');
     const producaoObsInput = document.getElementById('producao-obs-input');
     const producaoAnexoInput = document.getElementById('producao-anexo-input');
@@ -108,6 +108,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const formDentistaSubmitBtn = document.getElementById('form-dentista-submit-btn');
     const formDentistaCancelBtn = document.getElementById('form-dentista-cancel-btn');
     const listaDentistas = document.getElementById('lista-dentistas');
+    const dentistaCicloWrapper = document.getElementById('dentista-ciclo-wrapper');
+    const dentistaCicloInicioInput = document.getElementById('dentista-ciclo-inicio-input');
+    const dentistaCicloFimInput = document.getElementById('dentista-ciclo-fim-input');
     const dentistaValoresSection = document.getElementById('dentista-valores-section');
     const formDentistaValores = document.getElementById('form-dentista-valores');
     const dentistaTipoTrabalhoSelect = document.getElementById('dentista-tipo-trabalho-select');
@@ -196,8 +199,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const quickAddProductionForm = document.getElementById('quick-add-production-form');
     const quickProducaoDentistaInput = document.getElementById('quick-producao-dentista-input');
     const quickProducaoPacienteInput = document.getElementById('quick-producao-paciente-input');
-    const quickProducaoTipoSelect = document.getElementById('quick-producao-tipo-select');
-    const quickProducaoQtdInput = document.getElementById('quick-producao-qtd-input');
+    const quickProductionItemsContainer = document.getElementById('quick-production-items-container');
+    const addWorkItemBtn = document.getElementById('add-work-item-btn');
     const quickProducaoObsInput = document.getElementById('quick-producao-obs-input');
     const quickProducaoDataInput = document.getElementById('quick-producao-data-input');
     const quickEntregaDataInput = document.getElementById('quick-entrega-data-input');
@@ -1920,28 +1923,29 @@ const generateProducaoPDF = () => {
     const renderizarSelects = () => {
         // Limpar todos os selects primeiro
         const selects = [
-            producaoTipoSelect, 
-            filterDentistaSelect, 
-            quickProducaoTipoSelect
+            filterDentistaSelect
         ];
         selects.forEach(select => {
             if (select) select.innerHTML = '';
         });
     
         // Adicionar as opções padrão
-        if (producaoTipoSelect) producaoTipoSelect.innerHTML = '<option value="">Selecione o tipo de trabalho</option>';
         if (filterDentistaSelect) filterDentistaSelect.innerHTML = '<option value="">Selecione um dentista para ver a produção</option>';
-        if (quickProducaoTipoSelect) quickProducaoTipoSelect.innerHTML = '<option value="">Selecione o tipo de trabalho</option>';
-    
-        // Popular tipos de trabalho
-        (state.valores || []).forEach(valor => {
-            const option = document.createElement('option');
-            option.value = valor.tipo;
-            option.textContent = valor.tipo;
-            if (producaoTipoSelect) producaoTipoSelect.appendChild(option.cloneNode(true));
-            if (quickProducaoTipoSelect) quickProducaoTipoSelect.appendChild(option.cloneNode(true));
-        });
         
+        // Atualizar opções nos selects de itens da produção (Main e Quick)
+        const itemSelects = document.querySelectorAll('.main-producao-tipo-select, .quick-producao-tipo-select');
+        itemSelects.forEach(select => {
+            const currentValue = select.value;
+            select.innerHTML = '<option value="">Selecione o tipo de trabalho</option>';
+            (state.valores || []).forEach(valor => {
+                const option = document.createElement('option');
+                option.value = valor.tipo;
+                option.textContent = valor.tipo;
+                select.appendChild(option);
+            });
+            select.value = currentValue;
+        });
+
         // Popular selects de dentistas (Filtro) e datalist (Inputs)
         const dentistasList = document.getElementById('dentistas-list');
         if (dentistasList) dentistasList.innerHTML = '';
@@ -2163,10 +2167,17 @@ const generateProducaoPDF = () => {
         const dentista = (state.dentistas || []).find(d => d.id === producao.dentista);
 
         producaoEditIdInput.value = producao.id;
-        producaoTipoSelect.value = producao.tipo;
+
+        // Configurar linha única para edição
+        producaoItemsContainer.innerHTML = '';
+        producaoItemsContainer.appendChild(createMainFormItemRow(producao.tipo, producao.qtd));
+        updateMainRemoveButtonsVisibility();
+
+        // Esconder botão de adicionar item no modo de edição
+        formProducaoAddItemBtn.classList.add('hidden');
+
         producaoDentistaInput.value = dentista ? dentista.nome : '';
         producaoPacienteInput.value = producao.nomePaciente || '';
-        producaoQtdInput.value = producao.qtd;
         producaoStatusSelect.value = producao.status;
         producaoObsInput.value = producao.obs || '';
         producaoDataInput.value = producao.data;
@@ -2183,6 +2194,15 @@ const generateProducaoPDF = () => {
     const cancelEditProducao = () => {
         producaoEditIdInput.value = '';
         formProducao.reset();
+
+        // Resetar linhas para o padrão (uma linha vazia)
+        producaoItemsContainer.innerHTML = '';
+        producaoItemsContainer.appendChild(createMainFormItemRow());
+        updateMainRemoveButtonsVisibility();
+
+        // Mostrar botão de adicionar item
+        formProducaoAddItemBtn.classList.remove('hidden');
+
         formProducaoTitle.textContent = 'Adicionar Produção';
         producaoSubmitBtn.textContent = 'Adicionar';
         producaoCancelBtn.classList.add('hidden');
@@ -2190,7 +2210,6 @@ const generateProducaoPDF = () => {
         const hoje = new Date();
         producaoDataInput.valueAsDate = hoje;
         entregaDataInput.valueAsDate = hoje;
-        producaoQtdInput.value = 1;
     };
 
     const renderizarSelectTiposTrabalhoDentista = (dentistaId) => {
@@ -2375,6 +2394,11 @@ const generateProducaoPDF = () => {
         dentistaTelefoneInput.value = dentista.telefone || '';
         dentistaEmailInput.value = dentista.email || '';
         
+        // Populate custom cycle if available
+        dentistaCicloInicioInput.value = dentista.customClosingDayStart || '';
+        dentistaCicloFimInput.value = dentista.customClosingDayEnd || '';
+        dentistaCicloWrapper.classList.remove('hidden');
+
         formDentistaTitle.textContent = 'Editar Dentista';
         formDentistaSubmitBtn.textContent = 'Atualizar';
         formDentistaCancelBtn.classList.remove('hidden');
@@ -2388,6 +2412,11 @@ const generateProducaoPDF = () => {
     const cancelEditDentista = () => {
         dentistaEditIdInput.value = '';
         formDentista.reset();
+
+        dentistaCicloWrapper.classList.add('hidden');
+        dentistaCicloInicioInput.value = '';
+        dentistaCicloFimInput.value = '';
+
         formDentistaTitle.textContent = 'Adicionar Dentista';
         formDentistaSubmitBtn.textContent = 'Adicionar';
         formDentistaCancelBtn.classList.add('hidden');
@@ -2716,20 +2745,102 @@ const generateProducaoPDF = () => {
     });
 
     // Ações rápidas
-    // --- LÓGICA DO MODAL DE ADIÇÃO RÁPIDA DE PRODUÇÃO ---
+    // --- LÓGICA DO FORMULÁRIO DE PRODUÇÃO (PRINCIPAL) ---
 
-    const openQuickAddModal = () => {
-        quickAddProductionForm.reset();
-        quickProducaoQtdInput.value = 1; // Reseta a quantidade para 1
-        
-        // Popular tipos de trabalho
-        quickProducaoTipoSelect.innerHTML = '<option value="">Selecione o tipo de trabalho</option>';
+    const createMainFormItemRow = (selectedValue = '', quantity = 1) => {
+        const row = document.createElement('div');
+        row.className = 'main-work-item-group flex gap-2 items-start';
+
+        row.innerHTML = `
+            <div class="flex-1">
+                 <select class="main-producao-tipo-select w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input" required>
+                    <option value="" data-i18n="placeholder_select_work_type">${t('placeholder_select_work_type')}</option>
+                </select>
+            </div>
+            <div class="w-24">
+                 <input type="number" class="main-producao-qtd-input w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input" placeholder="${t('placeholder_quantity')}" data-i18n-placeholder="placeholder_quantity" value="${quantity}" min="1" required>
+            </div>
+            <button type="button" class="remove-main-item-btn p-3 text-red-400 hover:text-red-300 rounded-lg hover:bg-gray-700 transition-colors" title="Remover">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+        `;
+
+        // Populate Select
+        const select = row.querySelector('select');
         (state.valores || []).forEach(valor => {
             const option = document.createElement('option');
             option.value = valor.tipo;
             option.textContent = valor.tipo;
-            quickProducaoTipoSelect.appendChild(option);
+            select.appendChild(option);
         });
+
+        if (selectedValue) select.value = selectedValue;
+
+        return row;
+    };
+
+    const updateMainRemoveButtonsVisibility = () => {
+        if (!producaoItemsContainer) return;
+        const rows = producaoItemsContainer.querySelectorAll('.main-work-item-group');
+        const removeBtns = producaoItemsContainer.querySelectorAll('.remove-main-item-btn');
+
+        if (rows.length === 1) {
+            removeBtns.forEach(btn => btn.classList.add('hidden'));
+        } else {
+            removeBtns.forEach(btn => btn.classList.remove('hidden'));
+        }
+    };
+
+    // --- LÓGICA DO MODAL DE ADIÇÃO RÁPIDA DE PRODUÇÃO ---
+
+    const createWorkItemRow = () => {
+        const row = document.createElement('div');
+        row.className = 'work-item-group flex gap-2 items-start';
+        
+        row.innerHTML = `
+            <div class="flex-1">
+                 <select class="quick-producao-tipo-select w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input" required>
+                    <option value="" data-i18n="placeholder_select_work_type">Selecione o tipo de trabalho</option>
+                </select>
+            </div>
+            <div class="w-24">
+                 <input type="number" class="quick-producao-qtd-input w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input" placeholder="Qtd" value="1" min="1" required>
+            </div>
+            <button type="button" class="remove-work-item-btn p-3 text-red-400 hover:text-red-300 rounded-lg hover:bg-gray-700 transition-colors" title="Remover">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+        `;
+
+        // Populate Select
+        const select = row.querySelector('select');
+        (state.valores || []).forEach(valor => {
+            const option = document.createElement('option');
+            option.value = valor.tipo;
+            option.textContent = valor.tipo;
+            select.appendChild(option);
+        });
+
+        return row;
+    };
+
+    const updateRemoveButtonsVisibility = () => {
+        const rows = quickProductionItemsContainer.querySelectorAll('.work-item-group');
+        const removeBtns = quickProductionItemsContainer.querySelectorAll('.remove-work-item-btn');
+
+        if (rows.length === 1) {
+            removeBtns.forEach(btn => btn.classList.add('hidden'));
+        } else {
+            removeBtns.forEach(btn => btn.classList.remove('hidden'));
+        }
+    };
+
+    const openQuickAddModal = () => {
+        quickAddProductionForm.reset();
+
+        // Reset and populate items
+        quickProductionItemsContainer.innerHTML = '';
+        quickProductionItemsContainer.appendChild(createWorkItemRow());
+        updateRemoveButtonsVisibility();
         
         // Definir datas padrão
         const hoje = new Date();
@@ -2753,6 +2864,26 @@ const generateProducaoPDF = () => {
     if (addProductionModal) {
         closeAddProductionModalBtn.addEventListener('click', () => addProductionModal.classList.add('hidden'));
         quickAddProductionCancelBtn.addEventListener('click', () => addProductionModal.classList.add('hidden'));
+
+        if (addWorkItemBtn) {
+            addWorkItemBtn.addEventListener('click', () => {
+                quickProductionItemsContainer.appendChild(createWorkItemRow());
+                updateRemoveButtonsVisibility();
+            });
+        }
+
+        if (quickProductionItemsContainer) {
+            quickProductionItemsContainer.addEventListener('click', (e) => {
+                const removeBtn = e.target.closest('.remove-work-item-btn');
+                if (removeBtn) {
+                    const row = removeBtn.closest('.work-item-group');
+                    if (row) {
+                        row.remove();
+                        updateRemoveButtonsVisibility();
+                    }
+                }
+            });
+        }
     
         quickAddProductionForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -2768,35 +2899,75 @@ const generateProducaoPDF = () => {
                 return;
             }
 
-            const producaoData = {
-                id: Date.now(),
-                tipo: quickProducaoTipoSelect.value,
-                dentista: dentistaObj.id,
-                nomePaciente: quickProducaoPacienteInput.value.trim(),
-                qtd: parseInt(quickProducaoQtdInput.value) || 1,
-                status: 'Pendente', // Status Padrão
-                obs: quickProducaoObsInput.value.trim(),
-                data: quickProducaoDataInput.value,
-                entrega: quickEntregaDataInput.value,
-                anexoURL: null
-            };
-    
-            if (producaoData.tipo && producaoData.dentista && producaoData.nomePaciente && producaoData.data && producaoData.entrega && producaoData.qtd > 0) {
-                state.producao.push(producaoData);
-                try {
-                    await saveDataToFirestore();
-                    showToast(t('toast_success_production_add'), "success");
-                    addProductionModal.classList.add('hidden');
-                    renderAllUIComponents(); // Atualiza o dashboard
-                    updateCharts();
-                } catch (error) {
-                    state.producao.pop(); // Reverte a adição local em caso de erro
-                    showToast(t('toast_error_save_production'));
-                } finally {
-                    setButtonLoading(quickAddProductionSubmitBtn, false);
+            // Collect all items
+            const itemRows = quickProductionItemsContainer.querySelectorAll('.work-item-group');
+            const itemsToAdd = [];
+            let validationError = false;
+
+            itemRows.forEach(row => {
+                const tipo = row.querySelector('.quick-producao-tipo-select').value;
+                const qtd = parseInt(row.querySelector('.quick-producao-qtd-input').value) || 0;
+
+                if (!tipo || qtd <= 0) {
+                    validationError = true;
+                } else {
+                    itemsToAdd.push({ tipo, qtd });
                 }
-            } else {
+            });
+
+            if (validationError || itemsToAdd.length === 0) {
                 showToast(t('toast_fill_all_fields'));
+                setButtonLoading(quickAddProductionSubmitBtn, false);
+                return;
+            }
+
+            const nomePaciente = quickProducaoPacienteInput.value.trim();
+            const obs = quickProducaoObsInput.value.trim();
+            const data = quickProducaoDataInput.value;
+            const entrega = quickEntregaDataInput.value;
+
+            if (!nomePaciente || !data || !entrega) {
+                 showToast(t('toast_fill_all_fields'));
+                 setButtonLoading(quickAddProductionSubmitBtn, false);
+                 return;
+            }
+
+            const itemsAdded = []; // Keep track of added items for rollback
+
+            try {
+                // Generate base ID.
+                const baseId = Date.now();
+
+                itemsToAdd.forEach((item, index) => {
+                    const producaoData = {
+                        id: baseId + index,
+                        tipo: item.tipo,
+                        dentista: dentistaObj.id,
+                        nomePaciente: nomePaciente,
+                        qtd: item.qtd,
+                        status: 'Pendente', // Status Padrão
+                        obs: obs,
+                        data: data,
+                        entrega: entrega,
+                        anexoURL: null
+                    };
+                    state.producao.push(producaoData);
+                    itemsAdded.push(producaoData);
+                });
+
+                await saveDataToFirestore();
+                showToast(t('toast_success_production_add'), "success");
+                addProductionModal.classList.add('hidden');
+                renderAllUIComponents(); // Atualiza o dashboard
+                updateCharts();
+            } catch (error) {
+                // Rollback: remove the items that were tentatively added
+                if (itemsAdded.length > 0) {
+                     state.producao = state.producao.filter(p => !itemsAdded.includes(p));
+                }
+                showToast(t('toast_error_save_production'));
+                console.error(error);
+            } finally {
                 setButtonLoading(quickAddProductionSubmitBtn, false);
             }
         });
@@ -2945,17 +3116,39 @@ const generateProducaoPDF = () => {
             const nome = dentistaNomeInput.value.trim();
             if (!nome) { showToast(t('toast_fill_dentist_name')); return; }
             
+            const customClosingDayStart = parseInt(dentistaCicloInicioInput.value) || '';
+            const customClosingDayEnd = parseInt(dentistaCicloFimInput.value) || '';
+
             if (dentistaEditIdInput.value) {
                 const index = state.dentistas.findIndex(d => d.id === id);
                 if (index !== -1) {
                     // Mantém a estrutura de valores existente ao editar
                     const existingValores = state.dentistas[index].valores || [];
-                    state.dentistas[index] = { ...state.dentistas[index], id, nome, clinica: dentistaClinicaInput.value.trim(), telefone: dentistaTelefoneInput.value.trim(), email: dentistaEmailInput.value.trim(), valores: existingValores };
+                    state.dentistas[index] = {
+                        ...state.dentistas[index],
+                        id,
+                        nome,
+                        clinica: dentistaClinicaInput.value.trim(),
+                        telefone: dentistaTelefoneInput.value.trim(),
+                        email: dentistaEmailInput.value.trim(),
+                        valores: existingValores,
+                        customClosingDayStart,
+                        customClosingDayEnd
+                    };
                     showToast(t('toast_success_dentist_update'), "success");
                 }
             } else {
                 // Adiciona um novo dentista com uma lista de valores vazia
-                const dentistaData = { id, nome, clinica: dentistaClinicaInput.value.trim(), telefone: dentistaTelefoneInput.value.trim(), email: dentistaEmailInput.value.trim(), valores: [] };
+                const dentistaData = {
+                    id,
+                    nome,
+                    clinica: dentistaClinicaInput.value.trim(),
+                    telefone: dentistaTelefoneInput.value.trim(),
+                    email: dentistaEmailInput.value.trim(),
+                    valores: [],
+                    customClosingDayStart,
+                    customClosingDayEnd
+                };
                 state.dentistas.push(dentistaData); 
                 showToast(t('toast_success_dentist_add'), "success");
             }
@@ -3193,9 +3386,30 @@ const generateProducaoPDF = () => {
 }
     
     if(formProducao){
+        if (formProducaoAddItemBtn) {
+            formProducaoAddItemBtn.addEventListener('click', () => {
+                producaoItemsContainer.appendChild(createMainFormItemRow());
+                updateMainRemoveButtonsVisibility();
+            });
+        }
+
+        if (producaoItemsContainer) {
+            producaoItemsContainer.addEventListener('click', (e) => {
+                const removeBtn = e.target.closest('.remove-main-item-btn');
+                if (removeBtn) {
+                    const row = removeBtn.closest('.main-work-item-group');
+                    if (row) {
+                        row.remove();
+                        updateMainRemoveButtonsVisibility();
+                    }
+                }
+            });
+        }
+
         formProducao.addEventListener('submit', async (e) => { 
             e.preventDefault();
-            setButtonLoading(producaoSubmitBtn, true);
+            const originalButtonText = producaoSubmitBtn.textContent;
+            setButtonLoading(producaoSubmitBtn, true, originalButtonText);
 
             const file = producaoAnexoInput.files[0];
             let anexoURL = null;
@@ -3224,37 +3438,93 @@ const generateProducaoPDF = () => {
                 return;
             }
 
-            const producaoData = { 
-                id: editId || Date.now(), 
-                tipo: producaoTipoSelect.value, 
-                dentista: dentistaObj.id, 
-                nomePaciente: producaoPacienteInput.value.trim(),
-                qtd: parseInt(producaoQtdInput.value), 
-                status: producaoStatusSelect.value, 
-                obs: producaoObsInput.value.trim(), 
-                data: producaoDataInput.value, 
-                entrega: entregaDataInput.value,
-                anexoURL: anexoURL
-            };
+            const nomePaciente = producaoPacienteInput.value.trim();
+            const status = producaoStatusSelect.value;
+            const obs = producaoObsInput.value.trim();
+            const data = producaoDataInput.value;
+            const entrega = entregaDataInput.value;
 
-            if (producaoData.tipo && producaoData.dentista && producaoData.nomePaciente && producaoData.qtd > 0 && producaoData.data && producaoData.entrega) {
+            if (!nomePaciente || !data || !entrega) {
+                 showToast(t('toast_fill_all_fields'));
+                 setButtonLoading(producaoSubmitBtn, false);
+                 return;
+            }
+
+            // Gather items
+            const itemRows = producaoItemsContainer.querySelectorAll('.main-work-item-group');
+            const itemsToProcess = [];
+            let validationError = false;
+
+            itemRows.forEach(row => {
+                const tipo = row.querySelector('.main-producao-tipo-select').value;
+                const qtd = parseInt(row.querySelector('.main-producao-qtd-input').value) || 0;
+
+                if (!tipo || qtd <= 0) {
+                    validationError = true;
+                } else {
+                    itemsToProcess.push({ tipo, qtd });
+                }
+            });
+
+            if (validationError || itemsToProcess.length === 0) {
+                showToast(t('toast_fill_all_fields'));
+                setButtonLoading(producaoSubmitBtn, false);
+                return;
+            }
+
+            try {
                 if (editId) { 
+                    // EDIT MODE - Expect single item (enforced by UI)
+                    // But we use the first valid item found in the form
+                    const item = itemsToProcess[0];
                     const index = state.producao.findIndex(p => p.id === editId); 
+
                     if (index !== -1) {
-                        producaoData.anexoURL = anexoURL || state.producao[index].anexoURL; // Mantém anexo antigo se não houver novo
+                        const producaoData = {
+                            ...state.producao[index],
+                            tipo: item.tipo,
+                            dentista: dentistaObj.id,
+                            nomePaciente,
+                            qtd: item.qtd,
+                            status,
+                            obs,
+                            data,
+                            entrega,
+                            anexoURL: anexoURL || state.producao[index].anexoURL
+                        };
                         state.producao[index] = producaoData; 
                         showToast(t('toast_success_production_update'), "success");
                     } 
                 } else { 
-                    state.producao.push(producaoData); 
+                    // ADD MODE - Multiple items
+                    const baseId = Date.now();
+                    itemsToProcess.forEach((item, index) => {
+                        const producaoData = {
+                            id: baseId + index,
+                            tipo: item.tipo,
+                            dentista: dentistaObj.id,
+                            nomePaciente,
+                            qtd: item.qtd,
+                            status,
+                            obs,
+                            data,
+                            entrega,
+                            anexoURL: anexoURL
+                        };
+                        state.producao.push(producaoData);
+                    });
                     showToast(t('toast_success_production_add'), "success");
                 }
+
                 await saveDataToFirestore();
                 cancelEditProducao();
-            } else { 
-                showToast(t('toast_fill_all_fields')); 
+                renderAllUIComponents();
+            } catch (error) {
+                console.error(error);
+                showToast(t('toast_error_save_production'));
+            } finally {
+                setButtonLoading(producaoSubmitBtn, false);
             }
-            setButtonLoading(producaoSubmitBtn, false);
         });
     }
 
@@ -3523,6 +3793,13 @@ const generateProducaoPDF = () => {
         entregaDataInput.valueAsDate = hoje;
         despesaDataInput.valueAsDate = hoje;
         
+        // Inicializar formulário de produção com uma linha
+        if (producaoItemsContainer) {
+            producaoItemsContainer.innerHTML = '';
+            producaoItemsContainer.appendChild(createMainFormItemRow());
+            updateMainRemoveButtonsVisibility();
+        }
+
         initLanguage();
         setTimeout(initializeCharts, 100);
     };

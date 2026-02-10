@@ -392,13 +392,17 @@
                                 <h2 id="form-producao-title" class="text-xl font-semibold mb-4 border-b border-gemini-border pb-3" data-i18n="production_form_title_add">Adicionar Produção</h2>
                                 <form id="form-producao" class="space-y-5">
                                     <input type="hidden" id="producao-edit-id">
-                                    <select id="producao-tipo-select" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
-                                        <option value="" data-i18n="placeholder_select_work_type">Selecione o tipo de trabalho</option>
-                                    </select>
                                     <input id="producao-dentista-input" list="dentistas-list" placeholder="Selecione o Dentista" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input" data-i18n-placeholder="placeholder_select_dentist">
                                     <input type="text" id="producao-paciente-input" list="pacientes-list" placeholder="Nome do Paciente" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input" data-i18n-placeholder="placeholder_patient_name">
                                     
-                                    <input type="number" id="producao-qtd-input" placeholder="Quantidade" value="1" min="1" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input" data-i18n-placeholder="placeholder_quantity">
+                                    <div id="producao-items-container" class="space-y-3">
+                                        <!-- Items will be injected here by JS -->
+                                    </div>
+                                    <button type="button" id="form-producao-add-item-btn" class="text-sm text-accent-blue hover:underline flex items-center mb-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                        Adicionar outro trabalho
+                                    </button>
+
                                     <select id="producao-status-select" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
                                         <option value="Pendente">Pendente</option>
                                         <option value="Em Andamento">Em Andamento</option>
@@ -593,6 +597,22 @@
                                     <input type="text" id="dentista-clinica-input" placeholder="Clínica" class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input" data-i18n-placeholder="placeholder_clinic">
                                     <input type="tel" id="dentista-telefone-input" placeholder="Telefone (ex: 5527999998888)" class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input" data-i18n-placeholder="placeholder_phone">
                                     <input type="email" id="dentista-email-input" placeholder="E-mail" class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input" data-i18n-placeholder="placeholder_email">
+
+                                    <div id="dentista-ciclo-wrapper" class="hidden space-y-3 border-t border-gemini-border pt-3">
+                                        <h3 class="text-sm font-semibold text-gemini-primary">Ciclo Personalizado</h3>
+                                        <div class="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label for="dentista-ciclo-inicio-input" class="text-xs text-gemini-secondary">Dia Início</label>
+                                                <input type="number" id="dentista-ciclo-inicio-input" min="1" max="31" placeholder="Padrão" class="w-full p-2 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg text-sm">
+                                            </div>
+                                            <div>
+                                                <label for="dentista-ciclo-fim-input" class="text-xs text-gemini-secondary">Dia Fim</label>
+                                                <input type="number" id="dentista-ciclo-fim-input" min="1" max="31" placeholder="Padrão" class="w-full p-2 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg text-sm">
+                                            </div>
+                                        </div>
+                                        <p class="text-xs text-gemini-secondary">Deixe em branco para usar o ciclo global.</p>
+                                    </div>
+
                                     <div class="flex space-x-3">
                                         <button id="form-dentista-submit-btn" type="submit" class="flex-1 bg-accent-blue hover:bg-accent-blue-hover text-white font-bold py-3 px-4 rounded-lg transition-all active:scale-95" data-i18n="btn_add">Adicionar</button>
                                         <button id="form-dentista-cancel-btn" type="button" class="px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white font-bold rounded-lg transition-all active:scale-95 hidden" data-i18n="btn_cancel">Cancelar</button>
@@ -857,10 +877,13 @@
             <form id="quick-add-production-form" class="space-y-4">
                 <input id="quick-producao-dentista-input" list="dentistas-list" placeholder="Selecione o Dentista" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input" data-i18n-placeholder="placeholder_select_dentist">
                 <input type="text" id="quick-producao-paciente-input" list="pacientes-list" placeholder="Nome do Paciente" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input" data-i18n-placeholder="placeholder_patient_name">
-                <select id="quick-producao-tipo-select" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
-                    <option value="" data-i18n="placeholder_select_work_type">Selecione o tipo de trabalho</option>
-                </select>
-                <input type="number" id="quick-producao-qtd-input" placeholder="Quantidade de Elementos" value="1" min="1" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input" data-i18n-placeholder="placeholder_quantity">
+                <div id="quick-production-items-container" class="space-y-3">
+                    <!-- Items will be injected here by JS -->
+                </div>
+                <button type="button" id="add-work-item-btn" class="text-sm text-accent-blue hover:underline flex items-center mb-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    Adicionar outro trabalho
+                </button>
                 <textarea id="quick-producao-obs-input" placeholder="Observações..." rows="3" class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input dark-scrollbar" data-i18n-placeholder="placeholder_obs"></textarea>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
