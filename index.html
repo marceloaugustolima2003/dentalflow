@@ -857,10 +857,13 @@
             <form id="quick-add-production-form" class="space-y-4">
                 <input id="quick-producao-dentista-input" list="dentistas-list" placeholder="Selecione o Dentista" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input" data-i18n-placeholder="placeholder_select_dentist">
                 <input type="text" id="quick-producao-paciente-input" list="pacientes-list" placeholder="Nome do Paciente" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input" data-i18n-placeholder="placeholder_patient_name">
-                <select id="quick-producao-tipo-select" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input">
-                    <option value="" data-i18n="placeholder_select_work_type">Selecione o tipo de trabalho</option>
-                </select>
-                <input type="number" id="quick-producao-qtd-input" placeholder="Quantidade de Elementos" value="1" min="1" required class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input" data-i18n-placeholder="placeholder_quantity">
+                <div id="quick-production-items-container" class="space-y-3">
+                    <!-- Items will be injected here by JS -->
+                </div>
+                <button type="button" id="add-work-item-btn" class="text-sm text-accent-blue hover:underline flex items-center mb-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    Adicionar outro trabalho
+                </button>
                 <textarea id="quick-producao-obs-input" placeholder="Observações..." rows="3" class="w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input dark-scrollbar" data-i18n-placeholder="placeholder_obs"></textarea>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
