@@ -594,7 +594,70 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- GRÁFICOS ---
     const initializeCharts = () => {
-        // Gráfico de Faturamento Diário (Barras Verticais)
+        // 1. Dashboard: Analytics (Doughnut)
+        const dashboardAnalyticsCtx = document.getElementById('dashboard-analytics-chart');
+        if (dashboardAnalyticsCtx) {
+            charts.dashboardAnalytics = new Chart(dashboardAnalyticsCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: [
+                            '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', '#10b981', '#3b82f6'
+                        ],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { position: 'right', labels: { color: '#9aa0a6', usePointStyle: true, font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        // 2. Dashboard: Revenue (Curved Line)
+        const dashboardRevenueCtx = document.getElementById('dashboard-revenue-chart');
+        if (dashboardRevenueCtx) {
+            charts.dashboardRevenue = new Chart(dashboardRevenueCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Faturamento',
+                        data: [],
+                        borderColor: '#10b981',
+                        backgroundColor: (context) => {
+                            const ctx = context.chart.ctx;
+                            const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+                            gradient.addColorStop(0, 'rgba(16, 185, 129, 0.2)');
+                            gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
+                            return gradient;
+                        },
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 0,
+                        pointHoverRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { display: false },
+                        y: { display: false }
+                    }
+                }
+            });
+        }
+
+        // 3. Resumo: Faturamento Diário (Barras Verticais)
         const faturamentoDiarioCtx = document.getElementById('faturamento-diario-chart');
         if (faturamentoDiarioCtx) {
             charts.faturamentoDiario = new Chart(faturamentoDiarioCtx, {
@@ -657,7 +720,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // Gráfico de Faturamento por Dentista (Barras Horizontais)
+        // 4. Análise: Faturamento por Dentista (Barras Horizontais)
         const dentistaCtx = document.getElementById('dentista-chart');
         if (dentistaCtx) {
             charts.dentista = new Chart(dentistaCtx, {
@@ -725,6 +788,104 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateCharts = () => {
         updateDentistaChart();
         updateDailyRevenueChart();
+        updateDashboardAnalyticsChart();
+        updateDashboardRevenueChart();
+    };
+
+    const updateDashboardAnalyticsChart = () => {
+        if (!charts.dashboardAnalytics) return;
+
+        const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
+
+        // Filter production for the period
+        const producaoDoMes = (state.producao || []).filter(p => {
+             if (!p.data) return false;
+             const dataProducao = new Date(p.data + "T00:00:00");
+             return dataProducao >= startDate && dataProducao <= endDate;
+        });
+
+        // Group by Type
+        const revenueByType = {};
+        producaoDoMes.forEach(p => {
+            const valorGlobal = (state.valores || []).find(v => v.tipo === p.tipo);
+            // Note: Dashboard doesn't check per-dentist custom prices for speed/simplicity or does it?
+            // Ideally it should.
+            const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
+            const valorDentista = dentista ? (dentista.valores || []).find(v => v.tipo === p.tipo) : null;
+            const valorFinal = valorDentista || valorGlobal;
+            const valorTotal = valorFinal ? valorFinal.valor * p.qtd : 0;
+
+            if (!revenueByType[p.tipo]) revenueByType[p.tipo] = 0;
+            revenueByType[p.tipo] += valorTotal;
+        });
+
+        const labels = Object.keys(revenueByType);
+        const data = Object.values(revenueByType);
+
+        charts.dashboardAnalytics.data.labels = labels;
+        charts.dashboardAnalytics.data.datasets[0].data = data;
+        charts.dashboardAnalytics.update();
+    };
+
+    const updateDashboardRevenueChart = () => {
+        if (!charts.dashboardRevenue) return;
+
+        const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
+        const days = [];
+        const data = [];
+        const labels = [];
+
+        // Generate all days in the billing period
+        let currentDay = new Date(startDate);
+        currentDay.setHours(12, 0, 0, 0);
+
+        const endDayCheck = new Date(endDate);
+        endDayCheck.setHours(12, 0, 0, 0);
+
+        while (currentDay <= endDayCheck) {
+            const dayStr = currentDay.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+            labels.push(dayStr.replace('.', ''));
+            days.push(new Date(currentDay));
+            currentDay.setDate(currentDay.getDate() + 1);
+        }
+
+        // Filter production for the period
+        const producaoDoMes = (state.producao || []).filter(p => {
+             if (!p.data) return false;
+             const dataProducao = new Date(p.data + "T00:00:00");
+             return dataProducao >= startDate && dataProducao <= endDate;
+        });
+
+        // Group by day
+        const productionByDay = {};
+        producaoDoMes.forEach(p => {
+            const dataStr = p.data; // YYYY-MM-DD
+            if (!productionByDay[dataStr]) {
+                productionByDay[dataStr] = 0;
+            }
+
+            const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
+            const valorDentista = dentista ? (dentista.valores || []).find(v => v.tipo === p.tipo) : null;
+            const valorGlobal = (state.valores || []).find(v => v.tipo === p.tipo);
+            const valorFinal = valorDentista || valorGlobal;
+            const valorTotal = valorFinal ? valorFinal.valor * p.qtd : 0;
+
+            productionByDay[dataStr] += valorTotal;
+        });
+
+        // Map to chart data
+        days.forEach(day => {
+            const yyyy = day.getFullYear();
+            const mm = String(day.getMonth() + 1).padStart(2, '0');
+            const dd = String(day.getDate()).padStart(2, '0');
+            const dateStr = `${yyyy}-${mm}-${dd}`;
+
+            data.push(productionByDay[dateStr] || 0);
+        });
+
+        charts.dashboardRevenue.data.labels = labels;
+        charts.dashboardRevenue.data.datasets[0].data = data;
+        charts.dashboardRevenue.update();
     };
 
     const updateDailyRevenueChart = () => {
@@ -1373,10 +1534,10 @@ const generateProducaoPDF = () => {
         const lucroAnterior = faturamentoAnterior - totalDespesasAnterior;
 
         // Atualizar KPIs
-        kpiFaturamentoMes.textContent = formatarMoeda(faturamentoBruto);
-        kpiLucroMes.textContent = formatarMoeda(lucroLiquido);
-        kpiPecasMes.textContent = producaoDoMes.reduce((acc, p) => acc + p.qtd, 0);
-        kpiDespesasMes.textContent = formatarMoeda(totalDespesas);
+        if (kpiFaturamentoMes) kpiFaturamentoMes.textContent = formatarMoeda(faturamentoBruto);
+        if (kpiLucroMes) kpiLucroMes.textContent = formatarMoeda(lucroLiquido);
+        if (kpiPecasMes) kpiPecasMes.textContent = producaoDoMes.reduce((acc, p) => acc + p.qtd, 0);
+        if (kpiDespesasMes) kpiDespesasMes.textContent = formatarMoeda(totalDespesas);
     
         // Renderizar Indicador de Tendência
         const renderTrend = (current, previous, element) => {
@@ -1432,7 +1593,7 @@ const generateProducaoPDF = () => {
     
         listaEntregasProximas.innerHTML = '';
         if (todasAsEntregas.length === 0) {
-            listaEntregasProximas.innerHTML = '<p class="text-center text-gemini-secondary">Nenhuma entrega próxima ou atrasada</p>';
+            listaEntregasProximas.innerHTML = '<p class="text-center text-gemini-secondary py-4">Nenhuma entrega próxima ou atrasada</p>';
         } else {
             todasAsEntregas.forEach(entrega => {
                 const dentista = (state.dentistas || []).find(d => d.id === entrega.dentista);
@@ -1444,33 +1605,40 @@ const generateProducaoPDF = () => {
                 const tipoTrabalho = entrega.tipo || 'Tipo não informado';
                 const observacoes = entrega.obs || 'Nenhuma observação';
 
+                const statusClass = isUrgent ? 'status-urgent' : 'status-warning';
+
                 const entregaEl = document.createElement('div');
-                entregaEl.className = `entrega-item-container p-3 rounded-lg border ${isUrgent ? 'border-red-500 bg-red-500/10' : 'border-yellow-500 bg-yellow-500/10'}`;
+                entregaEl.className = `timeline-item ${statusClass} entrega-item-container`;
                 
-                // HTML reestruturado para expansão (e CORRIGIDO sem os '+')
                 entregaEl.innerHTML = `
-                    <div class="entrega-item-header flex justify-between items-center cursor-pointer">
-                        <div class="flex-1 min-w-0">
-                            <p class="font-medium truncate">${entrega.nomePaciente || 'Paciente não informado'}</p>
-                            <p class="text-sm text-gemini-secondary truncate">${dentistaName}</p>
-                        </div>
-                        <div class="flex items-center space-x-3 flex-shrink-0 ml-3">
-                             <div class="text-right">
-                                <p class="text-sm font-medium">${dataEntrega.toLocaleDateString('pt-BR')}</p>
-                                <span class="text-xs px-2 py-1 rounded-full ${isUrgent ? 'bg-red-500 text-white' : 'bg-yellow-500 text-black'}">${isUrgent ? 'ATRASADO' : 'PRÓXIMO'}</span>
+                    <div class="entrega-item-header cursor-pointer">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="font-medium text-gemini-primary truncate">${entrega.nomePaciente || 'Paciente não informado'}</p>
+                                <p class="text-xs text-gemini-secondary truncate">${dentistaName}</p>
                             </div>
-                            <button class="finalize-entrega-btn p-2 rounded-full bg-green-500/20 hover:bg-green-500/40" data-id="${entrega.id}" title="Finalizar Entrega">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-green-400" style="pointer-events: none;">
-                                    <polyline points="20 6 9 17 4 12"></polyline>
-                                </svg>
-                            </button>
-                            <svg class="entrega-expand-icon w-4 h-4 text-gemini-secondary transition-transform" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            <span class="text-xs text-gemini-secondary whitespace-nowrap">${dataEntrega.toLocaleDateString('pt-BR')}</span>
                         </div>
-                     </div>
+
+                        <div class="flex justify-between items-center mt-2">
+                            <span class="text-xs px-2 py-0.5 rounded-full ${isUrgent ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'} font-semibold uppercase tracking-wider text-[10px]">
+                                ${isUrgent ? 'ATRASADO' : 'PRÓXIMO'}
+                            </span>
+
+                            <div class="flex space-x-2">
+                                <button class="finalize-entrega-btn p-1.5 rounded-full bg-green-500/20 hover:bg-green-500/40 transition-colors" data-id="${entrega.id}" title="Finalizar Entrega">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-green-400 pointer-events-none"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                </button>
+                                <button class="p-1.5 rounded-full hover:bg-gray-700 transition-colors text-gemini-secondary entrega-expand-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
  
-                     <div class="entrega-item-details hidden mt-3 pt-3 border-t border-gemini-border/50">
-                         <p class="text-sm"><strong class="text-gemini-secondary">Trabalho:</strong> ${tipoTrabalho}</p>
-                         <p class="text-sm mt-1 break-words"><strong class="text-gemini-secondary">Obs:</strong> ${observacoes}</p>
+                     <div class="entrega-item-details hidden mt-3 pt-2 border-t border-gemini-border/30">
+                         <p class="text-xs"><strong class="text-gemini-secondary">Trabalho:</strong> ${tipoTrabalho}</p>
+                         <p class="text-xs mt-1 break-words text-gemini-secondary italic">${observacoes}</p>
                      </div>
                  `;
                  listaEntregasProximas.appendChild(entregaEl);
@@ -2824,12 +2992,12 @@ const generateProducaoPDF = () => {
 
         row.innerHTML = `
             <div class="flex-1">
-                 <select class="main-producao-tipo-select w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input" required>
+                 <select class="main-producao-tipo-select w-full p-3 bg-black/20 text-white border border-white/10 rounded-lg mobile-optimized-input" required>
                     <option value="" data-i18n="placeholder_select_work_type">${t('placeholder_select_work_type')}</option>
                 </select>
             </div>
             <div class="w-24">
-                 <input type="number" class="main-producao-qtd-input w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input" placeholder="${t('placeholder_quantity')}" data-i18n-placeholder="placeholder_quantity" value="${quantity}" min="1" required>
+                 <input type="number" class="main-producao-qtd-input w-full p-3 bg-black/20 text-white border border-white/10 rounded-lg mobile-optimized-input" placeholder="${t('placeholder_quantity')}" data-i18n-placeholder="placeholder_quantity" value="${quantity}" min="1" required>
             </div>
             <button type="button" class="remove-main-item-btn p-3 text-red-400 hover:text-red-300 rounded-lg hover:bg-gray-700 transition-colors" title="Remover">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
@@ -2870,12 +3038,12 @@ const generateProducaoPDF = () => {
         
         row.innerHTML = `
             <div class="flex-1">
-                 <select class="quick-producao-tipo-select w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input" required>
+                 <select class="quick-producao-tipo-select w-full p-3 bg-black/20 text-white border border-white/10 rounded-lg mobile-optimized-input" required>
                     <option value="" data-i18n="placeholder_select_work_type">Selecione o tipo de trabalho</option>
                 </select>
             </div>
             <div class="w-24">
-                 <input type="number" class="quick-producao-qtd-input w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input" placeholder="Qtd" value="1" min="1" required>
+                 <input type="number" class="quick-producao-qtd-input w-full p-3 bg-black/20 text-white border border-white/10 rounded-lg mobile-optimized-input" placeholder="Qtd" value="1" min="1" required>
             </div>
             <button type="button" class="remove-work-item-btn p-3 text-red-400 hover:text-red-300 rounded-lg hover:bg-gray-700 transition-colors" title="Remover">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>

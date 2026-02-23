@@ -747,3 +747,39 @@ select option {
 }
 
 /* final do arquivo */
+/* Timeline Styles */
+.timeline-container {
+    position: relative;
+    padding-left: 1.5rem;
+    border-left: 2px solid rgba(255, 255, 255, 0.1);
+    margin-left: 0.5rem;
+}
+
+.timeline-item {
+    position: relative;
+    padding-bottom: 1.5rem;
+    padding-left: 1rem;
+}
+
+.timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -1.95rem;
+    top: 0.25rem;
+    width: 0.8rem;
+    height: 0.8rem;
+    border-radius: 50%;
+    border: 2px solid #1c2128;
+    background-color: var(--timeline-color, #6366f1);
+    box-shadow: 0 0 10px var(--timeline-color, #6366f1);
+    z-index: 1;
+}
+
+.timeline-item.status-urgent { --timeline-color: #ef4444; }
+.timeline-item.status-warning { --timeline-color: #f59e0b; }
+.timeline-item.status-success { --timeline-color: #10b981; }
+.timeline-item.status-info { --timeline-color: #3b82f6; }
