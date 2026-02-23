@@ -134,6 +134,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const fechamentoDiaInicioInput = document.getElementById('fechamento-dia-inicio-input');
     const fechamentoDiaFimInput = document.getElementById('fechamento-dia-fim-input');
 
+    // Elementos do Perfil e Admin Language
+    const headerAvatar = document.getElementById('header-avatar');
+    const formPerfil = document.getElementById('form-perfil');
+    const perfilFotoInput = document.getElementById('perfil-foto-input');
+    const perfilFotoPreview = document.getElementById('perfil-foto-preview');
+    const perfilNomeInput = document.getElementById('perfil-nome-input');
+    const perfilSobrenomeInput = document.getElementById('perfil-sobrenome-input');
+    const perfilTelefoneInput = document.getElementById('perfil-telefone-input');
+    const adminLanguageSelect = document.getElementById('admin-language-select');
+
     // Elementos do Estoque
     const formEstoque = document.getElementById('form-estoque');
     const formEstoqueTitle = document.getElementById('form-estoque-title');
@@ -308,51 +318,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Atualiza ícone do botão principal
-        const currentBtn = document.getElementById('current-language-btn');
-        if (currentBtn) {
-            currentBtn.innerHTML = getFlagSVG(lang);
-        }
-
-        // Esconde o menu se estiver aberto
-        const languageOptions = document.getElementById('language-options');
-        if (languageOptions) {
-            languageOptions.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
-        }
-
         // Atualiza UI dinâmica
         updateAuthUI();
     };
 
     const initLanguage = () => {
         const savedLang = localStorage.getItem('dentalflow_lang') || 'pt';
-        updateLanguage(savedLang);
-        
-        const currentBtn = document.getElementById('current-language-btn');
-        const languageOptions = document.getElementById('language-options');
-        const optionsBtns = document.querySelectorAll('.lang-option-btn');
-
-        if (currentBtn && languageOptions) {
-            currentBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                languageOptions.classList.toggle('opacity-0');
-                languageOptions.classList.toggle('translate-y-4');
-                languageOptions.classList.toggle('pointer-events-none');
-            });
-
-            document.addEventListener('click', (e) => {
-                if (!currentBtn.contains(e.target) && !languageOptions.contains(e.target)) {
-                    languageOptions.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
-                }
-            });
+        if (adminLanguageSelect) {
+            adminLanguageSelect.value = savedLang;
         }
-
-        optionsBtns.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const lang = btn.dataset.lang;
-                updateLanguage(lang);
-            });
-        });
+        updateLanguage(savedLang);
     };
 
     const showToast = (message, type = 'error') => {
@@ -1219,6 +1194,7 @@ const generateProducaoPDF = () => {
                     closingDayStart: data.closingDayStart || 25,
                     closingDayEnd: data.closingDayEnd || 24,
                     notifications: data.notifications || [],
+                    perfil: data.perfil || { nome: '', sobrenome: '', telefone: '', fotoUrl: '' },
                 };
             } else {
                 // Novo usuário
@@ -1229,6 +1205,7 @@ const generateProducaoPDF = () => {
                     despesas: [], 
                     dentistas: [], 
                     estoque: [],
+                    perfil: { nome: '', sobrenome: '', telefone: '', fotoUrl: '' },
                     mesAtual: new Date(),
                     closingDayStart: 25,
                     closingDayEnd: 24,
@@ -2210,6 +2187,24 @@ const generateProducaoPDF = () => {
         toggleValuesVisibility();
     };
 
+    const renderizarPerfil = () => {
+        if (state.perfil) {
+            if (perfilNomeInput) perfilNomeInput.value = state.perfil.nome || '';
+            if (perfilSobrenomeInput) perfilSobrenomeInput.value = state.perfil.sobrenome || '';
+            if (perfilTelefoneInput) perfilTelefoneInput.value = state.perfil.telefone || '';
+
+            if (state.perfil.fotoUrl) {
+                if (perfilFotoPreview) perfilFotoPreview.src = state.perfil.fotoUrl;
+                if (headerAvatar) {
+                    headerAvatar.src = state.perfil.fotoUrl;
+                    headerAvatar.classList.remove('hidden');
+                }
+            } else {
+                if (headerAvatar) headerAvatar.classList.add('hidden');
+            }
+        }
+    };
+
 	    const renderAllUIComponents = () => {
 	        renderizarDashboard();
 	        renderizarProducaoDia();
@@ -2223,6 +2218,7 @@ const generateProducaoPDF = () => {
         renderizarSelects();
         renderizarEstoque();
         renderizarListaDespesasCompleta();
+        renderizarPerfil();
         toggleValuesVisibility();
         
         // Atualizar idioma após renderização
@@ -3156,6 +3152,64 @@ const generateProducaoPDF = () => {
             } finally {
                 setButtonLoading(submitButton, false);
             }
+        });
+    }
+
+    // Perfil
+    if (perfilFotoInput) {
+        perfilFotoInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    if (perfilFotoPreview) perfilFotoPreview.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
+    if (formPerfil) {
+        formPerfil.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = formPerfil.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            setButtonLoading(submitBtn, true, originalText);
+
+            let fotoUrl = state.perfil.fotoUrl;
+            const file = perfilFotoInput.files[0];
+
+            try {
+                if (file) {
+                    const storageRef = ref(storage, `users/${userId}/profile/avatar_${Date.now()}`);
+                    const snapshot = await uploadBytes(storageRef, file);
+                    fotoUrl = await getDownloadURL(snapshot.ref);
+                }
+
+                state.perfil = {
+                    nome: perfilNomeInput.value.trim(),
+                    sobrenome: perfilSobrenomeInput.value.trim(),
+                    telefone: perfilTelefoneInput.value.trim(),
+                    fotoUrl: fotoUrl
+                };
+
+                await saveDataToFirestore();
+                renderizarPerfil(); // Atualiza avatar no header imediatamente
+                showToast(t('toast_success_profile_save'), "success");
+
+            } catch (error) {
+                console.error("Erro ao salvar perfil:", error);
+                showToast(t('toast_error_generic'));
+            } finally {
+                setButtonLoading(submitBtn, false);
+            }
+        });
+    }
+
+    // Admin Language
+    if (adminLanguageSelect) {
+        adminLanguageSelect.addEventListener('change', (e) => {
+            updateLanguage(e.target.value);
         });
     }
 
