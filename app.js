@@ -2193,6 +2193,18 @@ const generateProducaoPDF = () => {
             if (perfilSobrenomeInput) perfilSobrenomeInput.value = state.perfil.sobrenome || '';
             if (perfilTelefoneInput) perfilTelefoneInput.value = state.perfil.telefone || '';
 
+            // Atualiza o nome no header
+            const nomeCompleto = [state.perfil.nome, state.perfil.sobrenome].filter(Boolean).join(' ');
+            if (nomeCompleto && userEmailDisplay) {
+                userEmailDisplay.textContent = nomeCompleto;
+                userEmailDisplay.classList.add('font-medium', 'text-gemini-primary'); // Destaque visual
+                userEmailDisplay.classList.remove('text-gemini-secondary');
+            } else if (userEmailDisplay && userEmailDisplay.dataset.email) {
+                userEmailDisplay.textContent = userEmailDisplay.dataset.email;
+                userEmailDisplay.classList.remove('font-medium', 'text-gemini-primary');
+                userEmailDisplay.classList.add('text-gemini-secondary');
+            }
+
             if (state.perfil.fotoUrl) {
                 if (perfilFotoPreview) perfilFotoPreview.src = state.perfil.fotoUrl;
                 if (headerAvatar) {
@@ -3948,6 +3960,7 @@ const generateProducaoPDF = () => {
                 initialLoadingOverlay.classList.add('hidden');
                 if (user) {
                     userId = user.uid;
+                    userEmailDisplay.dataset.email = user.email;
                     userEmailDisplay.textContent = user.email;
                     authScreen.classList.add('hidden');
                     appContent.classList.remove('hidden');
