@@ -17,6 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let charts = {}; // Armazenar instâncias dos gráficos
 
     // --- ELEMENTOS DO DOM ---
+    const dashboardListTimeline = document.getElementById('dashboard-list-timeline');
+    const kpiTicketMedio = document.getElementById('kpi-ticket-medio');
     const quickNotesInput = document.getElementById('quick-notes-input');
     const saveQuickNotesBtn = document.getElementById('save-quick-notes-btn');
     const quickNotesFeedback = document.getElementById('quick-notes-feedback');
@@ -594,29 +596,61 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- GRÁFICOS ---
     const initializeCharts = () => {
-        // Gráfico de Faturamento Diário (Barras Verticais)
-        const faturamentoDiarioCtx = document.getElementById('faturamento-diario-chart');
-        if (faturamentoDiarioCtx) {
-            charts.faturamentoDiario = new Chart(faturamentoDiarioCtx, {
-                type: 'bar',
+        // [NOVO] Analytics (Doughnut)
+        const analyticsCtx = document.getElementById('dashboard-chart-analytics');
+        if (analyticsCtx) {
+            charts.analytics = new Chart(analyticsCtx, {
+                type: 'doughnut',
                 data: {
                     labels: [],
                     datasets: [{
-                        label: 'Faturamento',
                         data: [],
-                        backgroundColor: function(context) {
-                            const chart = context.chart;
-                            const {ctx, chartArea} = chart;
-                            if (!chartArea) return null;
-                            const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
-                            gradient.addColorStop(0, '#4f46e5'); // Azul
-                            gradient.addColorStop(1, '#7c3aed'); // Roxo
-                            return gradient;
-                        },
-                        borderRadius: 4,
-                        barThickness: 'flex',
-                        maxBarThickness: 30
+                        backgroundColor: ['#6366f1', '#8b5cf6', '#d946ef', '#10b981', '#f59e0b'],
+                        borderWidth: 0,
+                        hoverOffset: 4
                     }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#a0a0a0', font: { size: 10 } } }
+                    },
+                    cutout: '70%'
+                }
+            });
+        }
+
+        // [NOVO] Revenue Evolution (Line)
+        const revenueCtx = document.getElementById('dashboard-chart-revenue');
+        if (revenueCtx) {
+            charts.revenue = new Chart(revenueCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Faturamento',
+                            data: [],
+                            borderColor: '#6366f1',
+                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.4,
+                            fill: true,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#1e1b4b'
+                        },
+                        {
+                            label: 'Despesas',
+                            data: [],
+                            borderColor: '#ef4444', // Red
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            borderDash: [5, 5],
+                            pointRadius: 0
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
@@ -624,16 +658,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     plugins: {
                         legend: { display: false },
                         tooltip: {
+                            mode: 'index',
+                            intersect: false,
                             callbacks: {
                                 label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed.y !== null) {
-                                        label += formatarMoeda(context.parsed.y);
-                                    }
-                                    return label;
+                                    return context.dataset.label + ': ' + formatarMoeda(context.parsed.y);
                                 }
                             }
                         }
@@ -641,23 +670,63 @@ document.addEventListener('DOMContentLoaded', () => {
                     scales: {
                         x: {
                             grid: { display: false },
-                            ticks: { color: '#9aa0a6' }
+                            ticks: { color: '#6b7280', maxTicksLimit: 10 }
                         },
                         y: {
                             grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                            ticks: { 
-                                color: '#9aa0a6',
-                                callback: function(value) {
-                                    return formatarMoeda(value);
+                            ticks: { color: '#6b7280', callback: value => formatarMoeda(value) }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+        }
+
+        // [NOVO] Production Bar (Horizontal) - Same logic as before but new location/ID
+        const productionCtx = document.getElementById('dashboard-chart-production');
+        if (productionCtx) {
+            charts.production = new Chart(productionCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Faturamento',
+                        data: [],
+                        backgroundColor: '#8b5cf6',
+                        borderRadius: 4,
+                        barThickness: 12
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return formatarMoeda(context.parsed.x);
                                 }
                             }
+                        }
+                    },
+                    scales: {
+                        x: { display: false },
+                        y: {
+                            ticks: { color: '#9aa0a6', font: { size: 11 } },
+                            grid: { display: false }
                         }
                     }
                 }
             });
         }
 
-        // Gráfico de Faturamento por Dentista (Barras Horizontais)
+        // [LEGACY] Keep for "Análise por Dentista" view
         const dentistaCtx = document.getElementById('dentista-chart');
         if (dentistaCtx) {
             charts.dentista = new Chart(dentistaCtx, {
@@ -667,216 +736,147 @@ document.addEventListener('DOMContentLoaded', () => {
                     datasets: [{
                         label: 'Faturamento',
                         data: [],
-                        backgroundColor: [],
-                        borderRadius: 8,
-                        barThickness: 18
+                        backgroundColor: '#8b5cf6',
+                        borderRadius: 8
                     }]
                 },
                 options: {
-                    indexAxis: 'y', // horizontal bars
+                    indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                title: function(items) {
-                                    // Mostra o nome completo do dentista como título do tooltip
-                                    if (!items || items.length === 0) return '';
-                                    const idx = items[0].dataIndex;
-                                    return (charts.dentista && charts.dentista._fullNames && charts.dentista._fullNames[idx]) || items[0].label || '';
-                                },
-                                label: function(context) {
-                                    // context.parsed.x is the value for horizontal bars
-                                    const value = context.parsed && (context.parsed.x ?? context.parsed) || 0;
-                                    return 'Faturamento: ' + formatarMoeda(value);
-                                },
-                                afterLabel: function(context) {
-                                    const idx = context.dataIndex;
-                                    const pieces = charts.dentista && charts.dentista._piecesMap ? charts.dentista._piecesMap[charts.dentista._fullNames[idx]] : 0;
-                                    return 'Peças: ' + (pieces || 0);
-                                }
-                            },
-                            bodyFont: { weight: '600' }
-                        }
-                    },
+                    plugins: { legend: { display: false } },
                     scales: {
-                        x: {
-                            ticks: { 
-                                color: '#9aa0a6',
-                                callback: function(value) {
-                                    // Exibe no formato moeda
-                                    try { return formatarMoeda(value); } catch (e) { return value; }
-                                }
-                            },
-                            grid: { color: 'rgba(255, 255, 255, 0.05)' }
-                        },
-                        y: {
-                            ticks: { color: '#9aa0a6' },
-                            grid: { display: false }
-                        }
-                    },
-                    layout: { padding: { left: 8, right: 8, top: 8, bottom: 8 } }
+                        x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#9aa0a6' } },
+                        y: { grid: { display: false }, ticks: { color: '#9aa0a6' } }
+                    }
                 }
             });
         }
     };
 
     const updateCharts = () => {
-        updateDentistaChart();
-        updateDailyRevenueChart();
-    };
-
-    const updateDailyRevenueChart = () => {
-        if (!charts.faturamentoDiario) return;
-
+        // Pega o período atual
         const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
-        const days = [];
-        const data = [];
-        const labels = [];
         
-        // Generate all days in the billing period
-        let currentDay = new Date(startDate);
-        // Ajuste para garantir que cobrimos todo o período sem loops infinitos ou erros de fuso
-        // Definir hora para meio-dia para evitar problemas de mudança de horário de verão
-        currentDay.setHours(12, 0, 0, 0);
-        
-        const endDayCheck = new Date(endDate);
-        endDayCheck.setHours(12, 0, 0, 0);
-
-        while (currentDay <= endDayCheck) {
-            const dayStr = currentDay.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }); 
-            labels.push(dayStr.replace('.', '')); 
-            days.push(new Date(currentDay));
-            currentDay.setDate(currentDay.getDate() + 1);
-        }
-        
-        // Filter production for the period
+        // Filtra dados do mês
         const producaoDoMes = (state.producao || []).filter(p => {
-             if (!p.data) return false;
-             const dataProducao = new Date(p.data + "T00:00:00");
-             return dataProducao >= startDate && dataProducao <= endDate;
+            const d = new Date(p.data + "T00:00:00");
+            return d >= startDate && d <= endDate;
         });
-        
-        // Group by day
-        const productionByDay = {};
-        producaoDoMes.forEach(p => {
-            const dataStr = p.data; // YYYY-MM-DD
-            if (!productionByDay[dataStr]) {
-                productionByDay[dataStr] = 0;
-            }
+
+        const despesasDoMes = (state.despesas || []).filter(d => {
+            const date = new Date(d.data + "T00:00:00");
+            return date >= startDate && date <= endDate;
+        });
+
+        // 1. Analytics (Tipos de Trabalho)
+        if (charts.analytics) {
+            const typesCount = {};
+            producaoDoMes.forEach(p => { typesCount[p.tipo] = (typesCount[p.tipo] || 0) + p.qtd; });
+            const sortedTypes = Object.entries(typesCount).sort((a, b) => b[1] - a[1]).slice(0, 5); // Top 5
             
-            const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
-            const valorDentista = dentista ? (dentista.valores || []).find(v => v.tipo === p.tipo) : null;
-            const valorGlobal = (state.valores || []).find(v => v.tipo === p.tipo);
-            const valorFinal = valorDentista || valorGlobal;
-            const valorTotal = valorFinal ? valorFinal.valor * p.qtd : 0;
-            
-            productionByDay[dataStr] += valorTotal;
-        });
-        
-        // Map to chart data
-        days.forEach(day => {
-            const yyyy = day.getFullYear();
-            const mm = String(day.getMonth() + 1).padStart(2, '0');
-            const dd = String(day.getDate()).padStart(2, '0');
-            const dateStr = `${yyyy}-${mm}-${dd}`;
-            
-            data.push(productionByDay[dateStr] || 0);
-        });
-        
-        charts.faturamentoDiario.data.labels = labels;
-        charts.faturamentoDiario.data.datasets[0].data = data;
-        charts.faturamentoDiario.update();
-    };
-
-    const updateDentistaChart = () => {
-        if (!charts.dentista) return;
-
-        const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
-
-        const producaoDoMes = (state.producao || []).filter(p => {
-            const data = new Date(p.data + "T00:00:00");
-            return data >= startDate && data <= endDate;
-        });
-
-        // Agregar faturamento e peças por dentista
-        const map = {}; // nome -> { faturamento, pecas }
-        producaoDoMes.forEach(p => {
-            const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
-            if (!dentista) return;
-
-            const nome = dentista.nome;
-            const valorDentista = (dentista.valores || []).find(v => v.tipo === p.tipo);
-            const valorGlobal = (state.valores || []).find(v => v.tipo === p.tipo);
-            const valorFinal = valorDentista || valorGlobal;
-            
-            const faturamento = valorFinal ? valorFinal.valor * p.qtd : 0;
-
-            if (!map[nome]) map[nome] = { faturamento: 0, pecas: 0 };
-            map[nome].faturamento += faturamento;
-            map[nome].pecas += p.qtd || 0;
-        });
-
-    // Converter para array, ordenar
-    const entries = Object.entries(map).map(([nome, v]) => ({ nome, faturamento: v.faturamento, pecas: v.pecas }));
-    entries.sort((a, b) => b.faturamento - a.faturamento);
-    // Se o usuário escolheu ver todos, mostramos todos; senão limitamos ao Top 15
-    const top = state.showAllDentistas ? entries : entries.slice(0, 15);
-
-    const fullNames = top.map(e => e.nome);
-    const shortLabels = fullNames.map(n => abbreviateName(n, 28));
-    const data = top.map(e => Number(e.faturamento.toFixed(2)));
-
-        // Paleta: gradiente de roxo (Top 1 = mais claro, Top N = mais escuro)
-    // Tonalidade clara (Top 1) — ligeiramente mais viva que antes para melhor visibilidade
-    const purpleLight = '#d6a8ff'; // Top 1 (mais claro e mais vivo)
-        const purpleDark = '#4c1d95';  // Top N (mais escuro)
-
-        // Helpers simples para misturar cores hex
-        const hexToRgb = (hex) => {
-            const h = hex.replace('#','');
-            return [parseInt(h.substring(0,2),16), parseInt(h.substring(2,4),16), parseInt(h.substring(4,6),16)];
-        };
-        const rgbToHex = (r,g,b) => '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
-        const blend = (startHex, endHex, t) => {
-            const s = hexToRgb(startHex);
-            const e = hexToRgb(endHex);
-            const r = Math.round(s[0] + (e[0] - s[0]) * t);
-            const g = Math.round(s[1] + (e[1] - s[1]) * t);
-            const b = Math.round(s[2] + (e[2] - s[2]) * t);
-            return rgbToHex(r,g,b);
-        };
-
-        // Inverte o gradiente: Top1 (maior faturamento) deve ser mais escuro
-        const backgroundColors = top.map((_, i) => {
-            if (top.length === 1) return purpleDark;
-            const t = i / (top.length - 1); // 0 => Top1, 1 => TopN
-            return blend(purpleDark, purpleLight, t);
-        });
-
-    charts.dentista.data.labels = shortLabels;
-        charts.dentista.data.datasets[0].data = data;
-        charts.dentista.data.datasets[0].backgroundColor = backgroundColors;
-
-    // Guardar mapa de peças e nomes completos para tooltips
-    charts.dentista._piecesMap = top.reduce((acc, cur) => { acc[cur.nome] = cur.pecas; return acc; }, {});
-    charts.dentista._fullNames = fullNames;
-
-        // Ajustar altura do canvas para que cada barra tenha espaço vertical suficiente
-        try {
-            const canvas = document.getElementById('dentista-chart');
-            if (canvas) {
-                const perBar = 40; // px por item
-                const computedHeight = Math.max(300, shortLabels.length * perBar + 80);
-                // Set the canvas height attribute (not CSS) so Chart.js recalculates
-                canvas.height = computedHeight;
-            }
-        } catch (e) {
-            console.warn('Não foi possível ajustar a altura do canvas do dentista:', e);
+            charts.analytics.data.labels = sortedTypes.map(i => i[0]);
+            charts.analytics.data.datasets[0].data = sortedTypes.map(i => i[1]);
+            charts.analytics.update();
         }
 
-        charts.dentista.update();
+        // 2. Revenue Evolution (Daily)
+        if (charts.revenue) {
+            const daysMap = {};
+            // Inicializa dias
+            let curr = new Date(startDate);
+            const end = new Date(endDate);
+            while (curr <= end) {
+                daysMap[curr.toISOString().split('T')[0]] = { revenue: 0, expense: 0 };
+                curr.setDate(curr.getDate() + 1);
+            }
+
+            producaoDoMes.forEach(p => {
+                if (daysMap[p.data]) {
+                    const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
+                    const valorDentista = dentista ? (dentista.valores || []).find(v => v.tipo === p.tipo) : null;
+                    const valorGlobal = (state.valores || []).find(v => v.tipo === p.tipo);
+                    const val = (valorDentista || valorGlobal)?.valor || 0;
+                    daysMap[p.data].revenue += val * p.qtd;
+                }
+            });
+
+            despesasDoMes.forEach(d => {
+                if (daysMap[d.data]) {
+                    daysMap[d.data].expense += d.valor;
+                }
+            });
+
+            const labels = Object.keys(daysMap).sort();
+            const revData = labels.map(d => daysMap[d].revenue);
+            const expData = labels.map(d => daysMap[d].expense);
+
+            charts.revenue.data.labels = labels.map(d => d.split('-')[2]); // Just days
+            charts.revenue.data.datasets[0].data = revData;
+            charts.revenue.data.datasets[1].data = expData;
+            charts.revenue.update();
+        }
+
+        // 3. Production (By Dentist)
+        if (charts.production) {
+            const dentistRevenue = {};
+            producaoDoMes.forEach(p => {
+                const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
+                const nome = dentista ? dentista.nome : 'Unknown';
+                const valorDentista = dentista ? (dentista.valores || []).find(v => v.tipo === p.tipo) : null;
+                const valorGlobal = (state.valores || []).find(v => v.tipo === p.tipo);
+                const val = (valorDentista || valorGlobal)?.valor || 0;
+                dentistRevenue[nome] = (dentistRevenue[nome] || 0) + (val * p.qtd);
+            });
+
+            const sortedDentists = Object.entries(dentistRevenue).sort((a, b) => b[1] - a[1]).slice(0, 8); // Top 8
+
+            charts.production.data.labels = sortedDentists.map(i => abbreviateName(i[0]));
+            charts.production.data.datasets[0].data = sortedDentists.map(i => i[1]);
+
+            // Gradient Logic reuse
+            const purpleLight = '#d6a8ff';
+            const purpleDark = '#4c1d95';
+            const hexToRgb = (hex) => {
+                const h = hex.replace('#','');
+                return [parseInt(h.substring(0,2),16), parseInt(h.substring(2,4),16), parseInt(h.substring(4,6),16)];
+            };
+            const rgbToHex = (r,g,b) => '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
+            const blend = (s, e, t) => {
+                const c1 = hexToRgb(s), c2 = hexToRgb(e);
+                return rgbToHex(
+                    Math.round(c1[0] + (c2[0] - c1[0]) * t),
+                    Math.round(c1[1] + (c2[1] - c1[1]) * t),
+                    Math.round(c1[2] + (c2[2] - c1[2]) * t)
+                );
+            };
+
+            charts.production.data.datasets[0].backgroundColor = sortedDentists.map((_, i) => {
+                const t = i / Math.max(sortedDentists.length - 1, 1);
+                return blend(purpleLight, purpleDark, t); // Lighter at top
+            });
+
+            charts.production.update();
+        }
+
+        // [LEGACY] Update Analysis Chart if exists
+        if (charts.dentista) {
+            // ... (keep existing logic or simplified version for analysis view)
+            // For brevity, just copying the core logic from charts.production but for analysis view
+             const dentistRevenue = {};
+            producaoDoMes.forEach(p => {
+                const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
+                const nome = dentista ? dentista.nome : 'Unknown';
+                const valorDentista = dentista ? (dentista.valores || []).find(v => v.tipo === p.tipo) : null;
+                const valorGlobal = (state.valores || []).find(v => v.tipo === p.tipo);
+                const val = (valorDentista || valorGlobal)?.valor || 0;
+                dentistRevenue[nome] = (dentistRevenue[nome] || 0) + (val * p.qtd);
+            });
+            const sorted = Object.entries(dentistRevenue).sort((a, b) => b[1] - a[1]);
+            charts.dentista.data.labels = sorted.map(i => i[0]);
+            charts.dentista.data.datasets[0].data = sorted.map(i => i[1]);
+            charts.dentista.update();
+        }
     };
 
     // --- EXPORTAÇÃO PDF ---
@@ -1373,10 +1373,10 @@ const generateProducaoPDF = () => {
         const lucroAnterior = faturamentoAnterior - totalDespesasAnterior;
 
         // Atualizar KPIs
-        kpiFaturamentoMes.textContent = formatarMoeda(faturamentoBruto);
-        kpiLucroMes.textContent = formatarMoeda(lucroLiquido);
-        kpiPecasMes.textContent = producaoDoMes.reduce((acc, p) => acc + p.qtd, 0);
-        kpiDespesasMes.textContent = formatarMoeda(totalDespesas);
+        if (kpiFaturamentoMes) kpiFaturamentoMes.textContent = formatarMoeda(faturamentoBruto);
+        if (kpiLucroMes) kpiLucroMes.textContent = formatarMoeda(lucroLiquido);
+        if (kpiPecasMes) kpiPecasMes.textContent = producaoDoMes.reduce((acc, p) => acc + p.qtd, 0);
+        if (kpiDespesasMes) kpiDespesasMes.textContent = formatarMoeda(totalDespesas);
     
         // Renderizar Indicador de Tendência
         const renderTrend = (current, previous, element) => {
@@ -1386,7 +1386,7 @@ const generateProducaoPDF = () => {
         
             if (previous === 0) {
                 if (current > 0) {
-                    element.innerHTML = `<span class="text-green-400 font-bold">↑ 100%</span> <span class="text-gemini-secondary">vs. mês anterior</span>`;
+                    element.innerHTML = `<span class="text-green-400 font-bold">↑ 100%</span> <span class="text-gemini-secondary ml-1">vs. mês anterior</span>`;
                 } else {
                     element.innerHTML = `<span class="text-gemini-secondary">-</span>`;
                 }
@@ -1394,7 +1394,6 @@ const generateProducaoPDF = () => {
             }
         
             const percentageChange = ((current - previous) / previous) * 100;
-            // Evita exibir "-0%" se a mudança for muito pequena
             if (Math.abs(percentageChange) < 0.1) {
                  element.innerHTML = `<span class="text-gemini-secondary">→ 0% vs. mês anterior</span>`;
                  return;
@@ -1402,80 +1401,66 @@ const generateProducaoPDF = () => {
             const absPercentage = Math.abs(percentageChange).toFixed(0);
         
             if (percentageChange > 0) {
-                element.innerHTML = `<span class="text-green-400 font-bold">↑ ${absPercentage}%</span> <span class="text-gemini-secondary">vs. mês anterior</span>`;
+                element.innerHTML = `<span class="text-green-400 font-bold">↑ ${absPercentage}%</span> <span class="text-gemini-secondary ml-1">vs. mês anterior</span>`;
             } else {
-                element.innerHTML = `<span class="text-red-400 font-bold">↓ ${absPercentage}%</span> <span class="text-gemini-secondary">vs. mês anterior</span>`;
+                element.innerHTML = `<span class="text-red-400 font-bold">↓ ${absPercentage}%</span> <span class="text-gemini-secondary ml-1">vs. mês anterior</span>`;
             }
         };
         
-        renderTrend(faturamentoBruto, faturamentoAnterior, kpiFaturamentoTrend);
+        // renderTrend(faturamentoBruto, faturamentoAnterior, kpiFaturamentoTrend); // REMOVED - not in new layout
         renderTrend(lucroLiquido, lucroAnterior, kpiLucroTrend);
 
-        toggleValuesVisibility();
-    
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-        const trintaDiasDepois = new Date();
-        trintaDiasDepois.setDate(hoje.getDate() + 30);
-    
-        const entregasAtrasadas = (state.producao || []).filter(p => {
-            const dataEntrega = new Date(p.entrega + 'T00:00:00');
-            return p.status !== 'Finalizado' && dataEntrega < hoje;
-        }).sort((a, b) => new Date(a.entrega) - new Date(b.entrega));
-    
-        const entregasProximas = (state.producao || []).filter(p => {
-            const dataEntrega = new Date(p.entrega + 'T00:00:00');
-            return p.status !== 'Finalizado' && dataEntrega >= hoje && dataEntrega <= trintaDiasDepois;
-        }).sort((a, b) => new Date(a.entrega) - new Date(b.entrega));
-        
-        const todasAsEntregas = [...entregasAtrasadas, ...entregasProximas];
-    
-        listaEntregasProximas.innerHTML = '';
-        if (todasAsEntregas.length === 0) {
-            listaEntregasProximas.innerHTML = '<p class="text-center text-gemini-secondary">Nenhuma entrega próxima ou atrasada</p>';
-        } else {
-            todasAsEntregas.forEach(entrega => {
-                const dentista = (state.dentistas || []).find(d => d.id === entrega.dentista);
-                const dentistaName = dentista ? dentista.nome : 'Dentista desconhecido';
-                const dataEntrega = new Date(entrega.entrega + 'T00:00:00');
-                const isUrgent = dataEntrega < hoje;
+        // --- RENDER TIMELINE ---
+        if (dashboardListTimeline) {
+            dashboardListTimeline.innerHTML = '';
+            // Get all production sorted by date descending, limit 20
+            const recentProduction = [...(state.producao || [])].sort((a, b) => new Date(b.data) - new Date(a.data)).slice(0, 15);
 
-                // Buscar os detalhes extras
-                const tipoTrabalho = entrega.tipo || 'Tipo não informado';
-                const observacoes = entrega.obs || 'Nenhuma observação';
+            if (recentProduction.length === 0) {
+                dashboardListTimeline.innerHTML = '<p class="text-gemini-secondary text-sm text-center">Nenhuma produção recente.</p>';
+            } else {
+                recentProduction.forEach(p => {
+                    const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
+                    const dentistaName = dentista ? dentista.nome : 'Desconhecido';
+                    const statusClass = {
+                        'Pendente': 'status-pendente',
+                        'Em Andamento': 'status-andamento',
+                        'Finalizado': 'status-finalizado'
+                    }[p.status] || 'status-pendente';
 
-                const entregaEl = document.createElement('div');
-                entregaEl.className = `entrega-item-container p-3 rounded-lg border ${isUrgent ? 'border-red-500 bg-red-500/10' : 'border-yellow-500 bg-yellow-500/10'}`;
-                
-                // HTML reestruturado para expansão (e CORRIGIDO sem os '+')
-                entregaEl.innerHTML = `
-                    <div class="entrega-item-header flex justify-between items-center cursor-pointer">
-                        <div class="flex-1 min-w-0">
-                            <p class="font-medium truncate">${entrega.nomePaciente || 'Paciente não informado'}</p>
-                            <p class="text-sm text-gemini-secondary truncate">${dentistaName}</p>
-                        </div>
-                        <div class="flex items-center space-x-3 flex-shrink-0 ml-3">
-                             <div class="text-right">
-                                <p class="text-sm font-medium">${dataEntrega.toLocaleDateString('pt-BR')}</p>
-                                <span class="text-xs px-2 py-1 rounded-full ${isUrgent ? 'bg-red-500 text-white' : 'bg-yellow-500 text-black'}">${isUrgent ? 'ATRASADO' : 'PRÓXIMO'}</span>
+                    // Valor
+                    const valorDentista = dentista ? (dentista.valores || []).find(v => v.tipo === p.tipo) : null;
+                    const valorGlobal = (state.valores || []).find(v => v.tipo === p.tipo);
+                    const val = (valorDentista || valorGlobal)?.valor || 0;
+                    const total = val * p.qtd;
+
+                    const item = document.createElement('div');
+                    item.className = `timeline-item ${statusClass} pb-4 last:pb-0`;
+                    item.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-semibold text-gemini-primary">${dentistaName}</p>
+                                <p class="text-xs text-gemini-secondary">${p.tipo} (${p.qtd}x)</p>
                             </div>
-                            <button class="finalize-entrega-btn p-2 rounded-full bg-green-500/20 hover:bg-green-500/40" data-id="${entrega.id}" title="Finalizar Entrega">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-green-400" style="pointer-events: none;">
-                                    <polyline points="20 6 9 17 4 12"></polyline>
-                                </svg>
-                            </button>
-                            <svg class="entrega-expand-icon w-4 h-4 text-gemini-secondary transition-transform" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            <div class="text-right">
+                                <span class="text-xs font-bold text-gemini-primary monetary-value">${formatarMoeda(total)}</span>
+                                <p class="text-[10px] text-gemini-secondary uppercase tracking-wider mt-0.5">${p.status}</p>
+                            </div>
                         </div>
-                     </div>
- 
-                     <div class="entrega-item-details hidden mt-3 pt-3 border-t border-gemini-border/50">
-                         <p class="text-sm"><strong class="text-gemini-secondary">Trabalho:</strong> ${tipoTrabalho}</p>
-                         <p class="text-sm mt-1 break-words"><strong class="text-gemini-secondary">Obs:</strong> ${observacoes}</p>
-                     </div>
-                 `;
-                 listaEntregasProximas.appendChild(entregaEl);
-            });
-        } 
+                    `;
+                    dashboardListTimeline.appendChild(item);
+                });
+            }
+        }
+
+        // --- UPDATE TICKET MEDIO KPI ---
+        if (kpiTicketMedio) {
+            const totalPecas = producaoDoMes.reduce((acc, p) => acc + p.qtd, 0);
+            const ticket = totalPecas > 0 ? faturamentoBruto / totalPecas : 0;
+            kpiTicketMedio.textContent = formatarMoeda(ticket);
+        }
+
+        toggleValuesVisibility();
     };
     
 
