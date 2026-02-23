@@ -954,15 +954,496 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // --- HELPER FUNCTIONS MISSING ---
+
+    const updateAuthUI = () => {
+        if (isLoginMode) {
+            authTitle.dataset.i18n = "auth_title_login";
+            authTitle.textContent = t('auth_title_login');
+            authButton.dataset.i18n = "auth_button_login";
+            authButton.textContent = t('auth_button_login');
+            toggleAuthMode.innerHTML = `<span data-i18n="auth_toggle_register">${t('auth_toggle_register')}</span>`;
+        } else {
+            authTitle.dataset.i18n = "auth_title_register";
+            authTitle.textContent = t('auth_title_register');
+            authButton.dataset.i18n = "auth_button_register";
+            authButton.textContent = t('auth_button_register');
+            toggleAuthMode.innerHTML = `<span data-i18n="auth_toggle_login">${t('auth_toggle_login')}</span>`;
+        }
+    };
+
+    const toggleValuesVisibility = (caller) => {
+        const isHidden = document.body.classList.toggle('values-hidden');
+        const elements = document.querySelectorAll('.monetary-value');
+
+        if (isHidden) {
+            eyeIcon.classList.remove('hidden');
+            eyeOffIcon.classList.add('hidden');
+            elements.forEach(el => {
+                if (!el.dataset.originalValue) el.dataset.originalValue = el.textContent;
+                el.textContent = '---';
+            });
+        } else {
+            eyeIcon.classList.add('hidden');
+            eyeOffIcon.classList.remove('hidden');
+            elements.forEach(el => {
+                if (el.dataset.originalValue) el.textContent = el.dataset.originalValue;
+            });
+        }
+    };
+
+    const updateMonthDisplay = () => {
+        const date = new Date(state.mesAtual);
+        const options = { month: 'long', year: 'numeric' };
+        const text = date.toLocaleDateString(currentLang === 'pt' ? 'pt-BR' : (currentLang === 'es' ? 'es-ES' : 'en-US'), options);
+        const capitalized = text.charAt(0).toUpperCase() + text.slice(1);
+
+        if (mesAnoAtualSpan) mesAnoAtualSpan.textContent = capitalized;
+        if (dashboardMesAnoAtualSpan) dashboardMesAnoAtualSpan.textContent = capitalized;
+    };
+
+    const calculateFaturamentoForPeriod = (startDate, endDate) => {
+        let total = 0;
+        (state.producao || []).forEach(p => {
+            const d = new Date(p.data + "T00:00:00");
+            if (d >= startDate && d <= endDate) {
+                const dentista = (state.dentistas || []).find(dev => dev.id === p.dentista);
+                const valorDentista = dentista ? (dentista.valores || []).find(v => v.tipo === p.tipo) : null;
+                const valorGlobal = (state.valores || []).find(v => v.tipo === p.tipo);
+                const valor = (valorDentista || valorGlobal)?.valor || 0;
+                total += valor * p.qtd;
+            }
+        });
+        return total;
+    };
+
+    const setupFirestoreListener = (uid) => {
+        const userDocRef = doc(db, 'users', uid);
+        unsubscribeFromFirestore = onSnapshot(userDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                state = { ...state, ...data };
+                // Ensure array fields exist
+                state.producao = state.producao || [];
+                state.despesas = state.despesas || [];
+                state.dentistas = state.dentistas || [];
+                state.estoque = state.estoque || [];
+                state.valores = state.valores || [];
+                state.quickNotes = state.quickNotes || [];
+                state.notifications = state.notifications || [];
+
+                renderAllUIComponents();
+            } else {
+                // Initialize new user
+                saveDataToFirestore();
+            }
+        }, (error) => {
+            console.error("Firestore Error:", error);
+            showToast(t('toast_error_generic'), 'error');
+        });
+    };
+
+    let saveTimeout;
+    const saveDataToFirestore = () => {
+        if (!userId) return;
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(async () => {
+            try {
+                const userDocRef = doc(db, 'users', userId);
+                const dataToSave = {
+                    valores: state.valores,
+                    producao: state.producao,
+                    despesas: state.despesas,
+                    dentistas: state.dentistas,
+                    estoque: state.estoque,
+                    quickNotes: state.quickNotes,
+                    closingDayStart: state.closingDayStart,
+                    closingDayEnd: state.closingDayEnd,
+                    notifications: state.notifications
+                };
+                await setDoc(userDocRef, dataToSave, { merge: true });
+            } catch (error) {
+                console.error("Error saving to Firestore:", error);
+                showToast(t('toast_error_generic'), 'error');
+            }
+        }, 1000);
+    };
+
+    const renderAllUIComponents = () => {
+        if (typeof renderizarDashboard === 'function') renderizarDashboard();
+        if (typeof renderizarProducao === 'function') renderizarProducao();
+        if (typeof renderizarEstoque === 'function') renderizarEstoque();
+        if (typeof renderizarDespesas === 'function') renderizarDespesas();
+        if (typeof renderizarDentistas === 'function') renderizarDentistas();
+        if (typeof renderizarAnaliseDentista === 'function') renderizarAnaliseDentista();
+        if (typeof renderizarResumo === 'function') renderizarResumo();
+
+        updateNotificationUI();
+
+        const pacientesList = document.getElementById('pacientes-list');
+        if (pacientesList) {
+            pacientesList.innerHTML = '';
+            const pacientes = [...new Set((state.producao || []).map(p => p.nomePaciente))].sort();
+            pacientes.forEach(nome => {
+                const option = document.createElement('option');
+                option.value = nome;
+                pacientesList.appendChild(option);
+            });
+        }
+
+        const dentistasList = document.getElementById('dentistas-list');
+        if (dentistasList) {
+            dentistasList.innerHTML = '';
+            (state.dentistas || []).sort((a,b) => a.nome.localeCompare(b.nome)).forEach(d => {
+                const option = document.createElement('option');
+                option.value = d.nome;
+                dentistasList.appendChild(option);
+            });
+        }
+    };
+
+    const renderizarProducao = () => {
+        if (listaProducaoDia) {
+            listaProducaoDia.innerHTML = '';
+            const hoje = new Date().toISOString().split('T')[0];
+            const producaoDia = (state.producao || []).filter(p => p.data === hoje);
+
+            let totalPecas = 0;
+            let totalValor = 0;
+
+            if (producaoDia.length === 0) {
+                listaProducaoDia.innerHTML = '<p class="text-gray-500 text-center text-sm py-4">Nenhuma produção hoje.</p>';
+            } else {
+                producaoDia.forEach(p => {
+                    const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
+                    const valorDentista = dentista ? (dentista.valores || []).find(v => v.tipo === p.tipo) : null;
+                    const valorGlobal = (state.valores || []).find(v => v.tipo === p.tipo);
+                    const valor = (valorDentista || valorGlobal)?.valor || 0;
+
+                    totalPecas += p.qtd;
+                    totalValor += valor * p.qtd;
+
+                    const el = document.createElement('div');
+                    el.className = 'flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5';
+                    el.innerHTML = `
+                        <div>
+                            <p class="font-bold text-sm text-gray-200">${p.nomePaciente}</p>
+                            <p class="text-xs text-gray-500">${dentista ? dentista.nome : 'Dentista Desconhecido'} • ${p.tipo}</p>
+                        </div>
+                        <div class="text-right">
+                             <p class="font-bold text-primary text-sm monetary-value">${formatarMoeda(valor * p.qtd)}</p>
+                             <p class="text-xs text-gray-500">${p.qtd} un</p>
+                        </div>
+                    `;
+                    listaProducaoDia.appendChild(el);
+                });
+            }
+            if (totalPecasDia) totalPecasDia.textContent = totalPecas;
+            if (totalFaturamentoDia) totalFaturamentoDia.textContent = formatarMoeda(totalValor);
+        }
+
+        if (producaoDentistaTableBody) {
+            producaoDentistaTableBody.innerHTML = '';
+            let filtered = state.producao || [];
+
+            if (filterDentistaSelect && filterDentistaSelect.value) {
+                const dentistaNome = filterDentistaSelect.value;
+                const dentista = state.dentistas.find(d => d.nome === dentistaNome);
+                if (dentista) {
+                   filtered = filtered.filter(p => p.dentista === dentista.id);
+                }
+            }
+
+            if (filterStatusSelect && filterStatusSelect.value) {
+                filtered = filtered.filter(p => p.status === filterStatusSelect.value);
+            }
+
+            if (filterDataInicio && filterDataInicio.value) {
+                 filtered = filtered.filter(p => p.data >= filterDataInicio.value);
+            }
+
+            if (filterDataFim && filterDataFim.value) {
+                 filtered = filtered.filter(p => p.data <= filterDataFim.value);
+            }
+
+            if (!filterDataInicio.value && !filterDentistaSelect.value) {
+                filtered = filtered.sort((a,b) => new Date(b.data) - new Date(a.data)).slice(0, 50);
+            }
+
+            if (filtered.length === 0) {
+                 producaoDentistaTableBody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-500">Nenhum registro encontrado.</td></tr>';
+            } else {
+                 filtered.forEach(p => {
+                    const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
+                    const valorDentista = dentista ? (dentista.valores || []).find(v => v.tipo === p.tipo) : null;
+                    const valorGlobal = (state.valores || []).find(v => v.tipo === p.tipo);
+                    const valor = (valorDentista || valorGlobal)?.valor || 0;
+
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-white/5 transition-colors border-b border-white/5';
+                    tr.innerHTML = `
+                        <td class="p-3">${dentista ? abbreviateName(dentista.nome) : 'Desconhecido'}</td>
+                        <td class="p-3">${p.nomePaciente}</td>
+                        <td class="p-3 text-xs text-gray-400">${p.tipo} (${p.qtd})</td>
+                        <td class="p-3"><span class="px-2 py-1 rounded text-xs font-bold ${p.status === 'Finalizado' ? 'bg-green-500/20 text-green-400' : (p.status === 'Em Andamento' ? 'bg-blue-500/20 text-blue-400' : 'bg-yellow-500/20 text-yellow-400')}">${p.status}</span></td>
+                        <td class="p-3 monetary-value font-medium">${formatarMoeda(valor * p.qtd)}</td>
+                        <td class="p-3 text-right">
+                            <button class="text-gray-400 hover:text-white mr-2 edit-producao-btn" data-id="${p.id}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
+                            <button class="text-red-400 hover:text-red-300 delete-producao-btn" data-id="${p.id}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                        </td>
+                    `;
+                    producaoDentistaTableBody.appendChild(tr);
+                 });
+            }
+        }
+
+        if (filterDentistaSelect && filterDentistaSelect.options.length <= 1) {
+             filterDentistaSelect.innerHTML = '<option value="">Todos Dentistas</option>';
+             (state.dentistas || []).sort((a,b) => a.nome.localeCompare(b.nome)).forEach(d => {
+                const option = document.createElement('option');
+                option.value = d.nome;
+                option.textContent = d.nome;
+                filterDentistaSelect.appendChild(option);
+            });
+        }
+    };
+
+    const renderizarEstoque = () => {
+        if (!listaEstoque) return;
+        listaEstoque.innerHTML = '';
+
+        let filtered = state.estoque || [];
+        if (state.searchTermEstoque) {
+            const term = state.searchTermEstoque.toLowerCase();
+            filtered = filtered.filter(i => i.nome.toLowerCase().includes(term) || (i.fornecedor && i.fornecedor.toLowerCase().includes(term)));
+        }
+
+        if (filtered.length === 0) {
+             listaEstoque.innerHTML = '<p class="text-gray-500 text-center col-span-2">Nenhum material encontrado.</p>';
+        } else {
+             filtered.forEach(item => {
+                const isLow = item.qtd <= item.min;
+                const el = document.createElement('div');
+                el.className = `p-4 rounded-xl border ${isLow ? 'bg-red-500/10 border-red-500/20' : 'bg-white/5 border-white/5'}`;
+                el.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <h4 class="font-bold text-gray-200">${item.nome}</h4>
+                            <p class="text-xs text-gray-500">${item.fornecedor || 'Sem fornecedor'}</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="text-gray-400 hover:text-white edit-estoque-btn" data-id="${item.id}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
+                            <button class="text-red-400 hover:text-red-300 delete-estoque-btn" data-id="${item.id}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-end mt-4">
+                        <div>
+                            <p class="text-xs text-gray-500 mb-1">Quantidade</p>
+                            <p class="text-xl font-bold ${isLow ? 'text-red-400' : 'text-primary'}">${item.qtd} <span class="text-xs font-normal text-gray-400">${item.unidade}</span></p>
+                        </div>
+                         <div>
+                            <p class="text-xs text-gray-500 mb-1 text-right">Preço Un.</p>
+                            <p class="font-bold monetary-value">${formatarMoeda(item.preco)}</p>
+                        </div>
+                    </div>
+                `;
+                listaEstoque.appendChild(el);
+             });
+        }
+    };
+
+    const renderizarDespesas = () => {
+        if (!listaDespesasCompleta) return;
+        listaDespesasCompleta.innerHTML = '';
+
+        let filtered = state.despesas || [];
+        if (state.searchTermDespesas) {
+             const term = state.searchTermDespesas.toLowerCase();
+             filtered = filtered.filter(d => d.desc.toLowerCase().includes(term) || d.categoria.toLowerCase().includes(term));
+        }
+
+        filtered = filtered.sort((a,b) => new Date(b.data) - new Date(a.data));
+
+        if (filtered.length === 0) {
+            listaDespesasCompleta.innerHTML = '<p class="text-gray-500 text-center text-sm py-4">Nenhuma despesa registrada.</p>';
+        } else {
+            filtered.forEach(d => {
+                const el = document.createElement('div');
+                el.className = 'flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5';
+                el.innerHTML = `
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <p class="font-bold text-sm text-gray-200">${d.desc}</p>
+                            ${d.recorrente ? '<span class="text-[10px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded">R</span>' : ''}
+                        </div>
+                        <p class="text-xs text-gray-500">${new Date(d.data).toLocaleDateString()} • ${d.categoria}</p>
+                    </div>
+                     <div class="flex items-center gap-4">
+                        <p class="font-bold text-red-400 text-sm monetary-value">- ${formatarMoeda(d.valor)}</p>
+                        <div class="flex gap-1">
+                             <button class="text-gray-400 hover:text-white edit-despesa-btn" data-id="${d.id}"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
+                            <button class="text-red-400 hover:text-red-300 delete-despesa-btn" data-id="${d.id}"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                        </div>
+                    </div>
+                `;
+                listaDespesasCompleta.appendChild(el);
+            });
+        }
+
+        if (despesasContainer) {
+             despesasContainer.innerHTML = '';
+             const recent = filtered.slice(0, 5);
+             if (recent.length === 0) {
+                 despesasContainer.innerHTML = '<p class="text-gray-500 text-center text-xs">Sem dados.</p>';
+             } else {
+                 recent.forEach(d => {
+                     const el = document.createElement('div');
+                     el.className = 'flex justify-between items-center text-sm p-2 hover:bg-white/5 rounded';
+                     el.innerHTML = `<span>${d.desc}</span><span class="text-red-400 monetary-value">- ${formatarMoeda(d.valor)}</span>`;
+                     despesasContainer.appendChild(el);
+                 });
+             }
+        }
+    };
+
+    const renderizarDentistas = () => {
+        if (!listaDentistas) return;
+        listaDentistas.innerHTML = '';
+
+        let filtered = state.dentistas || [];
+        if (state.searchTermDentistas) {
+            const term = state.searchTermDentistas.toLowerCase();
+            filtered = filtered.filter(d => d.nome.toLowerCase().includes(term) || (d.clinica && d.clinica.toLowerCase().includes(term)));
+        }
+
+        filtered.sort((a,b) => a.nome.localeCompare(b.nome));
+
+        if (filtered.length === 0) {
+            listaDentistas.innerHTML = '<p class="text-gray-500 text-center col-span-2">Nenhum dentista encontrado.</p>';
+        } else {
+            filtered.forEach(d => {
+                const el = document.createElement('div');
+                el.className = 'p-4 bg-white/5 rounded-xl border border-white/5 flex justify-between items-center';
+                el.innerHTML = `
+                    <div class="flex items-center gap-3">
+                         <div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+                            ${d.nome.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-200 text-sm">${d.nome}</h4>
+                            <p class="text-xs text-gray-500">${d.clinica || 'Sem clínica'} • ${d.telefone || 'Sem telefone'}</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="text-gray-400 hover:text-white edit-dentista-btn" data-id="${d.id}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
+                        <button class="text-red-400 hover:text-red-300 delete-dentista-btn" data-id="${d.id}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                    </div>
+                `;
+                listaDentistas.appendChild(el);
+            });
+        }
+    };
+
+    const renderizarAnaliseDentista = () => {
+        updateDentistaChart();
+
+        if (!dentistaSummaryTableBody) return;
+        dentistaSummaryTableBody.innerHTML = '';
+
+        const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
+        const map = {};
+
+        (state.producao || []).filter(p => {
+            const d = new Date(p.data + "T00:00:00");
+            return d >= startDate && d <= endDate;
+        }).forEach(p => {
+            const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
+            if (!dentista) return;
+            const valor = ((dentista.valores || []).find(v => v.tipo === p.tipo) || (state.valores || []).find(v => v.tipo === p.tipo))?.valor || 0;
+            if (!map[dentista.nome]) map[dentista.nome] = { faturamento: 0, pecas: 0 };
+            map[dentista.nome].faturamento += valor * p.qtd;
+            map[dentista.nome].pecas += p.qtd;
+        });
+
+        const entries = Object.entries(map).map(([nome, v]) => ({ nome, ...v })).sort((a, b) => b.faturamento - a.faturamento);
+
+        entries.forEach(entry => {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-white/5 transition-colors border-b border-white/5';
+            tr.innerHTML = `
+                <td class="p-3 font-medium">${entry.nome}</td>
+                <td class="p-3 text-gray-400">${entry.pecas}</td>
+                <td class="p-3 text-primary font-bold monetary-value">${formatarMoeda(entry.faturamento)}</td>
+                <td class="p-3 text-gray-400 monetary-value">${formatarMoeda(entry.pecas ? entry.faturamento / entry.pecas : 0)}</td>
+            `;
+            dentistaSummaryTableBody.appendChild(tr);
+        });
+
+        toggleValuesVisibility();
+    };
+
+    const renderizarResumo = () => {
+        updateDailyRevenueChart();
+
+        const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
+
+        const faturamento = calculateFaturamentoForPeriod(startDate, endDate);
+        const despesas = (state.despesas || []).filter(d => {
+            const date = new Date(d.data + "T00:00:00");
+            return date >= startDate && date <= endDate;
+        }).reduce((acc, d) => acc + d.valor, 0);
+
+        const pecas = (state.producao || []).filter(p => {
+            const date = new Date(p.data + "T00:00:00");
+            return date >= startDate && date <= endDate;
+        }).reduce((acc, p) => acc + p.qtd, 0);
+
+        const lucro = faturamento - despesas;
+
+        if (totalPecasMes) totalPecasMes.textContent = pecas;
+        if (totalFaturamentoMes) totalFaturamentoMes.textContent = formatarMoeda(faturamento);
+        if (totalDespesasMes) totalDespesasMes.textContent = formatarMoeda(despesas);
+        if (lucroLiquidoMes) lucroLiquidoMes.textContent = formatarMoeda(lucro);
+
+        if (faturamentoBarLabel) faturamentoBarLabel.textContent = formatarMoeda(faturamento);
+        if (despesasBarLabel) despesasBarLabel.textContent = formatarMoeda(despesas);
+
+        const max = Math.max(faturamento, despesas) || 1;
+        if (faturamentoBar) faturamentoBar.style.width = `${(faturamento / max) * 100}%`;
+        if (despesasBar) despesasBar.style.width = `${(despesas / max) * 100}%`;
+
+        if (resumoTiposContainer) {
+            resumoTiposContainer.innerHTML = '';
+            const typeCounts = {};
+            (state.producao || []).forEach(p => {
+                const d = new Date(p.data + "T00:00:00");
+                if (d >= startDate && d <= endDate) {
+                    typeCounts[p.tipo] = (typeCounts[p.tipo] || 0) + p.qtd;
+                }
+            });
+
+            Object.entries(typeCounts)
+                .sort((a,b) => b[1] - a[1])
+                .forEach(([tipo, qtd]) => {
+                    const el = document.createElement('div');
+                    el.className = 'flex justify-between items-center p-2 hover:bg-white/5 rounded';
+                    el.innerHTML = `<span class="text-sm text-gray-300">${tipo}</span><span class="text-sm font-bold text-accent">${qtd}</span>`;
+                    resumoTiposContainer.appendChild(el);
+                });
+        }
+
+        toggleValuesVisibility();
+    };
+
     // --- INICIALIZAÇÃO ---
     const initApp = () => {
         document.querySelectorAll('button[type="submit"]').forEach(button => {
             button.dataset.originalText = button.innerHTML;
         });
         const hoje = new Date();
-        producaoDataInput.valueAsDate = hoje;
-        entregaDataInput.valueAsDate = hoje;
-        despesaDataInput.valueAsDate = hoje;
+        if (producaoDataInput) producaoDataInput.valueAsDate = hoje;
+        if (entregaDataInput) entregaDataInput.valueAsDate = hoje;
+        if (despesaDataInput) despesaDataInput.valueAsDate = hoje;
         
         if (producaoItemsContainer) {
             producaoItemsContainer.innerHTML = '';
@@ -971,8 +1452,369 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         initLanguage();
-        // Delay chart init slightly to ensure DOM is ready
         setTimeout(initializeCharts, 100);
+
+        // --- AUTH LISTENERS ---
+        if (authForm) {
+            authForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = emailInput.value;
+                const password = passwordInput.value;
+
+                setButtonLoading(authButton, true);
+                authErrorMessage.classList.add('hidden');
+
+                try {
+                    if (isLoginMode) {
+                        await signInWithEmailAndPassword(auth, email, password);
+                    } else {
+                        await createUserWithEmailAndPassword(auth, email, password);
+                    }
+                } catch (error) {
+                    console.error("Auth Error:", error);
+                    authErrorMessage.textContent = error.message;
+                    authErrorMessage.classList.remove('hidden');
+                } finally {
+                    setButtonLoading(authButton, false);
+                }
+            });
+        }
+
+        if (toggleAuthMode) {
+            toggleAuthMode.addEventListener('click', () => {
+                isLoginMode = !isLoginMode;
+                updateAuthUI();
+            });
+        }
+
+        if (logoutButton) {
+            logoutButton.addEventListener('click', () => {
+                signOut(auth);
+            });
+        }
+
+        if (passwordResetButton) {
+            passwordResetButton.addEventListener('click', async () => {
+                const email = emailInput.value;
+                if (!email) {
+                     showToast(t('toast_email_required'), 'error');
+                     return;
+                }
+                try {
+                    await sendPasswordResetEmail(auth, email);
+                    showToast(t('toast_recovery_email_sent'), 'success');
+                } catch (error) {
+                    showToast(t('toast_recovery_email_failed'), 'error');
+                }
+            });
+        }
+
+        // --- NAVIGATION LISTENERS ---
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                navLinks.forEach(l => l.classList.remove('active', 'bg-primary/10', 'text-primary'));
+                link.classList.add('active', 'bg-primary/10', 'text-primary');
+
+                views.forEach(v => v.classList.add('hidden'));
+                const viewId = link.dataset.view;
+                const view = document.getElementById(viewId);
+                if (view) {
+                    view.classList.remove('hidden');
+                    if (viewId === 'view-producao') renderizarProducao();
+                    if (viewId === 'view-estoque') renderizarEstoque();
+                    if (viewId === 'view-despesas') renderizarDespesas();
+                    if (viewId === 'view-dentistas') renderizarDentistas();
+                    if (viewId === 'view-analise-dentista') renderizarAnaliseDentista();
+                    if (viewId === 'view-resumo') renderizarResumo();
+                    if (viewId === 'view-dashboard') renderizarDashboard();
+                }
+
+                if (window.innerWidth < 1024) {
+                     sideMenu.classList.add('-translate-x-full');
+                     sideMenuOverlay.classList.add('hidden');
+                }
+            });
+        });
+
+        if (menuToggleButton) {
+            menuToggleButton.addEventListener('click', () => {
+                sideMenu.classList.remove('-translate-x-full');
+                sideMenuOverlay.classList.remove('hidden');
+            });
+        }
+
+        if (sideMenuOverlay) {
+             sideMenuOverlay.addEventListener('click', () => {
+                 sideMenu.classList.add('-translate-x-full');
+                 sideMenuOverlay.classList.add('hidden');
+             });
+        }
+
+        // --- FORM LISTENERS ---
+        if (formProducao) {
+            formProducaoAddItemBtn.addEventListener('click', () => {
+                producaoItemsContainer.appendChild(createMainFormItemRow());
+                updateMainRemoveButtonsVisibility();
+            });
+
+            producaoItemsContainer.addEventListener('click', (e) => {
+                if (e.target.closest('.remove-main-item-btn')) {
+                    e.target.closest('.main-work-item-group').remove();
+                    updateMainRemoveButtonsVisibility();
+                }
+            });
+
+            formProducao.addEventListener('submit', (e) => {
+                e.preventDefault();
+                setButtonLoading(producaoSubmitBtn, true);
+
+                try {
+                    const dentistaNome = producaoDentistaInput.value;
+                    let dentista = state.dentistas.find(d => d.nome === dentistaNome);
+
+                    if (!dentista) {
+                         showToast(t('toast_dentist_not_found'), 'error');
+                         setButtonLoading(producaoSubmitBtn, false);
+                         return;
+                    }
+
+                    const rows = producaoItemsContainer.querySelectorAll('.main-work-item-group');
+                    const timestamp = new Date().toISOString();
+
+                    rows.forEach((row, index) => {
+                         const tipo = row.querySelector('.main-producao-tipo-select').value;
+                         const qtd = parseInt(row.querySelector('.main-producao-qtd-input').value) || 1;
+
+                         const newItem = {
+                             id: Date.now() + index,
+                             dentista: dentista.id,
+                             nomePaciente: producaoPacienteInput.value,
+                             tipo,
+                             qtd,
+                             data: producaoDataInput.value,
+                             entrega: entregaDataInput.value,
+                             status: producaoStatusSelect.value,
+                             obs: producaoObsInput.value,
+                             anexo: null,
+                             timestamp
+                         };
+                         state.producao.unshift(newItem);
+                    });
+
+                    saveDataToFirestore();
+                    renderAllUIComponents();
+
+                    formProducao.reset();
+                    producaoDataInput.valueAsDate = new Date();
+                    entregaDataInput.valueAsDate = new Date();
+                    producaoItemsContainer.innerHTML = '';
+                    producaoItemsContainer.appendChild(createMainFormItemRow());
+                    updateMainRemoveButtonsVisibility();
+
+                    showToast(t('toast_success_production_add'), 'success');
+
+                } catch (error) {
+                    console.error(error);
+                    showToast(t('toast_error_save_production'), 'error');
+                } finally {
+                    setButtonLoading(producaoSubmitBtn, false);
+                }
+            });
+        }
+
+        if (formEstoque) {
+            formEstoque.addEventListener('submit', (e) => {
+                e.preventDefault();
+                setButtonLoading(formEstoqueSubmitBtn, true);
+
+                try {
+                    const newItem = {
+                        id: Date.now(),
+                        nome: estoqueNomeInput.value,
+                        fornecedor: estoqueFornecedorInput.value,
+                        qtd: parseFloat(estoqueQtdInput.value),
+                        unidade: estoqueUnidadeInput.value,
+                        min: parseFloat(estoqueMinInput.value),
+                        preco: parseFloat(estoquePrecoInput.value) || 0
+                    };
+                    state.estoque.unshift(newItem);
+                    saveDataToFirestore();
+                    renderizarEstoque();
+                    formEstoque.reset();
+                    showToast(t('toast_success_material_save'), 'success');
+                } catch(e) {
+                    showToast(t('toast_error_generic'), 'error');
+                } finally {
+                    setButtonLoading(formEstoqueSubmitBtn, false);
+                }
+            });
+        }
+
+        if (formDespesas) {
+             formDespesas.addEventListener('submit', (e) => {
+                 e.preventDefault();
+                 setButtonLoading(formDespesaSubmitBtn, true);
+
+                 try {
+                     const newItem = {
+                         id: Date.now(),
+                         desc: despesaDescInput.value,
+                         categoria: despesaCategoriaSelect.value,
+                         valor: parseFloat(despesaValorInput.value),
+                         data: despesaDataInput.value,
+                         recorrente: despesaRecorrenteCheckbox.checked
+                     };
+                     state.despesas.unshift(newItem);
+                     saveDataToFirestore();
+                     renderizarDespesas();
+                     renderizarDashboard();
+                     renderizarResumo();
+                     formDespesas.reset();
+                     despesaDataInput.valueAsDate = new Date();
+                     showToast(t('toast_success_expense_add'), 'success');
+                 } catch(e) {
+                     showToast(t('toast_error_save_expense'), 'error');
+                 } finally {
+                     setButtonLoading(formDespesaSubmitBtn, false);
+                 }
+             });
+        }
+
+        if (formDentista) {
+            formDentista.addEventListener('submit', (e) => {
+                e.preventDefault();
+                setButtonLoading(formDentistaSubmitBtn, true);
+                try {
+                    const newItem = {
+                        id: Date.now().toString(),
+                        nome: dentistaNomeInput.value,
+                        clinica: dentistaClinicaInput.value,
+                        telefone: dentistaTelefoneInput.value,
+                        email: dentistaEmailInput.value,
+                        valores: []
+                    };
+                    state.dentistas.unshift(newItem);
+                    saveDataToFirestore();
+                    renderAllUIComponents();
+                    formDentista.reset();
+                    showToast(t('toast_success_dentist_add'), 'success');
+                } catch(e) {
+                    showToast(t('toast_error_save_dentist'), 'error');
+                } finally {
+                     setButtonLoading(formDentistaSubmitBtn, false);
+                }
+            });
+        }
+
+        if (quickAddProductionForm) {
+            addWorkItemBtn.addEventListener('click', () => {
+                quickProductionItemsContainer.appendChild(createWorkItemRow());
+                updateRemoveButtonsVisibility();
+            });
+
+            quickProductionItemsContainer.addEventListener('click', (e) => {
+                if (e.target.closest('.remove-work-item-btn')) {
+                    e.target.closest('.work-item-group').remove();
+                    updateRemoveButtonsVisibility();
+                }
+            });
+
+            quickAddProductionForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const dentistaNome = quickProducaoDentistaInput.value;
+                let dentista = state.dentistas.find(d => d.nome === dentistaNome);
+                if (!dentista) {
+                     showToast(t('toast_dentist_not_found'), 'error');
+                     return;
+                }
+                 const rows = quickProductionItemsContainer.querySelectorAll('.work-item-group');
+                 rows.forEach((row, index) => {
+                     const tipo = row.querySelector('.quick-producao-tipo-select').value;
+                     const qtd = parseInt(row.querySelector('.quick-producao-qtd-input').value) || 1;
+                     state.producao.unshift({
+                         id: Date.now() + index,
+                         dentista: dentista.id,
+                         nomePaciente: quickProducaoPacienteInput.value,
+                         tipo,
+                         qtd,
+                         data: quickProducaoDataInput.value,
+                         entrega: quickEntregaDataInput.value,
+                         status: 'Pendente',
+                         obs: quickProducaoObsInput.value,
+                         timestamp: new Date().toISOString()
+                     });
+                });
+                saveDataToFirestore();
+                renderAllUIComponents();
+                addProductionModal.classList.add('hidden');
+                quickAddProductionForm.reset();
+                showToast(t('toast_success_production_add'), 'success');
+            });
+        }
+
+        // --- UI & MODAL LISTENERS ---
+        if (toggleValuesBtn) {
+            toggleValuesBtn.addEventListener('click', () => toggleValuesVisibility('btn'));
+        }
+
+        if (actionAddProducao) {
+            actionAddProducao.addEventListener('click', () => {
+                addProductionModal.classList.remove('hidden');
+                quickProducaoDataInput.valueAsDate = new Date();
+                quickEntregaDataInput.valueAsDate = new Date();
+                quickProductionItemsContainer.innerHTML = '';
+                quickProductionItemsContainer.appendChild(createWorkItemRow());
+                updateRemoveButtonsVisibility();
+            });
+        }
+
+        if (closeAddProductionModalBtn) {
+            closeAddProductionModalBtn.addEventListener('click', () => addProductionModal.classList.add('hidden'));
+        }
+        if (quickAddProductionCancelBtn) {
+            quickAddProductionCancelBtn.addEventListener('click', () => addProductionModal.classList.add('hidden'));
+        }
+
+        // --- DASHBOARD MONTH NAV ---
+        const changeMonth = (offset) => {
+            const current = new Date(state.mesAtual);
+            current.setMonth(current.getMonth() + offset);
+            state.mesAtual = current.toISOString();
+            renderAllUIComponents();
+        };
+
+        if (dashboardPrevMonthBtn) dashboardPrevMonthBtn.addEventListener('click', () => changeMonth(-1));
+        if (dashboardNextMonthBtn) dashboardNextMonthBtn.addEventListener('click', () => changeMonth(1));
+        if (prevMonthBtn) prevMonthBtn.addEventListener('click', () => changeMonth(-1));
+        if (nextMonthBtn) nextMonthBtn.addEventListener('click', () => changeMonth(1));
+
+        // --- FILTER LISTENERS ---
+        if (filterDentistaSelect) filterDentistaSelect.addEventListener('change', renderizarProducao);
+        if (filterStatusSelect) filterStatusSelect.addEventListener('change', renderizarProducao);
+        if (filterDataInicio) filterDataInicio.addEventListener('change', renderizarProducao);
+        if (filterDataFim) filterDataFim.addEventListener('change', renderizarProducao);
+
+        if (searchEstoqueInput) {
+             searchEstoqueInput.addEventListener('input', (e) => {
+                 state.searchTermEstoque = e.target.value;
+                 renderizarEstoque();
+             });
+        }
+
+        if (searchDespesasInput) {
+             searchDespesasInput.addEventListener('input', (e) => {
+                 state.searchTermDespesas = e.target.value;
+                 renderizarDespesas();
+             });
+        }
+
+        if (searchDentistasInput) {
+             searchDentistasInput.addEventListener('input', (e) => {
+                 state.searchTermDentistas = e.target.value;
+                 renderizarDentistas();
+             });
+        }
     };
 
     // --- FIREBASE INIT ---
