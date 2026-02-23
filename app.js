@@ -877,6 +877,83 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleValuesVisibility();
     };
 
+    // --- HELPERS FOR DYNAMIC FORMS ---
+
+    const createMainFormItemRow = (selectedValue = '', quantity = 1) => {
+        const row = document.createElement('div');
+        row.className = 'main-work-item-group flex gap-2 items-start';
+        row.innerHTML = `
+            <div class="flex-1">
+                 <select class="main-producao-tipo-select w-full p-3 bg-black/20 border border-white/10 rounded-xl text-sm" required>
+                    <option value="" data-i18n="placeholder_select_work_type">${t('placeholder_select_work_type')}</option>
+                </select>
+            </div>
+            <div class="w-24">
+                 <input type="number" class="main-producao-qtd-input w-full p-3 bg-black/20 border border-white/10 rounded-xl text-sm" placeholder="${t('placeholder_quantity')}" data-i18n-placeholder="placeholder_quantity" value="${quantity}" min="1" required>
+            </div>
+            <button type="button" class="remove-main-item-btn p-3 text-red-400 hover:text-red-300 rounded-lg hover:bg-white/10 transition-colors" title="Remover">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+        `;
+        const select = row.querySelector('select');
+        (state.valores || []).forEach(valor => {
+            const option = document.createElement('option');
+            option.value = valor.tipo;
+            option.textContent = valor.tipo;
+            select.appendChild(option);
+        });
+        if (selectedValue) select.value = selectedValue;
+        return row;
+    };
+
+    const updateMainRemoveButtonsVisibility = () => {
+        if (!producaoItemsContainer) return;
+        const rows = producaoItemsContainer.querySelectorAll('.main-work-item-group');
+        const removeBtns = producaoItemsContainer.querySelectorAll('.remove-main-item-btn');
+        if (rows.length === 1) {
+            removeBtns.forEach(btn => btn.classList.add('hidden'));
+        } else {
+            removeBtns.forEach(btn => btn.classList.remove('hidden'));
+        }
+    };
+
+    const createWorkItemRow = () => {
+        const row = document.createElement('div');
+        row.className = 'work-item-group flex gap-2 items-start';
+        row.innerHTML = `
+            <div class="flex-1">
+                 <select class="quick-producao-tipo-select w-full p-3 bg-black/20 border border-white/10 rounded-xl text-sm" required>
+                    <option value="" data-i18n="placeholder_select_work_type">Selecione o tipo de trabalho</option>
+                </select>
+            </div>
+            <div class="w-24">
+                 <input type="number" class="quick-producao-qtd-input w-full p-3 bg-black/20 border border-white/10 rounded-xl text-sm" placeholder="Qtd" value="1" min="1" required>
+            </div>
+            <button type="button" class="remove-work-item-btn p-3 text-red-400 hover:text-red-300 rounded-lg hover:bg-white/10 transition-colors" title="Remover">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+        `;
+        const select = row.querySelector('select');
+        (state.valores || []).forEach(valor => {
+            const option = document.createElement('option');
+            option.value = valor.tipo;
+            option.textContent = valor.tipo;
+            select.appendChild(option);
+        });
+        return row;
+    };
+
+    const updateRemoveButtonsVisibility = () => {
+        if (!quickProductionItemsContainer) return;
+        const rows = quickProductionItemsContainer.querySelectorAll('.work-item-group');
+        const removeBtns = quickProductionItemsContainer.querySelectorAll('.remove-work-item-btn');
+        if (rows.length === 1) {
+            removeBtns.forEach(btn => btn.classList.add('hidden'));
+        } else {
+            removeBtns.forEach(btn => btn.classList.remove('hidden'));
+        }
+    };
+
     // --- INICIALIZAÇÃO ---
     const initApp = () => {
         document.querySelectorAll('button[type="submit"]').forEach(button => {
