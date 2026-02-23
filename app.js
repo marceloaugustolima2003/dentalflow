@@ -5,6 +5,7 @@ import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/f
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 import { translations } from "./translations.js";
+import { compressImage } from "./js/utils/imageCompressor.js";
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -3486,9 +3487,16 @@ const generateProducaoPDF = () => {
             let anexoURL = null;
 
             if (file) {
-                const storageRef = ref(storage, `users/${userId}/attachments/${Date.now()}_${file.name}`);
+                let fileToUpload = file;
                 try {
-                    const snapshot = await uploadBytes(storageRef, file);
+                    fileToUpload = await compressImage(file);
+                } catch (e) {
+                    console.warn('Compression failed, using original file', e);
+                }
+
+                const storageRef = ref(storage, `users/${userId}/attachments/${Date.now()}_${fileToUpload.name}`);
+                try {
+                    const snapshot = await uploadBytes(storageRef, fileToUpload);
                     anexoURL = await getDownloadURL(snapshot.ref);
                 } catch (error) {
                     console.error("Erro no upload: ", error);
