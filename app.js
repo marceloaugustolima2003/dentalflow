@@ -995,7 +995,31 @@ const generateProducaoPDF = () => {
              return;
         }
         
-        const producaoFiltrada = (state.producao || []).filter(p => p.dentista == selectedDentistaId);
+        // Usa o estado atual do mês para determinar o período de fechamento
+        // Considerar fechamento personalizado do dentista se existir
+        let startDay = dentista.customClosingDayStart || state.closingDayStart || 25;
+        let endDay = dentista.customClosingDayEnd || state.closingDayEnd || 24;
+
+        let targetDate = new Date(state.mesAtual);
+        let year = targetDate.getFullYear();
+        let month = targetDate.getMonth();
+
+        let startDate, endDate;
+
+        if (startDay > endDay) {
+            endDate = new Date(year, month, endDay, 23, 59, 59);
+            startDate = new Date(year, month - 1, startDay, 0, 0, 0);
+        } else {
+            startDate = new Date(year, month, startDay, 0, 0, 0);
+            endDate = new Date(year, month, endDay, 23, 59, 59);
+        }
+
+        const producaoFiltrada = (state.producao || []).filter(p => {
+             if (p.dentista != selectedDentistaId) return false;
+             if (!p.data) return false;
+             const dataProducao = new Date(p.data + "T00:00:00");
+             return dataProducao >= startDate && dataProducao <= endDate;
+        });
         
         if (producaoFiltrada.length === 0) {
             showToast(t('toast_no_production_dentist'));
@@ -1640,7 +1664,32 @@ const generateProducaoPDF = () => {
             return;
         }
 
-        const producaoFiltrada = (state.producao || []).filter(p => p.dentista == selectedDentistaId);
+        const dentista = (state.dentistas || []).find(d => d.id == selectedDentistaId);
+
+        // Considerar fechamento personalizado do dentista se existir
+        let startDay = dentista?.customClosingDayStart || state.closingDayStart || 25;
+        let endDay = dentista?.customClosingDayEnd || state.closingDayEnd || 24;
+
+        let targetDate = new Date(state.mesAtual);
+        let year = targetDate.getFullYear();
+        let month = targetDate.getMonth();
+
+        let startDate, endDate;
+
+        if (startDay > endDay) {
+            endDate = new Date(year, month, endDay, 23, 59, 59);
+            startDate = new Date(year, month - 1, startDay, 0, 0, 0);
+        } else {
+            startDate = new Date(year, month, startDay, 0, 0, 0);
+            endDate = new Date(year, month, endDay, 23, 59, 59);
+        }
+
+        const producaoFiltrada = (state.producao || []).filter(p => {
+             if (p.dentista != selectedDentistaId) return false;
+             if (!p.data) return false;
+             const dataProducao = new Date(p.data + "T00:00:00");
+             return dataProducao >= startDate && dataProducao <= endDate;
+        });
 
         if (producaoFiltrada.length === 0) {
             producaoDentistaTableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-gemini-secondary">Nenhuma produção encontrada para este dentista.</td></tr>';
