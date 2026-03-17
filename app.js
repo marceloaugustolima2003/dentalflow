@@ -1093,11 +1093,17 @@ const generateProducaoPDF = () => {
         
         // Filtro por busca
         if (state.searchTermProducao) {
+            const searchLower = state.searchTermProducao.toLowerCase();
             producaoFiltrada = producaoFiltrada.filter(p => {
                 const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
                 const dentistaName = dentista ? dentista.nome.toLowerCase() : '';
-                return p.tipo.toLowerCase().includes(state.searchTermProducao.toLowerCase()) ||
-                       dentistaName.includes(state.searchTermProducao.toLowerCase());
+                const pacienteName = p.nomePaciente ? p.nomePaciente.toLowerCase() : '';
+                const obs = p.obs ? p.obs.toLowerCase() : '';
+                
+                return p.tipo.toLowerCase().includes(searchLower) ||
+                       dentistaName.includes(searchLower) ||
+                       pacienteName.includes(searchLower) ||
+                       obs.includes(searchLower);
             });
         }
         
@@ -1504,10 +1510,34 @@ const generateProducaoPDF = () => {
     
 
     const renderizarProducaoDia = () => {
-        const dataSelecionada = producaoDataInput.value;
-        if (!dataSelecionada) return;
+        let producaoFiltrada = getFilteredProducao();
         
-        const producaoFiltrada = getFilteredProducao().filter(p => p.data === dataSelecionada);
+        const isSearchActive = state.searchTermProducao && state.searchTermProducao.trim() !== '';
+        const isStatusActive = filterStatusSelect && filterStatusSelect.value !== '';
+        const isDataInicioActive = filterDataInicio && filterDataInicio.value !== '';
+        const isDataFimActive = filterDataFim && filterDataFim.value !== '';
+        const isAnyFilterActive = isSearchActive || isStatusActive || isDataInicioActive || isDataFimActive;
+
+        const titleEl = document.querySelector('.producao-section-title') || document.querySelector('[data-i18n="production_today_title"]');
+        if (titleEl && !titleEl.classList.contains('producao-section-title')) {
+            titleEl.classList.add('producao-section-title');
+        }
+
+        if (!isAnyFilterActive) {
+            const dataSelecionada = producaoDataInput ? producaoDataInput.value : null;
+            if (!dataSelecionada) return;
+            producaoFiltrada = producaoFiltrada.filter(p => p.data === dataSelecionada);
+            
+            if (titleEl) {
+                titleEl.setAttribute('data-i18n', 'production_today_title');
+                titleEl.textContent = typeof t === 'function' ? t('production_today_title') : 'Produção do Dia';
+            }
+        } else {
+            if (titleEl) {
+                titleEl.removeAttribute('data-i18n');
+                titleEl.textContent = 'Resultados da Busca';
+            }
+        }
         
         listaProducaoDia.innerHTML = '';
         let totalPecas = 0;
