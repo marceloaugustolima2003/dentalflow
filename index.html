@@ -101,6 +101,55 @@
             </div>
         </div>
     </div>
+
+    <!-- Subscription Screen -->
+    <div id="subscription-screen" class="min-h-screen flex items-center justify-center bg-gemini-dark p-4 hidden">
+        <div class="relative flex flex-col bg-gemini-dark-card shadow-2xl rounded-2xl md:flex-row w-full max-w-4xl hover-lift">
+            <div class="flex flex-col justify-center p-8 md:p-14 w-full md:w-1/2">
+                <div class="text-center mb-8">
+                    <div class="flex justify-center items-center mb-4">
+                        <img src="logo.png" alt="DentalFlow Logo" class="h-24 w-24 rounded-2xl object-contain shadow-lg">
+                    </div>
+                    <h1 class="text-3xl font-bold text-gemini-primary">Assinatura Necessária</h1>
+                    <p class="text-gemini-secondary mt-2">Sua assinatura está inativa ou expirada.</p>
+                </div>
+
+                <div class="space-y-4">
+                    <button id="subscribe-button" type="button" class="w-full bg-accent-blue text-white font-bold py-3 px-4 rounded-lg hover:bg-accent-blue-hover transition-all active:scale-95 flex justify-center items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+                        Assinar Plano Mensal
+                    </button>
+
+                    <button id="subscription-logout-button" type="button" class="w-full bg-transparent text-gemini-secondary border border-gemini-border font-bold py-3 px-4 rounded-lg hover:bg-white/5 transition-all active:scale-95 flex justify-center items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                        Sair / Logout
+                    </button>
+                </div>
+            </div>
+
+            <div class="relative hidden md:block md:w-1/2">
+                <div class="w-full h-full bg-gradient-to-br from-[#1a1c23] to-[#0f1115] rounded-r-2xl flex items-center justify-center p-8">
+                    <div class="text-center">
+                        <h2 class="text-3xl font-bold gradient-text mb-4">Desbloqueie o DentalFLOW</h2>
+                        <ul class="text-left text-gemini-secondary space-y-4">
+                            <li class="flex items-center gap-3">
+                                <svg class="w-6 h-6 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                Gestão completa de produção
+                            </li>
+                            <li class="flex items-center gap-3">
+                                <svg class="w-6 h-6 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                Controle financeiro e de despesas
+                            </li>
+                            <li class="flex items-center gap-3">
+                                <svg class="w-6 h-6 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                Dashboard analítico
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     
     <div id="app-content" class="main-content-wrapper hidden">
         

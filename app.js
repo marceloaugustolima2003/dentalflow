@@ -1,7 +1,7 @@
 // Importar SDKs do Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFirestore, doc, getDoc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 import { translations } from "./translations.js";
@@ -36,6 +36,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordResetButton = document.getElementById('password-reset-button');
     const logoutButton = document.getElementById('logout-button');
     const userEmailDisplay = document.getElementById('user-email-display');
+
+    // --- ELEMENTOS SUBSCRIPTION ---
+    const subscribeButton = document.getElementById('subscribe-button');
+    const subscriptionLogoutButton = document.getElementById('subscription-logout-button');
     const formValores = document.getElementById('form-valores');
     const tipoTrabalhoInput = document.getElementById('tipo-trabalho-input');
     const valorTrabalhoInput = document.getElementById('valor-trabalho-input');
@@ -1182,6 +1186,32 @@ const generateProducaoPDF = () => {
     
     logoutButton.addEventListener('click', () => { signOut(auth); });
     
+    if (subscriptionLogoutButton) {
+        subscriptionLogoutButton.addEventListener('click', () => { signOut(auth); });
+    }
+
+    if (subscribeButton) {
+        subscribeButton.addEventListener('click', async () => {
+            if (!userId) return;
+            setButtonLoading(subscribeButton, true);
+            try {
+                const createStripeCheckout = httpsCallable(functions, 'createStripeCheckout');
+                const response = await createStripeCheckout({ email: auth.currentUser?.email });
+                const { url } = response.data;
+                if (url) {
+                    window.location.assign(url);
+                } else {
+                    showToast('Erro ao redirecionar para o pagamento', 'error');
+                }
+            } catch (error) {
+                console.error("Erro ao gerar link de pagamento:", error);
+                showToast('Erro ao iniciar assinatura. Tente novamente.', 'error');
+            } finally {
+                setButtonLoading(subscribeButton, false);
+            }
+        });
+    }
+
     passwordResetButton.addEventListener('click', async () => { 
         const email = emailInput.value; 
         if (!email) { showToast(t('toast_email_required')); return; }
@@ -3969,18 +3999,44 @@ const generateProducaoPDF = () => {
             auth = getAuth(app);
             storage = getStorage(app);
             functions = getFunctions(app, 'southamerica-east1'); 
-            onAuthStateChanged(auth, (user) => {
+
+            const subscriptionScreen = document.getElementById('subscription-screen');
+
+            onAuthStateChanged(auth, async (user) => {
                 initialLoadingOverlay.classList.add('hidden');
                 if (user) {
                     userId = user.uid;
                     userEmailDisplay.textContent = user.email;
-                    authScreen.classList.add('hidden');
-                    appContent.classList.remove('hidden');
-                    setupFirestoreListener(userId);
+
+                    try {
+                        const userDocRef = doc(db, 'users', userId);
+                        const userDocSnap = await getDoc(userDocRef);
+
+                        if (userDocSnap.exists() && userDocSnap.data().subscriptionStatus === 'active') {
+                            authScreen.classList.add('hidden');
+                            subscriptionScreen.classList.add('hidden');
+                            appContent.classList.remove('hidden');
+                            setupFirestoreListener(userId);
+                        } else {
+                            // Assinatura inativa ou não existe
+                            if (unsubscribeFromFirestore) unsubscribeFromFirestore();
+                            authScreen.classList.add('hidden');
+                            appContent.classList.add('hidden');
+                            subscriptionScreen.classList.remove('hidden');
+                        }
+                    } catch (err) {
+                        console.error("Erro ao verificar status da assinatura:", err);
+                        // Em caso de erro, também bloqueia o acesso por segurança
+                        if (unsubscribeFromFirestore) unsubscribeFromFirestore();
+                        authScreen.classList.add('hidden');
+                        appContent.classList.add('hidden');
+                        subscriptionScreen.classList.remove('hidden');
+                    }
                 } else {
                     userId = null;
                     if (unsubscribeFromFirestore) unsubscribeFromFirestore();
                     appContent.classList.add('hidden');
+                    subscriptionScreen.classList.add('hidden');
                     authScreen.classList.remove('hidden');
                 }
             });
