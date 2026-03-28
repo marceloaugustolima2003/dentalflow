@@ -228,6 +228,34 @@
                         </div>
                     </div>
                     
+                    <!-- Top Row: Charts & Timeline -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                        <!-- Analytics (Doughnut) -->
+                        <div class="card-enhanced p-6 flex flex-col">
+                            <h3 class="font-semibold text-lg mb-4" data-i18n="dashboard_analytics_title">Análise de Produção</h3>
+                            <div class="flex-1 relative min-h-[300px]">
+                                <canvas id="dashboard-analytics-chart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Revenue (Line) -->
+                        <div class="card-enhanced p-6 flex flex-col">
+                            <h3 class="font-semibold text-lg mb-4" data-i18n="dashboard_revenue_title">Evolução de Faturamento</h3>
+                            <div class="flex-1 relative min-h-[300px]">
+                                <canvas id="dashboard-revenue-chart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Production Timeline -->
+                        <div class="card-enhanced p-6 flex flex-col">
+                            <h3 class="font-semibold text-lg mb-4" data-i18n="dashboard_deliveries_title">Linha do Tempo (Entregas)</h3>
+                            <div id="lista-entregas-proximas" class="timeline-container space-y-4 max-h-[300px] overflow-y-auto dark-scrollbar pr-2">
+                                <!-- Timeline items injected here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Row: KPIs -->
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                         <div class="card-enhanced p-6">
                             <div class="flex items-center justify-between">
@@ -292,87 +320,67 @@
                         </div>
                     </div>
 
+                    <!-- Quick Notes & Actions -->
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                        <section class="card-enhanced p-6 lg:col-span-2">
+                        <section class="card-enhanced p-6">
+                            <div class="flex justify-between items-center mb-2">
+                                <h3 class="font-semibold text-lg flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 text-yellow-400">
+                                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                    </svg>
+                                    <span data-i18n="dashboard_quick_notes_title">Notas Rápidas</span>
+                                </h3>
+                            </div>
+
+                            <div class="flex items-center border-b border-gemini-border">
+                                <div id="quick-notes-tabs-list" class="flex-1 flex items-center overflow-x-auto dark-scrollbar" style="padding-bottom: 2px;">
+                                    </div>
+                                <button id="add-quick-note-tab-btn" class="flex-shrink-0 p-2 m-1 rounded-md hover:bg-gray-700" title="Nova Nota">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                </button>
+                            </div>
+
+                            <textarea id="quick-notes-input" rows="10" placeholder="Selecione ou crie uma nota..." class="w-full p-3 bg-gemini-input text-gemini-input border-0 focus:ring-0 mobile-optimized-input dark-scrollbar" style="border-top-left-radius: 0; border-top-right-radius: 0;" data-i18n-placeholder="placeholder_quick_note"></textarea>
+
+                            <div class="flex items-center justify-between mt-3">
+                                <button id="save-quick-notes-btn" class="btn bg-accent-blue hover:bg-accent-blue-hover text-white font-bold py-2 px-4 rounded-lg transition-all active:scale-95" data-i18n="dashboard_save_note">
+                                    Salvar Nota
+                                </button>
+                                <span id="quick-notes-feedback" class="text-sm font-medium hidden"></span>
+                                <button id="delete-quick-note-tab-btn" class="btn bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-all active:scale-95" data-i18n="dashboard_delete_note">
+                                    Apagar Nota
+                                </button>
+                            </div>
+                            <p class="text-xs text-gemini-secondary mt-2" data-i18n="dashboard_note_helper">
+                                Clique em "Salvar Nota" para guardar a anotação da aba atual.
+                            </p>
+                        </section>
+
+                        <section class="card-enhanced p-6">
                             <h3 class="font-semibold mb-4 text-lg flex items-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 text-accent-blue">
-                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 text-accent-purple">
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                                 </svg>
-                                <span data-i18n="dashboard_deliveries_title">Entregas (Próximos 30 dias)</span>
+                                <span data-i18n="dashboard_quick_actions_title">Ações Rápidas</span>
                             </h3>
-                            <div id="lista-entregas-proximas" class="space-y-3 max-h-96 overflow-y-auto dark-scrollbar pr-2"></div>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <button id="action-add-producao" class="bg-accent-blue hover:bg-accent-blue-hover text-white font-semibold py-3 px-4 rounded-lg transition-all active:scale-95 flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                    <span data-i18n="dashboard_action_add_production">Adicionar Produção</span>
+                                </button>
+                                <button id="action-add-dentista" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded-lg transition-all active:scale-95 flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" y1="8" x2="19" y2="14"></line><line x1="22" y1="11" x2="16" y2="11"></line></svg>
+                                    <span data-i18n="dashboard_action_add_dentist">Adicionar Dentista</span>
+                                </button>
+                                <button id="action-add-despesa" class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-4 rounded-lg transition-all active:scale-95 flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                    <span data-i18n="dashboard_action_add_expense">Adicionar Despesa</span>
+                                </button>
+                            </div>
                         </section>
                     </div>
-
-	                    <!-- Quick Notes Component -->
-	                    <div class="grid grid-cols-1 gap-8 mb-8">
-    <section class="card-enhanced p-6">
-        
-        <div class="flex justify-between items-center mb-2">
-            <h3 class="font-semibold text-lg flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 text-yellow-400">
-                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                </svg>
-                <span data-i18n="dashboard_quick_notes_title">Notas Rápidas</span>
-            </h3>
-        </div>
-        
-        <div class="flex items-center border-b border-gemini-border">
-            <div id="quick-notes-tabs-list" class="flex-1 flex items-center overflow-x-auto dark-scrollbar" style="padding-bottom: 2px;">
-                </div>
-            <button id="add-quick-note-tab-btn" class="flex-shrink-0 p-2 m-1 rounded-md hover:bg-gray-700" title="Nova Nota">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            </button>
-        </div>
-        
-        <textarea id="quick-notes-input" rows="10" placeholder="Selecione ou crie uma nota..." class="w-full p-3 bg-gemini-input text-gemini-input border-0 focus:ring-0 mobile-optimized-input dark-scrollbar" style="border-top-left-radius: 0; border-top-right-radius: 0;" data-i18n-placeholder="placeholder_quick_note"></textarea>
-        
-        <div class="flex items-center justify-between mt-3">
-            <button id="save-quick-notes-btn" class="btn bg-accent-blue hover:bg-accent-blue-hover text-white font-bold py-2 px-4 rounded-lg transition-all active:scale-95" data-i18n="dashboard_save_note">
-                Salvar Nota
-            </button>
-            <span id="quick-notes-feedback" class="text-sm font-medium hidden"></span>
-            <button id="delete-quick-note-tab-btn" class="btn bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-all active:scale-95" data-i18n="dashboard_delete_note">
-                Apagar Nota
-            </button>
-        </div>
-        <p class="text-xs text-gemini-secondary mt-2" data-i18n="dashboard_note_helper">
-            Clique em "Salvar Nota" para guardar a anotação da aba atual.
-        </p>
-
-    </section>
-</div>
-	                    
-	                    <div class="grid grid-cols-1 gap-8">
-    <section class="card-enhanced p-6">
-        <h3 class="font-semibold mb-4 text-lg flex items-center">
-	                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 text-accent-purple">
-	                                    <circle cx="12" cy="12" r="3"></circle>
-	                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-	                                </svg>
-	                                <span data-i18n="dashboard_quick_actions_title">Ações Rápidas</span>
-	                            </h3>
-	                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-	                                <button id="action-add-producao" class="bg-accent-blue hover:bg-accent-blue-hover text-white font-semibold py-3 px-4 rounded-lg transition-all active:scale-95 flex items-center justify-center">
-	                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-	                                    <span data-i18n="dashboard_action_add_production">Adicionar Produção</span>
-	                                </button>
-	                                <button id="action-add-dentista" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded-lg transition-all active:scale-95 flex items-center justify-center">
-	                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" y1="8" x2="19" y2="14"></line><line x1="22" y1="11" x2="16" y2="11"></line></svg>
-	                                    <span data-i18n="dashboard_action_add_dentist">Adicionar Dentista</span>
-	                                </button>
-	                                <button id="action-add-despesa" class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-4 rounded-lg transition-all active:scale-95 flex items-center justify-center">
-	                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-	                                    <span data-i18n="dashboard_action_add_expense">Adicionar Despesa</span>
-	                                </button>
-	                            </div>
-	                        </section>
-	                    </div>
-	                </div>
 
                 <div id="view-producao" class="view-container hidden">
                     <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
