@@ -4,6 +4,7 @@ import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWith
 import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
+import { getAnalytics, setUserId, logEvent } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
 import { translations } from "./translations.js";
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -12,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentLang = localStorage.getItem('dentalflow_lang') || 'pt';
     const t = (key) => (translations[currentLang] && translations[currentLang][key]) || key;
     
-    let db, auth, functions, storage, userId;
+    let db, auth, functions, storage, userId, analytics;
     let unsubscribeFromFirestore;
     let charts = {}; // Armazenar instâncias dos gráficos
 
@@ -1140,6 +1141,17 @@ const generateProducaoPDF = () => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             const targetViewId = link.getAttribute('data-view');
+
+            try {
+                if (analytics) {
+                    logEvent(analytics, 'screen_view', {
+                        firebase_screen: targetViewId
+                    });
+                }
+            } catch (error) {
+                console.warn('Analytics: Falha ao rastrear navegação.', error);
+            }
+
             views.forEach(view => view.classList.add('hidden'));
             document.getElementById(targetViewId).classList.remove('hidden');
             navLinks.forEach(nav => nav.classList.remove('active'));
@@ -3106,6 +3118,14 @@ const generateProducaoPDF = () => {
                 });
 
                 await saveDataToFirestore();
+
+                // Analytics: Registro de cálculo/geração de trabalho rápido com sucesso
+                try {
+                    if (analytics) {
+                        logEvent(analytics, 'gerar_orcamento');
+                    }
+                } catch(e) {}
+
                 showToast(t('toast_success_production_add'), "success");
                 addProductionModal.classList.add('hidden');
                 renderAllUIComponents(); // Atualiza o dashboard
@@ -3667,6 +3687,14 @@ const generateProducaoPDF = () => {
                 }
 
                 await saveDataToFirestore();
+
+                // Analytics: Registro de cálculo/geração de trabalho com sucesso
+                try {
+                    if (analytics && !editId) {
+                        logEvent(analytics, 'gerar_orcamento');
+                    }
+                } catch(e) {}
+
                 cancelEditProducao();
                 renderAllUIComponents();
             } catch (error) {
@@ -3883,6 +3911,25 @@ const generateProducaoPDF = () => {
         });
     }
 
+    // --- RASTREAMENTO DE EVENTOS CUSTOMIZADOS (ANALYTICS) ---
+    document.addEventListener('click', (e) => {
+        try {
+            if (!analytics) return;
+
+            const btnOrcamento = e.target.closest('[data-analytics-event="gerar_orcamento"]');
+            if (btnOrcamento) {
+                logEvent(analytics, 'gerar_orcamento');
+            }
+
+            const btnExocad = e.target.closest('[data-analytics-event="abrir_exocad_ajuda"]');
+            if (btnExocad) {
+                logEvent(analytics, 'abrir_exocad_ajuda');
+            }
+        } catch (error) {
+            console.warn('Analytics: Erro ao registrar evento customizado.', error);
+        }
+    });
+
     // --- LÓGICA DE DESPESAS RECORRENTES ---
     const checkAndCreateRecurringExpenses = () => {
         const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
@@ -3969,10 +4016,27 @@ const generateProducaoPDF = () => {
             auth = getAuth(app);
             storage = getStorage(app);
             functions = getFunctions(app, 'southamerica-east1'); 
+
+            // Inicializar o Analytics apenas em ambiente de produção
+            try {
+                if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                    analytics = getAnalytics(app);
+                }
+            } catch (e) {
+                console.warn('Google Analytics foi bloqueado ou não pode ser inicializado.', e);
+            }
+
             onAuthStateChanged(auth, (user) => {
                 initialLoadingOverlay.classList.add('hidden');
                 if (user) {
                     userId = user.uid;
+                    try {
+                        if (analytics) {
+                            setUserId(analytics, user.uid);
+                        }
+                    } catch (e) {
+                        console.warn('Erro ao configurar userId no Analytics:', e);
+                    }
                     userEmailDisplay.textContent = user.email;
                     authScreen.classList.add('hidden');
                     appContent.classList.remove('hidden');
