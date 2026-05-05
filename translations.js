@@ -98,6 +98,7 @@ export const translations = {
 
         // Admin
         admin_title: "Administração",
+        admin_users_title: "Usuários Cadastrados",
         admin_values_title: "Valores dos Trabalhos",
         admin_closing_title: "Configurações do Ciclo",
         admin_closing_start: "Dia de Início do Ciclo",
@@ -310,6 +311,7 @@ export const translations = {
 
         // Admin
         admin_title: "Administration",
+        admin_users_title: "Registered Users",
         admin_values_title: "Work Values",
         admin_closing_title: "Cycle Settings",
         admin_closing_start: "Cycle Start Day",
@@ -522,6 +524,7 @@ export const translations = {
 
         // Admin
         admin_title: "Administración",
+        admin_users_title: "Usuarios Registrados",
         admin_values_title: "Valores de Trabajos",
         admin_closing_title: "Configuración del Ciclo",
         admin_closing_start: "Día de Inicio del Ciclo",

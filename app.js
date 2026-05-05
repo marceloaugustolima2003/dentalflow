@@ -1,7 +1,7 @@
 // Importar SDKs do Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFirestore, doc, onSnapshot, setDoc, collection, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 import { translations } from "./translations.js";
@@ -166,6 +166,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const filterDataInicio = document.getElementById('filter-data-inicio');
     const filterDataFim = document.getElementById('filter-data-fim');
     
+    const adminUsersSection = document.getElementById('admin-users-section');
+    const listaUsuariosAdmin = document.getElementById('lista-usuarios-admin');
+    const ADMIN_EMAIL = 'marceloaugustolima2003@gmail.com';
+
     // Elementos da nova funcionalidade de produção por dentista
     const filterDentistaSelect = document.getElementById('filter-dentista-select');
     const producaoDentistaTableBody = document.getElementById('producao-dentista-table-body');
@@ -1282,6 +1286,45 @@ const generateProducaoPDF = () => {
             showToast("Não foi possível carregar os dados.");
         });
     }
+
+    // --- CARREGAMENTO DE USUÁRIOS (ADMIN) ---
+    const loadAdminUsers = async () => {
+        if (!listaUsuariosAdmin || !adminUsersSection) return;
+
+        try {
+            const usersCollection = collection(db, "app_users");
+            const userSnapshot = await getDocs(usersCollection);
+            const userList = userSnapshot.docs.map(doc => doc.data());
+
+            // Ordenar por data de criação mais recente
+            userList.sort((a, b) => new Date(b.creationTime) - new Date(a.creationTime));
+
+            listaUsuariosAdmin.innerHTML = '';
+
+            if (userList.length === 0) {
+                listaUsuariosAdmin.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-gemini-secondary">Nenhum usuário encontrado.</td></tr>';
+                return;
+            }
+
+            userList.forEach(user => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-gemini-border hover:bg-gray-700/50 transition-colors';
+
+                const lastSignIn = user.lastSignInTime ? new Date(user.lastSignInTime).toLocaleString('pt-BR') : '-';
+                const creationTime = user.creationTime ? new Date(user.creationTime).toLocaleString('pt-BR') : '-';
+
+                tr.innerHTML = `
+                    <td class="p-3 text-gemini-primary">${user.email}</td>
+                    <td class="p-3 text-gemini-secondary">${lastSignIn}</td>
+                    <td class="p-3 text-gemini-secondary">${creationTime}</td>
+                `;
+                listaUsuariosAdmin.appendChild(tr);
+            });
+        } catch (error) {
+            console.error("Erro ao carregar usuários:", error);
+            listaUsuariosAdmin.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-red-500">Erro ao carregar lista de usuários.</td></tr>';
+        }
+    };
 
     // --- RENDERIZAÇÃO E LÓGICA DA UI ---
     
@@ -3969,7 +4012,7 @@ const generateProducaoPDF = () => {
             auth = getAuth(app);
             storage = getStorage(app);
             functions = getFunctions(app, 'southamerica-east1'); 
-            onAuthStateChanged(auth, (user) => {
+            onAuthStateChanged(auth, async (user) => {
                 initialLoadingOverlay.classList.add('hidden');
                 if (user) {
                     userId = user.uid;
@@ -3977,6 +4020,25 @@ const generateProducaoPDF = () => {
                     authScreen.classList.add('hidden');
                     appContent.classList.remove('hidden');
                     setupFirestoreListener(userId);
+
+                    // Salvar informações de login do usuário para painel admin
+                    try {
+                        const userDocRef = doc(db, "app_users", user.uid);
+                        await setDoc(userDocRef, {
+                            email: user.email,
+                            lastSignInTime: user.metadata.lastSignInTime || new Date().toISOString(),
+                            creationTime: user.metadata.creationTime || new Date().toISOString()
+                        }, { merge: true });
+                    } catch (err) {
+                        console.error("Erro ao registrar login do usuário", err);
+                    }
+
+                    // Se for o admin, mostra a seção e carrega os usuários
+                    if (user.email === ADMIN_EMAIL && adminUsersSection) {
+                        adminUsersSection.classList.remove('hidden');
+                        loadAdminUsers();
+                    }
+
                 } else {
                     userId = null;
                     if (unsubscribeFromFirestore) unsubscribeFromFirestore();

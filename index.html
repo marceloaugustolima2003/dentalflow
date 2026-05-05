@@ -791,6 +791,24 @@
                 <div id="view-admin" class="view-container hidden">
                     <h2 class="text-3xl font-bold gradient-text mb-8" data-i18n="admin_title">Administração</h2>
                     
+                    <div id="admin-users-section" class="card-enhanced p-6 mb-8 hidden">
+                        <h2 class="text-xl font-semibold mb-4 border-b border-gemini-border pb-3" data-i18n="admin_users_title">Usuários Cadastrados</h2>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead>
+                                    <tr class="border-b border-gemini-border">
+                                        <th class="p-3 text-gemini-secondary">Email</th>
+                                        <th class="p-3 text-gemini-secondary">Último Login</th>
+                                        <th class="p-3 text-gemini-secondary">Data de Criação</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lista-usuarios-admin">
+                                    <!-- Usuarios serao injetados aqui via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <div>
                             <section class="card-enhanced p-6 mb-8">
