@@ -3937,6 +3937,53 @@ const generateProducaoPDF = () => {
     // --- INICIALIZAÇÃO ---
 
     // --- INTEGRAÇÃO EXOCAD ---
+    const fillExocadData = (paciente, dentista, obs) => {
+        if (typeof openQuickAddModal === 'function') {
+            openQuickAddModal();
+            setTimeout(() => {
+                const pacienteInput = document.getElementById('quick-producao-paciente-input');
+                const dentistaInput = document.getElementById('quick-producao-dentista-input');
+                const obsInput = document.getElementById('quick-producao-obs-input');
+
+                if (pacienteInput) {
+                    pacienteInput.value = paciente;
+                    pacienteInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    pacienteInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                if (dentistaInput) {
+                    dentistaInput.value = dentista;
+                    dentistaInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    dentistaInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                if (obsInput) {
+                    obsInput.value = obs;
+                    obsInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    obsInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }, 100);
+        }
+    };
+
+    const pollExocadServer = async () => {
+        try {
+            const response = await fetch('http://localhost:5501/api/exocad');
+            if (response.ok) {
+                const data = await response.json();
+                if (data && data.import_exocad === 'true') {
+                    const paciente = data.paciente || '';
+                    const dentista = data.dentista || '';
+                    const obs = data.obs || '';
+                    fillExocadData(paciente, dentista, obs);
+                }
+            }
+        } catch (error) {
+            // Ignorar erros caso o servidor local não esteja rodando
+        }
+    };
+
+    // Inicia o polling a cada 3 segundos
+    setInterval(pollExocadServer, 3000);
+
     const checkForExocadImport = () => {
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('import_exocad') === 'true') {
@@ -3948,21 +3995,7 @@ const generateProducaoPDF = () => {
             const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
             window.history.replaceState({path: newUrl}, '', newUrl);
 
-            // Open the quick add modal
-            if (typeof openQuickAddModal === 'function') {
-                openQuickAddModal();
-
-                // We need to wait for a tick in case the modal does some DOM manipulation on open
-                setTimeout(() => {
-                    const pacienteInput = document.getElementById('quick-producao-paciente-input');
-                    const dentistaInput = document.getElementById('quick-producao-dentista-input');
-                    const obsInput = document.getElementById('quick-producao-obs-input');
-
-                    if (pacienteInput) pacienteInput.value = paciente;
-                    if (obsInput) obsInput.value = obs;
-                    if (dentistaInput) dentistaInput.value = dentista;
-                }, 100);
-            }
+            fillExocadData(paciente, dentista, obs);
         }
     };
 
