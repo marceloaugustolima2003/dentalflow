@@ -3954,40 +3954,13 @@ const generateProducaoPDF = () => {
 
                 // We need to wait for a tick in case the modal does some DOM manipulation on open
                 setTimeout(() => {
-                    const firstRow = document.querySelector('.quick-producao-item');
-                    if (firstRow) {
-                        const pacienteInput = firstRow.querySelector('.quick-paciente');
-                        const dentistaSelect = firstRow.querySelector('.quick-dentista');
-                        const obsInput = firstRow.querySelector('.quick-obs');
+                    const pacienteInput = document.getElementById('quick-producao-paciente-input');
+                    const dentistaInput = document.getElementById('quick-producao-dentista-input');
+                    const obsInput = document.getElementById('quick-producao-obs-input');
 
-                        if (pacienteInput) pacienteInput.value = paciente;
-                        if (obsInput) obsInput.value = obs;
-
-                        if (dentistaSelect) {
-                            // Tenta encontrar o dentista pelo nome (case insensitive)
-                            const dentistaStr = dentista.toLowerCase();
-                            let found = false;
-                            for (let i = 0; i < dentistaSelect.options.length; i++) {
-                                if (dentistaSelect.options[i].text.toLowerCase() === dentistaStr) {
-                                    dentistaSelect.selectedIndex = i;
-                                    found = true;
-                                    break;
-                                }
-                            }
-
-                            // Se não encontrou o dentista exatamente, vamos tentar "contém"
-                            if (!found) {
-                                for (let i = 0; i < dentistaSelect.options.length; i++) {
-                                    if (dentistaStr.includes(dentistaSelect.options[i].text.toLowerCase()) ||
-                                        dentistaSelect.options[i].text.toLowerCase().includes(dentistaStr)) {
-                                        dentistaSelect.selectedIndex = i;
-                                        found = true;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    if (pacienteInput) pacienteInput.value = paciente;
+                    if (obsInput) obsInput.value = obs;
+                    if (dentistaInput) dentistaInput.value = dentista;
                 }, 100);
             }
         }
