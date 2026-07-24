@@ -5,6 +5,10 @@ import subprocess
 import xml.etree.ElementTree as ET
 import urllib.parse
 import webbrowser
+import threading
+import json
+from http.server import HTTPServer, BaseHTTPRequestHandler
+
 try:
     from watchdog.observers import Observer
     from watchdog.events import FileSystemEventHandler
@@ -20,6 +24,35 @@ EXOCAD_FOLDER = r"C:\CAD-Data"
 
 # URL do DentalFlow (Pode ser local para testes, ou a URL final na web)
 DENTALFLOW_URL = "http://localhost:5500/index.html" # ou "https://seusite.com/dashboard"
+
+LATEST_EXOCAD_DATA = None
+
+class ExocadAPIHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        global LATEST_EXOCAD_DATA
+        if self.path == '/api/exocad':
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+
+            response_data = LATEST_EXOCAD_DATA if LATEST_EXOCAD_DATA else {}
+            self.wfile.write(json.dumps(response_data).encode('utf-8'))
+
+            if LATEST_EXOCAD_DATA:
+                LATEST_EXOCAD_DATA = None
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def log_message(self, format, *args):
+        # Desativa logs do servidor HTTP para não poluir o terminal
+        pass
+
+def start_http_server():
+    server = HTTPServer(('localhost', 5501), ExocadAPIHandler)
+    print("[*] Servidor local iniciado na porta 5501 para comunicação com o DentalFlow.")
+    server.serve_forever()
 
 class ExocadHandler(FileSystemEventHandler):
     def __init__(self):
@@ -48,74 +81,45 @@ class ExocadHandler(FileSystemEventHandler):
             self.extract_and_send(filepath)
 
     def extract_and_send(self, filepath):
+        global LATEST_EXOCAD_DATA
         try:
             tree = ET.parse(filepath)
             root = tree.getroot()
 
+            # Função auxiliar para buscar ignorando namespaces
+            def find_text_ignore_ns(element, tag_name):
+                # Procura por elementos que terminam com o tag_name (ignora xmlns como {http://...}Tag)
+                for child in element.iter():
+                    if child.tag.endswith(tag_name):
+                        return child.text
+                return ""
+
             # Extração de dados (Baseado no padrão XML do Exocad)
 
             # Paciente
-            patient_elem = root.find(".//PatientName")
-            patient_name = patient_elem.text if patient_elem is not None else ""
-
-            patient_last_elem = root.find(".//PatientLastName")
-            patient_last_name = patient_last_elem.text if patient_last_elem is not None else ""
+            patient_name = find_text_ignore_ns(root, "PatientName")
+            patient_last_name = find_text_ignore_ns(root, "PatientLastName")
 
             full_patient = f"{patient_name} {patient_last_name}".strip()
 
             # Dentista / Cliente
-            client_elem = root.find(".//Client")
-            if client_elem is None:
-                client_elem = root.find(".//ClientName")
-            dentist = client_elem.text if client_elem is not None else ""
+            dentist = find_text_ignore_ns(root, "Client")
+            if not dentist:
+                dentist = find_text_ignore_ns(root, "ClientName")
 
             # Observações / Notas
-            notes_elem = root.find(".//Notes")
-            notes = notes_elem.text if notes_elem is not None else ""
+            notes = find_text_ignore_ns(root, "Notes")
 
             print(f"  -> Dados extraídos - Paciente: {full_patient}, Dentista: {dentist}")
 
-            # Montar a URL com os dados
-            query_params = {
+            LATEST_EXOCAD_DATA = {
                 "import_exocad": "true",
                 "paciente": full_patient,
                 "dentista": dentist,
                 "obs": notes
             }
-            # Remove valores vazios para URL ficar limpa
-            query_string = urllib.parse.urlencode({k: v for k, v in query_params.items() if v})
 
-            final_url = f"{DENTALFLOW_URL}?{query_string}"
-
-            print(f"  -> Abrindo DentalFlow no navegador...")
-
-            # Tentar abrir como um pop-up pequeno (app mode) no Windows
-            opened = False
-
-            if platform.system() == "Windows":
-                # Tenta localizar Chrome ou Edge
-                browsers = [
-                    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-                    r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-                    r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
-                    r"C:\Program Files\Microsoft\Edge\Application\msedge.exe"
-                ]
-
-                for browser in browsers:
-                    if os.path.exists(browser):
-                        try:
-                            # Adiciona um pequeno offset e tamanho menor para não ocupar a tela toda
-                            # A flag --app abre sem barras de abas e menus, como um pop-up
-                            subprocess.Popen([browser, f'--app={final_url}', '--window-size=600,800'])
-                            opened = True
-                            print(f"  -> Janela pop-up aberta com sucesso via {os.path.basename(browser)}.")
-                            break
-                        except Exception as e:
-                            print(f"Erro ao tentar abrir via subprocesso: {e}")
-
-            if not opened:
-                # Fallback padrão
-                webbrowser.open(final_url)
+            print(f"  -> Dados prontos para serem puxados pelo DentalFlow via servidor local.")
 
         except Exception as e:
             print(f"Erro ao processar o arquivo {filepath}: {e}")
@@ -125,6 +129,10 @@ if __name__ == "__main__":
         print(f"Aviso: A pasta configurada {EXOCAD_FOLDER} não existe.")
         print("Criando a pasta apenas para fins de teste. No laboratório, aponte para a pasta real do Exocad.")
         os.makedirs(EXOCAD_FOLDER, exist_ok=True)
+
+    # Iniciar servidor HTTP em uma thread separada
+    server_thread = threading.Thread(target=start_http_server, daemon=True)
+    server_thread.start()
 
     event_handler = ExocadHandler()
     observer = Observer()
