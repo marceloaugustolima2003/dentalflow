@@ -1,5 +1,7 @@
 import time
 import os
+import platform
+import subprocess
 import xml.etree.ElementTree as ET
 import urllib.parse
 import webbrowser
@@ -86,7 +88,34 @@ class ExocadHandler(FileSystemEventHandler):
             final_url = f"{DENTALFLOW_URL}?{query_string}"
 
             print(f"  -> Abrindo DentalFlow no navegador...")
-            webbrowser.open(final_url)
+
+            # Tentar abrir como um pop-up pequeno (app mode) no Windows
+            opened = False
+
+            if platform.system() == "Windows":
+                # Tenta localizar Chrome ou Edge
+                browsers = [
+                    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                    r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                    r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+                    r"C:\Program Files\Microsoft\Edge\Application\msedge.exe"
+                ]
+
+                for browser in browsers:
+                    if os.path.exists(browser):
+                        try:
+                            # Adiciona um pequeno offset e tamanho menor para não ocupar a tela toda
+                            # A flag --app abre sem barras de abas e menus, como um pop-up
+                            subprocess.Popen([browser, f'--app={final_url}', '--window-size=600,800'])
+                            opened = True
+                            print(f"  -> Janela pop-up aberta com sucesso via {os.path.basename(browser)}.")
+                            break
+                        except Exception as e:
+                            print(f"Erro ao tentar abrir via subprocesso: {e}")
+
+            if not opened:
+                # Fallback padrão
+                webbrowser.open(final_url)
 
         except Exception as e:
             print(f"Erro ao processar o arquivo {filepath}: {e}")
