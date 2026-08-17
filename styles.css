@@ -747,3 +747,35 @@ select option {
 }
 
 /* final do arquivo */
+/* CSS para o Modal de Exportação / Customizado */
+#export-pdf-modal {
+    backdrop-filter: blur(4px);
+}
+#export-pdf-modal .modal-content {
+    background-color: #1E1E2D; /* Fundo escuro do modal */
+    border-color: #2D2D3F;
+}
+#export-option-a:hover {
+    border-color: #7367F0; /* Roxo primário */
+}
+#export-option-b:hover {
+    border-color: #28C76F; /* Verde sucesso */
+}
+#export-option-a svg {
+    color: #7367F0;
+}
+#export-option-b svg {
+    color: #28C76F;
+}
+/* Inputs de Data customizados para dark mode (quando possível) */
+input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    opacity: 0.6;
+    cursor: pointer;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+}
+#custom-export-results-list tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
