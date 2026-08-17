@@ -172,6 +172,12 @@
                             </svg>
                         </button>
 
+                        <button id="patch-notes-btn" title="Ver Novidades" class="p-2 rounded-full hover:bg-gray-700 transition-colors text-accent-purple">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                            </svg>
+                        </button>
+
                         <div class="relative">
                             <button id="notifications-btn" class="p-2 rounded-full hover:bg-gray-700 transition-colors relative">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1007,6 +1013,39 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Patch Notes Modal -->
+    <div id="patch-notes-modal" class="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center hidden">
+        <div class="bg-gemini-dark-card p-6 rounded-xl shadow-lg max-w-lg w-full mx-4 max-h-[85vh] flex flex-col">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-4 flex-shrink-0">
+                <div class="flex items-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-accent-purple">
+                        <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path>
+                        <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path>
+                        <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path>
+                        <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path>
+                    </svg>
+                    <h3 class="text-xl font-bold text-gemini-primary">Novidades da Versão <span id="patch-notes-version"></span></h3>
+                </div>
+                <button id="close-patch-notes-btn" class="p-2 rounded-full hover:bg-gray-700 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+
+            <!-- Scrollable Content -->
+            <div id="patch-notes-content" class="overflow-y-auto dark-scrollbar flex-grow bg-gemini-input rounded-lg p-4 mb-4">
+                <!-- Content injected dynamically via JS -->
+            </div>
+
+            <!-- Footer Action -->
+            <div class="flex-shrink-0 mt-2">
+                <button id="understand-patch-notes-btn" class="w-full bg-accent-purple hover:bg-opacity-80 text-white font-bold py-3 px-4 rounded-lg transition-all active:scale-95 text-center">
+                    Entendi! Continuar para o sistema
+                </button>
+            </div>
         </div>
     </div>
 </body>

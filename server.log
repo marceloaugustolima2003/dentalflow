@@ -1,9 +1,25 @@
-127.0.0.1 - - [10/Feb/2026 14:35:05] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [10/Feb/2026 14:35:05] "GET /styles.css HTTP/1.1" 200 -
-127.0.0.1 - - [10/Feb/2026 14:35:05] "GET /login-foto.jpeg HTTP/1.1" 200 -
-127.0.0.1 - - [10/Feb/2026 14:35:05] code 404, message File not found
-127.0.0.1 - - [10/Feb/2026 14:35:05] "GET /logo.png HTTP/1.1" 404 -
-127.0.0.1 - - [10/Feb/2026 14:35:05] "GET /app.js HTTP/1.1" 200 -
-127.0.0.1 - - [10/Feb/2026 14:35:05] code 404, message File not found
-127.0.0.1 - - [10/Feb/2026 14:35:05] "GET /logo.png HTTP/1.1" 404 -
-127.0.0.1 - - [10/Feb/2026 14:35:06] "GET /translations.js HTTP/1.1" 200 -
+127.0.0.1 - - [17/Aug/2026 19:54:04] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [17/Aug/2026 19:54:04] "GET /styles.css HTTP/1.1" 200 -
+127.0.0.1 - - [17/Aug/2026 19:54:04] "GET /app.js HTTP/1.1" 200 -
+127.0.0.1 - - [17/Aug/2026 19:54:04] "GET /login-foto.jpeg HTTP/1.1" 200 -
+127.0.0.1 - - [17/Aug/2026 19:54:04] "GET /logo.png HTTP/1.1" 200 -
+127.0.0.1 - - [17/Aug/2026 19:54:06] "GET /translations.js HTTP/1.1" 200 -
+127.0.0.1 - - [17/Aug/2026 19:54:56] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [17/Aug/2026 19:54:56] "GET /styles.css HTTP/1.1" 200 -
+127.0.0.1 - - [17/Aug/2026 19:54:56] "GET /login-foto.jpeg HTTP/1.1" 200 -
+127.0.0.1 - - [17/Aug/2026 19:54:56] "GET /app.js HTTP/1.1" 200 -
+127.0.0.1 - - [17/Aug/2026 19:54:56] "GET /logo.png HTTP/1.1" 200 -
+127.0.0.1 - - [17/Aug/2026 19:54:57] "GET /translations.js HTTP/1.1" 200 -
+127.0.0.1 - - [17/Aug/2026 19:55:44] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [17/Aug/2026 19:55:44] "GET /styles.css HTTP/1.1" 200 -
+127.0.0.1 - - [17/Aug/2026 19:55:44] "GET /logo.png HTTP/1.1" 200 -
+127.0.0.1 - - [17/Aug/2026 19:55:44] "GET /app.js HTTP/1.1" 200 -
+127.0.0.1 - - [17/Aug/2026 19:55:44] "GET /login-foto.jpeg HTTP/1.1" 200 -
+127.0.0.1 - - [17/Aug/2026 19:55:45] "GET /translations.js HTTP/1.1" 200 -
+127.0.0.1 - - [17/Aug/2026 19:57:02] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [17/Aug/2026 19:57:02] "GET /styles.css HTTP/1.1" 200 -
+127.0.0.1 - - [17/Aug/2026 19:57:02] "GET /app.js HTTP/1.1" 200 -
+127.0.0.1 - - [17/Aug/2026 19:57:02] "GET /login-foto.jpeg HTTP/1.1" 200 -
+127.0.0.1 - - [17/Aug/2026 19:57:02] "GET /logo.png HTTP/1.1" 200 -
+127.0.0.1 - - [17/Aug/2026 19:57:04] "GET /translations.js HTTP/1.1" 200 -
+127.0.0.1 - - [17/Aug/2026 19:57:04] "GET /js/utils/patchNotes.js HTTP/1.1" 200 -
