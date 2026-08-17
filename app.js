@@ -133,6 +133,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const formFechamento = document.getElementById('form-fechamento');
     const fechamentoDiaInicioInput = document.getElementById('fechamento-dia-inicio-input');
     const fechamentoDiaFimInput = document.getElementById('fechamento-dia-fim-input');
+    const formPix = document.getElementById('form-pix');
+    const pixKeyInput = document.getElementById('pix-key-input');
+    const pixNameInput = document.getElementById('pix-name-input');
+    const pixCityInput = document.getElementById('pix-city-input');
 
     // Elementos do Estoque
     const formEstoque = document.getElementById('form-estoque');
@@ -170,6 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const filterDentistaSelect = document.getElementById('filter-dentista-select');
     const producaoDentistaTableBody = document.getElementById('producao-dentista-table-body');
     const exportDentistaProducaoPdfBtn = document.getElementById('export-dentista-producao-pdf');
+    const selectAllProducaoCheckbox = document.getElementById('select-all-producao');
 
     // Botão para alternar Top 15 / Todos no gráfico de dentistas
     const toggleDentistaShowAllBtn = document.getElementById('toggle-dentista-show-all');
@@ -268,7 +273,10 @@ document.addEventListener('DOMContentLoaded', () => {
         searchTermEstoque: '',
         searchTermDespesas: '',
         notifications: [],
-        showAllDentistas: false // controla Top 15 / Todos no gráfico
+        showAllDentistas: false, // controla Top 15 / Todos no gráfico
+        pixKey: '',
+        pixName: '',
+        pixCity: ''
     };
 
     // --- FUNÇÕES UTILITÁRIAS ---
@@ -367,6 +375,48 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     const formatarMoeda = (valor) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor || 0);
+
+    // --- FUNÇÕES PIX ---
+    const crc16 = (str) => {
+        let crc = 0xFFFF;
+        for (let c = 0; c < str.length; c++) {
+            crc ^= str.charCodeAt(c) << 8;
+            for (let i = 0; i < 8; i++) {
+                if (crc & 0x8000)
+                    crc = (crc << 1) ^ 0x1021;
+                else
+                    crc = crc << 1;
+            }
+        }
+        let hex = (crc & 0xFFFF).toString(16).toUpperCase();
+        return hex.padStart(4, '0');
+    };
+
+    const generatePixPayload = (chavePix, valor, merchantName, merchantCity, txid = "COBRANCA") => {
+        function pad(id, value) {
+            let len = value.length.toString().padStart(2, '0');
+            return `${id}${len}${value}`;
+        }
+
+        merchantName = merchantName.substring(0, 25).trim();
+        merchantCity = merchantCity.substring(0, 15).trim();
+        txid = txid.substring(0, 25).trim() || 'COBRANCA';
+
+        let payloadFormat = pad('00', '01');
+        let merchantAccountInformation = pad('26', pad('00', 'br.gov.bcb.pix') + pad('01', chavePix));
+        let merchantCategoryCode = pad('52', '0000');
+        let transactionCurrency = pad('53', '986');
+        let transactionAmount = valor > 0 ? pad('54', valor.toFixed(2)) : '';
+        let countryCode = pad('58', 'BR');
+        let merchantNameField = pad('59', merchantName);
+        let merchantCityField = pad('60', merchantCity);
+        let additionalDataField = pad('62', pad('05', txid));
+
+        let payload = `${payloadFormat}${merchantAccountInformation}${merchantCategoryCode}${transactionCurrency}${transactionAmount}${countryCode}${merchantNameField}${merchantCityField}${additionalDataField}6304`;
+
+        let crc = crc16(payload);
+        return payload + crc;
+    };
 
     // Encurta nomes longos para os rótulos do eixo Y, preservando o nome completo para tooltips
     const abbreviateName = (name, maxLen = 28) => {
@@ -880,9 +930,157 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- EXPORTAÇÃO PDF ---
+
 const generateDashboardPDF = () => {
-        // ... função original generateDashboardPDF (inalterada)
-    };
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const mesAno = new Date(state.mesAtual).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+    doc.setFontSize(16);
+    doc.text(t('pdf_dashboard_report_title', 'Relatório do Dashboard'), 14, 15);
+    doc.setFontSize(10);
+    doc.text(`${t('pdf_reference_period', 'Período de Referência')}: ${mesAno}`, 14, 20);
+
+    // Kpis
+    const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
+    const producaoDoMes = (state.producao || []).filter(p => {
+        if (!p.data) return false;
+        const data = new Date(p.data + "T00:00:00");
+        return data >= startDate && data <= endDate;
+    });
+
+    let totalPecas = 0;
+    let totalFaturamento = 0;
+
+    producaoDoMes.forEach(p => {
+        totalPecas += Number(p.qtd) || 0;
+        const valorItem = (state.valores || []).find(v => v.tipo === p.tipo);
+        const valorUnitario = valorItem ? valorItem.valor : 0;
+        totalFaturamento += valorUnitario * p.qtd;
+    });
+
+    doc.autoTable({
+        startY: 30,
+        head: [['Métrica', 'Valor']],
+        body: [
+            ['Total de Peças Produzidas', totalPecas.toString()],
+            ['Faturamento Total', formatarMoeda(totalFaturamento)]
+        ],
+        theme: 'striped',
+        headStyles: { fillColor: [66, 133, 244] }
+    });
+
+    doc.save(`dashboard_relatorio_${mesAno.replace(/ /g, '_')}.pdf`);
+};
+
+const generateAnalisePDF = () => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const mesAno = new Date(state.mesAtual).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+    doc.setFontSize(16);
+    doc.text(t('pdf_analise_report_title', 'Relatório de Análise por Dentista'), 14, 15);
+    doc.setFontSize(10);
+    doc.text(`${t('pdf_reference_period', 'Período de Referência')}: ${mesAno}`, 14, 20);
+
+    const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
+
+    // Calcula totais por dentista
+    const totaisPorDentista = {};
+    (state.producao || []).forEach(p => {
+        if (!p.data) return;
+        const data = new Date(p.data + "T00:00:00");
+        if (data >= startDate && data <= endDate) {
+            const dentistaId = p.dentista;
+            const valorItem = (state.valores || []).find(v => v.tipo === p.tipo);
+            const valorUnitario = valorItem ? valorItem.valor : 0;
+            const valorTotal = valorUnitario * p.qtd;
+
+            if (!totaisPorDentista[dentistaId]) {
+                const d = (state.dentistas || []).find(d => d.id === dentistaId);
+                totaisPorDentista[dentistaId] = {
+                    nome: d ? d.nome : t('dentist_unknown'),
+                    quantidade: 0,
+                    faturamento: 0
+                };
+            }
+            totaisPorDentista[dentistaId].quantidade += p.qtd;
+            totaisPorDentista[dentistaId].faturamento += valorTotal;
+        }
+    });
+
+    const tableRows = Object.values(totaisPorDentista).map(d => [
+        d.nome,
+        d.quantidade.toString(),
+        formatarMoeda(d.faturamento)
+    ]);
+
+    // Ordena por faturamento (maior para menor)
+    tableRows.sort((a, b) => {
+        const valA = parseFloat(a[2].replace(/[^0-9,-]+/g,"").replace(",", "."));
+        const valB = parseFloat(b[2].replace(/[^0-9,-]+/g,"").replace(",", "."));
+        return valB - valA;
+    });
+
+    doc.autoTable({
+        startY: 30,
+        head: [['Dentista', 'Qtd Peças', 'Faturamento']],
+        body: tableRows,
+        theme: 'striped',
+        headStyles: { fillColor: [66, 133, 244] }
+    });
+
+    doc.save(`analise_dentistas_${mesAno.replace(/ /g, '_')}.pdf`);
+};
+
+const generateResumoPDF = () => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const mesAno = new Date(state.mesAtual).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+    doc.setFontSize(16);
+    doc.text(t('pdf_resumo_report_title', 'Relatório de Resumo Mensal'), 14, 15);
+    doc.setFontSize(10);
+    doc.text(`${t('pdf_reference_period', 'Período de Referência')}: ${mesAno}`, 14, 20);
+
+    const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
+
+    let faturamento = 0;
+    (state.producao || []).forEach(p => {
+        if (!p.data) return;
+        const data = new Date(p.data + "T00:00:00");
+        if (data >= startDate && data <= endDate) {
+            const valorItem = (state.valores || []).find(v => v.tipo === p.tipo);
+            const valorUnitario = valorItem ? valorItem.valor : 0;
+            faturamento += valorUnitario * p.qtd;
+        }
+    });
+
+    let despesas = 0;
+    (state.despesas || []).forEach(d => {
+        if (!d.data) return;
+        const data = new Date(d.data + "T00:00:00");
+        if (data >= startDate && data <= endDate) {
+            despesas += d.valor;
+        }
+    });
+
+    const saldo = faturamento - despesas;
+
+    doc.autoTable({
+        startY: 30,
+        head: [['Resumo Financeiro', 'Valor']],
+        body: [
+            ['Faturamento Bruto', formatarMoeda(faturamento)],
+            ['Despesas', formatarMoeda(despesas)],
+            ['Saldo Líquido', formatarMoeda(saldo)]
+        ],
+        theme: 'striped',
+        headStyles: { fillColor: [66, 133, 244] }
+    });
+
+    doc.save(`resumo_mensal_${mesAno.replace(/ /g, '_')}.pdf`);
+};
 
 const generateProducaoPDF = () => {
         // Usa o estado atual do mês para determinar o período de fechamento
@@ -979,6 +1177,188 @@ const generateProducaoPDF = () => {
         doc.text(`${t('pdf_total_value_gross')}: ${formatarMoeda(totalFaturamentoMes)}`, 14, finalY + 10);
 
         doc.save(`producao-mensal-${mesAno.replace(/\s+/g, '_').toLowerCase()}.pdf`);
+    };
+
+    const handleGerarCobrancaPix = () => {
+        const selectedDentistaId = filterDentistaSelect.value;
+        if (!selectedDentistaId) {
+            showToast(t('toast_select_dentist_pdf'));
+            return;
+        }
+
+        const dentista = (state.dentistas || []).find(d => d.id == selectedDentistaId);
+        if (!dentista) {
+            showToast(t('toast_dentist_not_found'));
+            return;
+        }
+
+        const checkboxes = document.querySelectorAll('.producao-checkbox:checked');
+        if (checkboxes.length === 0) {
+            showToast('Selecione pelo menos um trabalho para gerar a cobrança.', 'error');
+            return;
+        }
+
+        if (!state.pixKey || !state.pixName || !state.pixCity) {
+            showToast('Configure a chave PIX, Nome e Cidade no painel Admin.', 'error');
+            return;
+        }
+
+        let totalValor = 0;
+        const selectedItems = [];
+
+        checkboxes.forEach(cb => {
+            const id = cb.dataset.id;
+            const paciente = cb.dataset.paciente;
+            const tipo = cb.dataset.tipo;
+            const qtd = parseInt(cb.dataset.qtd) || 0;
+            const valor = parseFloat(cb.dataset.valor) || 0;
+
+            totalValor += valor;
+            selectedItems.push({ id, paciente, tipo, qtd, valor });
+        });
+
+        if (totalValor <= 0) {
+            showToast('O valor total da cobrança deve ser maior que zero.', 'error');
+            return;
+        }
+
+        // Generating Pix Payload
+        const payload = generatePixPayload(state.pixKey, totalValor, state.pixName, state.pixCity, `PGTO${Date.now()}`);
+
+        // Generating QR Code
+        const qrContainer = document.createElement('div');
+        const qrcode = new QRCode(qrContainer, {
+            text: payload,
+            width: 200,
+            height: 200,
+            colorDark : "#000000",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.M
+        });
+
+        // Wait for QRCode to generate the base64 image
+        setTimeout(() => {
+            const canvas = qrContainer.querySelector('canvas');
+            if (canvas) {
+                const qrBase64 = canvas.toDataURL("image/png");
+                gerarPDFCobrancaPix(dentista, selectedItems, totalValor, qrBase64);
+            } else {
+                showToast('Erro ao gerar QR Code.', 'error');
+            }
+        }, 300);
+    };
+
+    const gerarPDFCobrancaPix = (dentista, items, totalValor, qrBase64) => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        // --- CORES DA IDENTIDADE VISUAL ---
+        const corPrimaria = [115, 103, 240]; // Roxo/Lilás (#7367F0)
+        const corSucesso = [40, 199, 111];   // Verde Sucesso (#28C76F)
+        const corTexto = [75, 75, 90];       // Cinza Escuro quase preto (#4B4B5A)
+        const corFundoCinza = [248, 248, 248]; // Cinza bem claro para zebra stripe (#F8F8F8)
+
+        // --- CABEÇALHO ---
+        // 1. Logotipo (Adicione sua base64 aqui)
+        // const logoBase64 = 'data:image/png;base64,...';
+        // doc.addImage(logoBase64, 'PNG', 14, 10, 40, 15); // Exemplo de uso: ajuste x, y, width, height
+
+        // 2. Informações alinhadas à direita
+        doc.setTextColor(corTexto[0], corTexto[1], corTexto[2]);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Fatura / Cobrança', 196, 15, { align: 'right' });
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Data de Emissão: ${new Date().toLocaleDateString('pt-BR')}`, 196, 20, { align: 'right' });
+        doc.text(`Dentista: ${dentista.nome}`, 196, 25, { align: 'right' });
+
+        // 3. Linha Horizontal Primária
+        doc.setDrawColor(corPrimaria[0], corPrimaria[1], corPrimaria[2]);
+        doc.setLineWidth(0.5);
+        doc.line(14, 30, 196, 30);
+
+        // --- TABELA DE SERVIÇOS ---
+        const tableColumns = ['Paciente', 'Tipo de Trabalho', 'Quantidade', 'Valor (R$)'];
+        const tableRows = items.map(item => [
+            item.paciente || '-',
+            item.tipo,
+            item.qtd.toString(),
+            formatarMoeda(item.valor)
+        ]);
+
+        doc.autoTable({
+            head: [tableColumns],
+            body: tableRows,
+            startY: 35,
+            theme: 'striped',
+            styles: {
+                fontSize: 10,
+                cellPadding: 4,
+                textColor: corTexto,
+                font: 'helvetica'
+            },
+            headStyles: {
+                fillColor: corPrimaria,
+                textColor: [255, 255, 255],
+                fontStyle: 'bold',
+                halign: 'left'
+            },
+            alternateRowStyles: {
+                fillColor: corFundoCinza
+            },
+            columnStyles: {
+                0: { cellWidth: 'auto' }, // Paciente
+                1: { cellWidth: 'auto' }, // Tipo
+                2: { cellWidth: 25, halign: 'center' }, // Quantidade
+                3: { cellWidth: 35, halign: 'right' }   // Valor
+            }
+        });
+
+        // --- RODAPÉ E PAGAMENTO ---
+        let finalY = doc.autoTable.previous.finalY + 15;
+
+        // 1. Total a pagar
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(corTexto[0], corTexto[1], corTexto[2]);
+        doc.text('TOTAL A PAGAR:', 150, finalY, { align: 'right' });
+
+        doc.setFontSize(14);
+        doc.setTextColor(corSucesso[0], corSucesso[1], corSucesso[2]);
+        doc.text(formatarMoeda(totalValor), 196, finalY, { align: 'right' });
+
+        finalY += 15;
+
+        // 2. Caixa do PIX
+        const boxWidth = 100;
+        const boxHeight = 70;
+        const boxX = (210 - boxWidth) / 2; // Centralizado na página A4 (210mm de largura)
+        const boxY = finalY;
+
+        // Fundo e borda da caixa
+        doc.setFillColor(250, 250, 250); // Fundo super claro
+        doc.setDrawColor(220, 220, 220); // Borda cinza clara
+        doc.roundedRect(boxX, boxY, boxWidth, boxHeight, 3, 3, 'FD'); // Fill and Draw
+
+        // Texto centralizado na caixa
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(corTexto[0], corTexto[1], corTexto[2]);
+        doc.text('Pague via PIX escaneando o QR Code abaixo', 105, boxY + 10, { align: 'center' });
+
+        // Imagem do QR Code (Tamanho sugerido 45x45 mm)
+        const qrSize = 45;
+        const qrX = 105 - (qrSize / 2); // 105 é o centro de 210mm
+        const qrY = boxY + 15;
+
+        // Insira sua variável qrBase64 aqui (já fornecida nos parâmetros)
+        if (qrBase64) {
+            doc.addImage(qrBase64, 'PNG', qrX, qrY, qrSize, qrSize);
+        }
+
+        doc.save(`cobranca_pix_${dentista.nome.replace(/\s+/g, '_').toLowerCase()}.pdf`);
     };
 
     const generateProducaoDentistaPDF = () => {
@@ -1264,7 +1644,10 @@ const generateProducaoPDF = () => {
                     closingDayEnd: 24,
                     notifications: [],
                     quickNotes: [{ id: firstNoteId, title: 'Geral', content: '' }], // NOVO
-                    activeQuickNoteId: firstNoteId // NOVO
+                    activeQuickNoteId: firstNoteId, // NOVO
+                    pixKey: '',
+                    pixName: '',
+                    pixCity: ''
                 };
                 saveDataToFirestore(); 
             }
@@ -1273,6 +1656,9 @@ const generateProducaoPDF = () => {
                 fechamentoDiaInicioInput.value = state.closingDayStart;
                 fechamentoDiaFimInput.value = state.closingDayEnd;
             }
+            if(pixKeyInput) pixKeyInput.value = state.pixKey || '';
+            if(pixNameInput) pixNameInput.value = state.pixName || '';
+            if(pixCityInput) pixCityInput.value = state.pixCity || '';
             renderAllUIComponents(); // Esta função vai chamar a renderQuickNotesUI
             updateNotificationUI();
             updateCharts();
@@ -1689,7 +2075,7 @@ const generateProducaoPDF = () => {
         producaoDentistaTableBody.innerHTML = '';
 
         if (!selectedDentistaId) {
-            producaoDentistaTableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-gemini-secondary">Selecione um dentista para começar.</td></tr>';
+            producaoDentistaTableBody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-gemini-secondary">Selecione um dentista para começar.</td></tr>';
             exportDentistaProducaoPdfBtn.classList.add('hidden'); // Oculta o botão
             return;
         }
@@ -1722,7 +2108,7 @@ const generateProducaoPDF = () => {
         });
 
         if (producaoFiltrada.length === 0) {
-            producaoDentistaTableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-gemini-secondary">Nenhuma produção encontrada para este dentista.</td></tr>';
+            producaoDentistaTableBody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-gemini-secondary">Nenhuma produção encontrada para este dentista.</td></tr>';
             exportDentistaProducaoPdfBtn.classList.add('hidden'); // Oculta o botão
             return;
         }
@@ -1747,8 +2133,16 @@ const generateProducaoPDF = () => {
             const row = document.createElement('tr');
             row.className = 'border-b border-gemini-border hover:bg-gray-700/50 transition-colors';
             
-            // [MODIFICADO] Adicionado o botão de excluir
+            // [MODIFICADO] Adicionado checkbox e o botão de excluir
             row.innerHTML = `
+                <td class="p-3 text-center">
+                    <input type="checkbox" class="producao-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        data-id="${producao.id}"
+                        data-paciente="${producao.nomePaciente || ''}"
+                        data-tipo="${producao.tipo}"
+                        data-qtd="${producao.qtd}"
+                        data-valor="${valorTotal}">
+                </td>
                 <td class="p-3 text-gemini-primary font-medium">${dentistaName}</td>
                 <td class="p-3 text-gemini-secondary">${producao.nomePaciente || '-'}</td>
                 <td class="p-3 text-gemini-secondary">${producao.tipo}</td>
@@ -2809,6 +3203,14 @@ const generateProducaoPDF = () => {
     if (filterDataInicio) filterDataInicio.addEventListener('change', renderizarProducaoDia);
     if (filterDataFim) filterDataFim.addEventListener('change', renderizarProducaoDia);
 
+    // Select all logic
+    if (selectAllProducaoCheckbox) {
+        selectAllProducaoCheckbox.addEventListener('change', (e) => {
+            const checkboxes = document.querySelectorAll('.producao-checkbox');
+            checkboxes.forEach(cb => cb.checked = e.target.checked);
+        });
+    }
+
     // Produção por dentista
     if (filterDentistaSelect) filterDentistaSelect.addEventListener('change', renderizarProducaoPorDentista);
     if (producaoDentistaTableBody) {
@@ -2839,9 +3241,12 @@ const generateProducaoPDF = () => {
     }
 
     // Exportação PDF
-    if (exportDashboardPdf) exportDashboardPdf.addEventListener('click', generateDashboardPDF);
-    if (exportProducaoPdf) exportProducaoPdf.addEventListener('click', generateProducaoPDF);
-    if (exportDentistaProducaoPdfBtn) exportDentistaProducaoPdfBtn.addEventListener('click', generateProducaoDentistaPDF);
+    if (exportDashboardPdf) exportDashboardPdf.addEventListener('click', () => openExportModal('dashboard'));
+    if (exportProducaoPdf) exportProducaoPdf.addEventListener('click', () => openExportModal('producao'));
+    if (exportDentistasPdf) exportDentistasPdf.addEventListener('click', () => openExportModal('dentistas'));
+    if (exportResumoPdf) exportResumoPdf.addEventListener('click', () => openExportModal('resumo'));
+    if (exportAnalisePdf) exportAnalisePdf.addEventListener('click', () => openExportModal('analise'));
+    if (exportDentistaProducaoPdfBtn) exportDentistaProducaoPdfBtn.addEventListener('click', () => openExportModal('dentista'));
 
     // Atalhos de teclado globais
     document.addEventListener('keydown', (e) => {
@@ -3239,6 +3644,18 @@ const generateProducaoPDF = () => {
     }
 
     // Formulários
+    if (formPix) {
+        formPix.addEventListener('submit', (e) => {
+            e.preventDefault();
+            state.pixKey = pixKeyInput.value.trim();
+            state.pixName = pixNameInput.value.trim();
+            state.pixCity = pixCityInput.value.trim();
+            saveDataToFirestore().then(() => {
+                showToast("Configuração PIX salva com sucesso!", "success");
+            });
+        });
+    }
+
     if (formFechamento) {
         formFechamento.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -3997,4 +4414,272 @@ const generateProducaoPDF = () => {
         window.appState = state;
         window.appRender = renderAllUIComponents;
         window.appUpdateState = (newState) => { state = {...state, ...newState}; };
-	});
+
+    // --- LÓGICA DO MODAL DE EXPORTAÇÃO / NOTA PERSONALIZADA ---
+    const exportPdfModal = document.getElementById('export-pdf-modal');
+    const closeExportModalBtn = document.getElementById('close-export-modal-btn');
+    const cancelExportModalBtn = document.getElementById('cancel-export-modal-btn');
+    const exportModalStep1 = document.getElementById('export-modal-step-1');
+    const exportModalStep2 = document.getElementById('export-modal-step-2');
+    const exportOptionA = document.getElementById('export-option-a');
+    const exportOptionB = document.getElementById('export-option-b');
+    const backToStep1Btn = document.getElementById('back-to-step-1');
+
+    const customExportStartDate = document.getElementById('custom-export-start-date');
+    const customExportEndDate = document.getElementById('custom-export-end-date');
+    const searchCustomExportBtn = document.getElementById('search-custom-export-btn');
+    const customExportResultsList = document.getElementById('custom-export-results-list');
+    const customExportSelectAll = document.getElementById('custom-export-select-all');
+    const generateCustomPixBtn = document.getElementById('generate-custom-pix-btn');
+    const customExportTotalEl = document.getElementById('custom-export-total');
+    const modalExportDentistaSelect = document.getElementById('modal-export-dentista-select');
+
+    let customExportSelectedItems = [];
+    let currentExportContext = 'dentista';
+
+    const openExportModal = (context = 'dentista') => {
+        currentExportContext = context;
+        if (context === 'dentista') {
+            const selectedDentistaId = filterDentistaSelect.value;
+            if (!selectedDentistaId) {
+                showToast(t('toast_select_dentist_pdf') || 'Selecione um dentista primeiro.');
+                return;
+            }
+        }
+        exportPdfModal.classList.remove('hidden');
+        exportModalStep1.classList.remove('hidden');
+        exportModalStep2.classList.add('hidden');
+        exportModalStep1.classList.add('flex');
+        exportModalStep2.classList.remove('flex');
+
+        if (modalExportDentistaSelect) {
+            modalExportDentistaSelect.innerHTML = '<option value="todos">Todos os Dentistas</option>';
+            state.dentistas.forEach(d => {
+                const option = document.createElement('option');
+                option.value = d.id;
+                option.textContent = d.nome;
+                modalExportDentistaSelect.appendChild(option);
+            });
+            if (context === 'dentista' && typeof filterDentistaSelect !== 'undefined' && filterDentistaSelect.value) {
+                modalExportDentistaSelect.value = filterDentistaSelect.value;
+            } else {
+                modalExportDentistaSelect.value = 'todos';
+            }
+        }
+
+        // Reset filters
+        customExportStartDate.value = '';
+        customExportEndDate.value = '';
+        customExportResultsList.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gemini-secondary">Selecione as datas e clique em Buscar</td></tr>';
+        customExportTotalEl.textContent = 'R$ 0,00';
+        customExportSelectAll.checked = false;
+    };
+
+    const closeExportModal = () => {
+        exportPdfModal.classList.add('hidden');
+    };
+
+    if (closeExportModalBtn) closeExportModalBtn.addEventListener('click', closeExportModal);
+    if (cancelExportModalBtn) cancelExportModalBtn.addEventListener('click', closeExportModal);
+
+    if (exportOptionA) {
+        exportOptionA.addEventListener('click', () => {
+            switch(currentExportContext) {
+                case 'dashboard':
+                    generateDashboardPDF();
+                    break;
+                case 'producao':
+                    generateProducaoPDF(); // PDF com toda a produção do mês
+                    break;
+                case 'dentistas':
+                    generateProducaoDentistaPDF(); // PDF do dentista selecionado
+                    break;
+                case 'analise':
+                    generateAnalisePDF();
+                    break;
+                case 'resumo':
+                    generateResumoPDF();
+                    break;
+                default:
+                    generateProducaoPDF();
+                    break;
+            }
+            closeExportModal();
+        });
+    }
+
+    if (exportOptionB) {
+        exportOptionB.addEventListener('click', () => {
+            exportModalStep1.classList.add('hidden');
+            exportModalStep1.classList.remove('flex');
+            exportModalStep2.classList.remove('hidden');
+            exportModalStep2.classList.add('flex');
+        });
+    }
+
+    if (backToStep1Btn) {
+        backToStep1Btn.addEventListener('click', () => {
+            exportModalStep2.classList.add('hidden');
+            exportModalStep2.classList.remove('flex');
+            exportModalStep1.classList.remove('hidden');
+            exportModalStep1.classList.add('flex');
+        });
+    }
+
+    const renderCustomExportResults = (results, dentista) => {
+        customExportResultsList.innerHTML = '';
+        if (results.length === 0) {
+            customExportResultsList.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gemini-secondary">Nenhum trabalho encontrado no período.</td></tr>';
+            return;
+        }
+
+        results.forEach(p => {
+            const valorDentista = (dentista.valores || []).find(v => v.tipo === p.tipo);
+            const valorGlobal = (state.valores || []).find(v => v.tipo === p.tipo);
+            const valorFinal = valorDentista || valorGlobal;
+            const valorUnitario = valorFinal ? valorFinal.valor : 0;
+            const valorTotal = valorUnitario * p.qtd;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="p-2 border-b border-gemini-border text-center">
+                    <input type="checkbox" class="custom-export-item-checkbox cursor-pointer rounded border-gray-600 bg-gray-700 text-accent-purple focus:ring-accent-purple"
+                           data-id="${p.id}"
+                           data-paciente="${p.nomePaciente || ''}"
+                           data-tipo="${p.tipo}"
+                           data-qtd="${p.qtd}"
+                           data-valor="${valorTotal}">
+                </td>
+                <td class="p-2 border-b border-gemini-border text-white">${new Date(p.data + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+                <td class="p-2 border-b border-gemini-border text-white">${p.nomePaciente || '-'}</td>
+                <td class="p-2 border-b border-gemini-border text-white">${p.tipo} (${p.qtd}x)</td>
+                <td class="p-2 border-b border-gemini-border text-white text-right">${formatarMoeda(valorTotal)}</td>
+            `;
+            customExportResultsList.appendChild(tr);
+        });
+
+        // Add listeners to new checkboxes
+        document.querySelectorAll('.custom-export-item-checkbox').forEach(cb => {
+            cb.addEventListener('change', updateCustomExportTotal);
+        });
+    };
+
+    const updateCustomExportTotal = () => {
+        let total = 0;
+        document.querySelectorAll('.custom-export-item-checkbox:checked').forEach(cb => {
+            total += parseFloat(cb.dataset.valor || 0);
+        });
+        customExportTotalEl.textContent = formatarMoeda(total);
+
+        // Update select all checkbox state
+        const allBoxes = document.querySelectorAll('.custom-export-item-checkbox');
+        const checkedBoxes = document.querySelectorAll('.custom-export-item-checkbox:checked');
+        if (allBoxes.length > 0) {
+            customExportSelectAll.checked = allBoxes.length === checkedBoxes.length;
+        }
+    };
+
+    if (searchCustomExportBtn) {
+        searchCustomExportBtn.addEventListener('click', () => {
+            const start = customExportStartDate.value;
+            const end = customExportEndDate.value;
+            const selectedDentistaId = modalExportDentistaSelect ? modalExportDentistaSelect.value : 'todos';
+
+            if (!start || !end) {
+                showToast('Selecione as datas inicial e final.', 'error');
+                return;
+            }
+
+            const dentista = (state.dentistas || []).find(d => d.id == selectedDentistaId);
+
+            const startDate = new Date(start + "T00:00:00");
+            const endDate = new Date(end + "T23:59:59");
+
+            const producaoFiltrada = (state.producao || []).filter(p => {
+                if (selectedDentistaId !== 'todos' && p.dentista != selectedDentistaId) return false;
+                if (!p.data) return false;
+                const dataProducao = new Date(p.data + "T00:00:00");
+                return dataProducao >= startDate && dataProducao <= endDate;
+            });
+
+            producaoFiltrada.sort((a, b) => new Date(a.data) - new Date(b.data));
+
+            renderCustomExportResults(producaoFiltrada, dentista || { nome: 'Todos' });
+            updateCustomExportTotal();
+        });
+    }
+
+    if (customExportSelectAll) {
+        customExportSelectAll.addEventListener('change', (e) => {
+            document.querySelectorAll('.custom-export-item-checkbox').forEach(cb => {
+                cb.checked = e.target.checked;
+            });
+            updateCustomExportTotal();
+        });
+    }
+
+    if (generateCustomPixBtn) {
+        generateCustomPixBtn.addEventListener('click', () => {
+            const selectedDentistaId = modalExportDentistaSelect ? modalExportDentistaSelect.value : 'todos';
+            const dentista = (state.dentistas || []).find(d => d.id == selectedDentistaId) || { nome: 'Diversos', dentes: [] };
+
+            const checkboxes = document.querySelectorAll('.custom-export-item-checkbox:checked');
+            if (checkboxes.length === 0) {
+                showToast('Selecione pelo menos um trabalho para gerar a cobrança.', 'error');
+                return;
+            }
+
+            if (!state.pixKey || !state.pixName || !state.pixCity) {
+                showToast('Configure a chave PIX, Nome e Cidade no painel Admin.', 'error');
+                return;
+            }
+
+            let totalValor = 0;
+            const selectedItems = [];
+
+            checkboxes.forEach(cb => {
+                const id = cb.dataset.id;
+                const paciente = cb.dataset.paciente;
+                const tipo = cb.dataset.tipo;
+                const qtd = parseInt(cb.dataset.qtd) || 0;
+                const valor = parseFloat(cb.dataset.valor) || 0;
+
+                totalValor += valor;
+                selectedItems.push({ id, paciente, tipo, qtd, valor });
+            });
+
+            if (totalValor <= 0) {
+                showToast('O valor total da cobrança deve ser maior que zero.', 'error');
+                return;
+            }
+
+            // Generate Payload PIX
+            const payload = generatePixPayload(state.pixKey, totalValor, state.pixName, state.pixCity, `PGTO${Date.now()}`);
+
+            // Generate QR Code
+            const qrContainer = document.createElement('div');
+            const qrcode = new QRCode(qrContainer, {
+                text: payload,
+                width: 200,
+                height: 200,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.M
+            });
+
+            setTimeout(() => {
+                const canvas = qrContainer.querySelector('canvas');
+                if (canvas) {
+                    const qrBase64 = canvas.toDataURL("image/png");
+                    // Assuming gerarPDFCobrancaPix handles everything correctly.
+                    // This function already exists in app.js
+                    gerarPDFCobrancaPix(dentista, selectedItems, totalValor, qrBase64);
+                    closeExportModal();
+                } else {
+                    showToast('Erro ao gerar QR Code.', 'error');
+                }
+            }, 300);
+        });
+    }
+
+});
