@@ -257,6 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- ESTADO DA APLICAÇÃO ---
     let isLoginMode = true;
+    let isDataLoaded = false;
     let state = {
         valores: [],
         producao: [],
@@ -1575,6 +1576,7 @@ const generateProducaoPDF = () => {
     async function saveDataToFirestore(button = null) {
         if (!userId) return;
         if (!db) return; // Safety check for test mode or init failures
+        if (!isDataLoaded) return; // Prevent overwriting data during initial load
 
         if(button) setButtonLoading(button, true);
         try {
@@ -1659,6 +1661,13 @@ const generateProducaoPDF = () => {
             if(pixKeyInput) pixKeyInput.value = state.pixKey || '';
             if(pixNameInput) pixNameInput.value = state.pixName || '';
             if(pixCityInput) pixCityInput.value = state.pixCity || '';
+
+            if (!isDataLoaded) {
+                isDataLoaded = true;
+                initialLoadingOverlay.classList.add('hidden');
+                appContent.classList.remove('hidden');
+            }
+
             renderAllUIComponents(); // Esta função vai chamar a renderQuickNotesUI
             updateNotificationUI();
             updateCharts();
@@ -1666,6 +1675,7 @@ const generateProducaoPDF = () => {
         }, (error) => {
             console.error("Erro ao carregar dados do Firestore:", error);
             showToast("Não foi possível carregar os dados.");
+            initialLoadingOverlay.innerHTML = "<p>Não foi possível carregar os dados. Tente atualizar a página.</p>";
         });
     }
 
@@ -4387,15 +4397,17 @@ const generateProducaoPDF = () => {
             storage = getStorage(app);
             functions = getFunctions(app, 'southamerica-east1'); 
             onAuthStateChanged(auth, (user) => {
-                initialLoadingOverlay.classList.add('hidden');
                 if (user) {
                     userId = user.uid;
                     userEmailDisplay.textContent = user.email;
                     authScreen.classList.add('hidden');
-                    appContent.classList.remove('hidden');
+                    // We only remove the hidden class from appContent when data is loaded
+                    // appContent.classList.remove('hidden');
                     setupFirestoreListener(userId);
                 } else {
+                    initialLoadingOverlay.classList.add('hidden');
                     userId = null;
+                    isDataLoaded = false;
                     if (unsubscribeFromFirestore) unsubscribeFromFirestore();
                     appContent.classList.add('hidden');
                     authScreen.classList.remove('hidden');
