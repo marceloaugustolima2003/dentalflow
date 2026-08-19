@@ -779,3 +779,23 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 #custom-export-results-list tr:hover {
     background-color: rgba(255, 255, 255, 0.05);
 }
+
+
+/* Splash Screen Animations */
+@keyframes splash-logo-pulse {
+    0% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.05); opacity: 1; }
+    100% { transform: scale(1); opacity: 0.8; }
+}
+
+.splash-logo-pulse {
+    animation: splash-logo-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.splash-fade-out {
+    opacity: 0;
+    transform: scale(1.05);
+    transition: opacity 600ms ease-in-out, transform 600ms ease-in-out;
+    pointer-events: none;
+}
+

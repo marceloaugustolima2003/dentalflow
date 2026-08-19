@@ -4423,18 +4423,31 @@ const generateProducaoPDF = () => {
             storage = getStorage(app);
             functions = getFunctions(app, 'southamerica-east1'); 
             onAuthStateChanged(auth, (user) => {
-                initialLoadingOverlay.classList.add('hidden');
                 if (user) {
                     userId = user.uid;
                     userEmailDisplay.textContent = user.email;
+                    
                     authScreen.classList.add('hidden');
                     appContent.classList.remove('hidden');
+                    
+                    initialLoadingOverlay.classList.remove('hidden');
+                    initialLoadingOverlay.classList.remove('splash-fade-out');
+                    
+                    setTimeout(() => {
+                        initialLoadingOverlay.classList.add('splash-fade-out');
+                        setTimeout(() => {
+                            initialLoadingOverlay.classList.add('hidden');
+                            initialLoadingOverlay.classList.remove('splash-fade-out');
+                        }, 600);
+                    }, 1500);
+
                     setupFirestoreListener(userId);
                 } else {
                     userId = null;
                     if (unsubscribeFromFirestore) unsubscribeFromFirestore();
                     appContent.classList.add('hidden');
                     authScreen.classList.remove('hidden');
+                    initialLoadingOverlay.classList.add('hidden');
                 }
             });
         } catch (error) {
