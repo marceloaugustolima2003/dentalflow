@@ -4423,7 +4423,12 @@ const generateProducaoPDF = () => {
             storage = getStorage(app);
             functions = getFunctions(app, 'southamerica-east1'); 
             onAuthStateChanged(auth, (user) => {
-                initialLoadingOverlay.classList.add('hidden');
+                initialLoadingOverlay.classList.add('splash-fade-out');
+                setTimeout(() => {
+                    initialLoadingOverlay.classList.add('hidden');
+                    initialLoadingOverlay.classList.remove('splash-fade-out');
+                }, 600);
+
                 if (user) {
                     userId = user.uid;
                     userEmailDisplay.textContent = user.email;
