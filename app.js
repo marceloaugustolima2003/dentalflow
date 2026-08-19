@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const t = (key) => (translations[currentLang] && translations[currentLang][key]) || key;
     
     let db, auth, functions, storage, userId;
+    let isDataLoaded = false;
     let unsubscribeFromFirestore;
     let charts = {}; // Armazenar instâncias dos gráficos
 
@@ -265,7 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
         estoque: [],
         quickNotes: [], // MUDADO DE "" PARA []
         activeQuickNoteId: null, // NOVO
-        mesAtual: new Date().toISOString(),
+        mesAtual: new Date(),
         closingDayStart: 25,
         closingDayEnd: 24,
         searchTermProducao: '',
@@ -1545,8 +1546,31 @@ const generateProducaoPDF = () => {
         authErrorMessage.classList.add('hidden'); 
         setButtonLoading(authButton, true, isLoginMode ? 'Entrar' : 'Registar');
         try { 
-            if (isLoginMode) { await signInWithEmailAndPassword(auth, email, password); } 
-            else { await createUserWithEmailAndPassword(auth, email, password); }
+                        if (isLoginMode) { 
+                await signInWithEmailAndPassword(auth, email, password); 
+            } else { 
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password); 
+                const newUser = userCredential.user;
+                const firstNoteId = Date.now();
+                const initialState = { 
+                    valores: [], 
+                    producao: [], 
+                    despesas: [], 
+                    dentistas: [], 
+                    estoque: [],
+                    mesAtual: new Date(),
+                    closingDayStart: 25,
+                    closingDayEnd: 24,
+                    notifications: [],
+                    quickNotes: [{ id: firstNoteId, title: 'Geral', content: '' }],
+                    activeQuickNoteId: firstNoteId,
+                    pixKey: '',
+                    pixName: '',
+                    pixCity: ''
+                };
+                const docRef = doc(db, "users", newUser.uid);
+                await setDoc(docRef, initialState);
+            }
         } catch (error) { 
             let message = "Ocorreu um erro. Tente novamente.";
             if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') message = "Palavra-passe ou e-mail incorreto.";
@@ -1575,6 +1599,13 @@ const generateProducaoPDF = () => {
     async function saveDataToFirestore(button = null) {
         if (!userId) return;
         if (!db) return; // Safety check for test mode or init failures
+        
+        // Trava de Segurança: não grava se o estado for inválido ou não carregado adequadamente
+        if (!isDataLoaded) return;
+        if (!state || !Array.isArray(state.producao) || !Array.isArray(state.despesas)) {
+            console.error("Tentativa de salvar estado inválido abortada.", state);
+            return;
+        }
 
         if(button) setButtonLoading(button, true);
         try {
@@ -1631,7 +1662,7 @@ const generateProducaoPDF = () => {
                     notifications: data.notifications || [],
                 };
             } else {
-                // Novo usuário
+                // Novo usuário ou documento ainda não criado
                 const firstNoteId = Date.now();
                 state = { 
                     valores: [], 
@@ -1643,13 +1674,13 @@ const generateProducaoPDF = () => {
                     closingDayStart: 25,
                     closingDayEnd: 24,
                     notifications: [],
-                    quickNotes: [{ id: firstNoteId, title: 'Geral', content: '' }], // NOVO
-                    activeQuickNoteId: firstNoteId, // NOVO
+                    quickNotes: [{ id: firstNoteId, title: 'Geral', content: '' }], 
+                    activeQuickNoteId: firstNoteId, 
                     pixKey: '',
                     pixName: '',
                     pixCity: ''
                 };
-                saveDataToFirestore(); 
+                // REMOVIDO: saveDataToFirestore(); para evitar sobrescrita destrutiva de dados.
             }
 
             if(fechamentoDiaInicioInput && fechamentoDiaFimInput) {
@@ -1662,6 +1693,7 @@ const generateProducaoPDF = () => {
             renderAllUIComponents(); // Esta função vai chamar a renderQuickNotesUI
             updateNotificationUI();
             updateCharts();
+            isDataLoaded = true;
             checkAndCreateRecurringExpenses(); 
         }, (error) => {
             console.error("Erro ao carregar dados do Firestore:", error);
@@ -4344,8 +4376,12 @@ const generateProducaoPDF = () => {
             }
         });
 
-        if (createdNewExpense) {
-            saveDataToFirestore();
+        if (createdNewExpense && isDataLoaded) {
+            // Usa debounce via setTimeout ou ignora e delega a uma interação do usuário
+            // Aqui garantimos que apenas chame caso os dados já estejam totalmente carregados.
+            setTimeout(() => {
+                 saveDataToFirestore();
+            }, 1000);
         }
     };
 
