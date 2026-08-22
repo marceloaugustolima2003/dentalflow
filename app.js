@@ -1692,6 +1692,7 @@ const generateProducaoPDF = () => {
             if(pixCityInput) pixCityInput.value = state.pixCity || '';
             renderAllUIComponents(); // Esta função vai chamar a renderQuickNotesUI
             updateNotificationUI();
+            checkForExocadImport();
             updateCharts();
             isDataLoaded = true;
             checkAndCreateRecurringExpenses(); 
@@ -4387,6 +4388,64 @@ const generateProducaoPDF = () => {
 
 
     // --- INICIALIZAÇÃO ---
+
+    // --- INTEGRAÇÃO EXOCAD ---
+    const checkForExocadImport = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('import_exocad') === 'true') {
+            const paciente = urlParams.get('paciente') || '';
+            const dentista = urlParams.get('dentista') || '';
+            const obs = urlParams.get('obs') || '';
+
+            // Clean up the URL so it doesn't trigger again on reload
+            const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+            window.history.replaceState({path: newUrl}, '', newUrl);
+
+            // Open the quick add modal
+            if (typeof openQuickAddModal === 'function') {
+                openQuickAddModal();
+
+                // We need to wait for a tick in case the modal does some DOM manipulation on open
+                setTimeout(() => {
+                    const firstRow = document.querySelector('.quick-producao-item');
+                    if (firstRow) {
+                        const pacienteInput = firstRow.querySelector('.quick-paciente');
+                        const dentistaSelect = firstRow.querySelector('.quick-dentista');
+                        const obsInput = firstRow.querySelector('.quick-obs');
+
+                        if (pacienteInput) pacienteInput.value = paciente;
+                        if (obsInput) obsInput.value = obs;
+
+                        if (dentistaSelect) {
+                            // Tenta encontrar o dentista pelo nome (case insensitive)
+                            const dentistaStr = dentista.toLowerCase();
+                            let found = false;
+                            for (let i = 0; i < dentistaSelect.options.length; i++) {
+                                if (dentistaSelect.options[i].text.toLowerCase() === dentistaStr) {
+                                    dentistaSelect.selectedIndex = i;
+                                    found = true;
+                                    break;
+                                }
+                            }
+
+                            // Se não encontrou o dentista exatamente, vamos tentar "contém"
+                            if (!found) {
+                                for (let i = 0; i < dentistaSelect.options.length; i++) {
+                                    if (dentistaStr.includes(dentistaSelect.options[i].text.toLowerCase()) ||
+                                        dentistaSelect.options[i].text.toLowerCase().includes(dentistaStr)) {
+                                        dentistaSelect.selectedIndex = i;
+                                        found = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }, 100);
+            }
+        }
+    };
+
     const initApp = () => {
         document.querySelectorAll('button[type="submit"]').forEach(button => {
             button.dataset.originalText = button.innerHTML;
