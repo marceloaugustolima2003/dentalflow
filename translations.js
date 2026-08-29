@@ -143,6 +143,7 @@ export const translations = {
 
         // New keys
         menu_title: "Menu",
+        menu_profile: "Perfil",
         notifications_title: "Notificações",
         notifications_clear: "Limpar todas",
         notifications_empty: "Nenhuma notificação",
@@ -199,6 +200,14 @@ export const translations = {
         toast_no_note_selected: "Nenhuma nota selecionada.",
         toast_error_save_note: "Erro ao salvar notas.",
         toast_upload_fail: "Falha no upload do anexo.",
+        toast_success_profile_save: "Perfil atualizado com sucesso!",
+
+        profile_title: "O Meu Perfil",
+        profile_photo_label: "Foto de Perfil",
+        profile_first_name: "Nome",
+        profile_last_name: "Sobrenome",
+        profile_phone: "Telefone",
+        admin_language_title: "Configurações de Idioma",
         
         dentist_unknown: "Dentista Desconhecido",
         patient_not_informed: "Não Informado",
@@ -355,6 +364,7 @@ export const translations = {
 
         // New keys
         menu_title: "Menu",
+        menu_profile: "Profile",
         notifications_title: "Notifications",
         notifications_clear: "Clear all",
         notifications_empty: "No notifications",
@@ -411,6 +421,14 @@ export const translations = {
         toast_no_note_selected: "No note selected.",
         toast_error_save_note: "Error saving notes.",
         toast_upload_fail: "Attachment upload failed.",
+        toast_success_profile_save: "Profile updated successfully!",
+
+        profile_title: "My Profile",
+        profile_photo_label: "Profile Photo",
+        profile_first_name: "First Name",
+        profile_last_name: "Last Name",
+        profile_phone: "Phone",
+        admin_language_title: "Language Settings",
         
         dentist_unknown: "Unknown Dentist",
         patient_not_informed: "Not Informed",
@@ -567,6 +585,7 @@ export const translations = {
 
         // New keys
         menu_title: "Menú",
+        menu_profile: "Perfil",
         notifications_title: "Notificaciones",
         notifications_clear: "Borrar todas",
         notifications_empty: "Sin notificaciones",
@@ -623,6 +642,14 @@ export const translations = {
         toast_no_note_selected: "Ninguna nota seleccionada.",
         toast_error_save_note: "Error al guardar notas.",
         toast_upload_fail: "Fallo al subir el archivo adjunto.",
+        toast_success_profile_save: "¡Perfil actualizado con éxito!",
+
+        profile_title: "Mi Perfil",
+        profile_photo_label: "Foto de Perfil",
+        profile_first_name: "Nombre",
+        profile_last_name: "Apellido",
+        profile_phone: "Teléfono",
+        admin_language_title: "Configuración de Idioma",
         
         dentist_unknown: "Dentista Desconocido",
         patient_not_informed: "No Informado",
