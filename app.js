@@ -5,6 +5,7 @@ import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/f
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 import { translations } from "./translations.js";
+import { CURRENT_APP_VERSION, PATCH_NOTES_CONTENT } from "./js/utils/patchNotes.js";
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -129,6 +130,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchProducaoInput = document.getElementById('search-producao-input');
     const searchDentistasInput = document.getElementById('search-dentistas-input');
     const toggleValuesBtn = document.getElementById('toggle-values-btn');
+    const patchNotesBtn = document.getElementById('patch-notes-btn');
+    const patchNotesModal = document.getElementById('patch-notes-modal');
+    const patchNotesVersion = document.getElementById('patch-notes-version');
+    const patchNotesContent = document.getElementById('patch-notes-content');
+    const closePatchNotesBtn = document.getElementById('close-patch-notes-btn');
+    const understandPatchNotesBtn = document.getElementById('understand-patch-notes-btn');
     const eyeIcon = document.getElementById('eye-icon');
     const eyeOffIcon = document.getElementById('eye-off-icon');
     const formFechamento = document.getElementById('form-fechamento');
@@ -3092,6 +3099,30 @@ const generateProducaoPDF = () => {
         });
     }
 
+    // Patch Notes Logic
+    const showPatchNotes = () => {
+        if (patchNotesVersion) patchNotesVersion.textContent = CURRENT_APP_VERSION;
+        if (patchNotesContent) patchNotesContent.innerHTML = PATCH_NOTES_CONTENT;
+        if (patchNotesModal) patchNotesModal.classList.remove('hidden');
+    };
+
+    const hidePatchNotes = () => {
+        if (patchNotesModal) patchNotesModal.classList.add('hidden');
+        localStorage.setItem('dentalflow_patch_version', CURRENT_APP_VERSION);
+    };
+
+    if (patchNotesBtn) {
+        patchNotesBtn.addEventListener('click', showPatchNotes);
+    }
+
+    if (closePatchNotesBtn) {
+        closePatchNotesBtn.addEventListener('click', hidePatchNotes);
+    }
+
+    if (understandPatchNotesBtn) {
+        understandPatchNotesBtn.addEventListener('click', hidePatchNotes);
+    }
+
     // Toggle Top15 / Todos no gráfico de dentistas
     if (toggleDentistaShowAllBtn) {
         // Inicializa o texto conforme o estado
@@ -4442,6 +4473,11 @@ const generateProducaoPDF = () => {
                     }, 1500);
 
                     setupFirestoreListener(userId);
+
+                    const lastSeenVersion = localStorage.getItem('dentalflow_patch_version');
+                    if (lastSeenVersion !== CURRENT_APP_VERSION) {
+                        showPatchNotes();
+                    }
                 } else {
                     userId = null;
                     if (unsubscribeFromFirestore) unsubscribeFromFirestore();
