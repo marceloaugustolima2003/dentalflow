@@ -5,6 +5,7 @@ import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/f
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 import { translations } from "./translations.js";
+import { CURRENT_APP_VERSION, PATCH_NOTES_CONTENT } from './patchNotes.js';
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -222,6 +223,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const quickDentistaTelefoneInput = document.getElementById('quick-dentista-telefone-input');
     const quickDentistaEmailInput = document.getElementById('quick-dentista-email-input');
     const quickAddDentistaCancelBtn = document.getElementById('quick-add-dentista-cancel-btn');
+
+    // Elementos do Modal de Patch Notes
+    const patchNotesModal = document.getElementById('patch-notes-modal');
+    const closePatchNotesHeaderBtn = document.getElementById('close-patch-notes-header-btn');
+    const closePatchNotesBtn = document.getElementById('close-patch-notes-btn');
+    const patchNotesContainer = document.getElementById('patch-notes-container');
+    const patchNotesVersionSpan = document.getElementById('patch-notes-version');
+    const viewPatchNotesBtn = document.getElementById('view-patch-notes-btn');
 
     // Elementos do Modal de Adicionar Despesa Rápida
     const addDespesaModal = document.getElementById('add-despesa-modal');
@@ -4388,6 +4397,10 @@ const generateProducaoPDF = () => {
 
     // --- INICIALIZAÇÃO ---
     const initApp = () => {
+        // Inicializar Patch Notes
+        if (patchNotesContainer) patchNotesContainer.innerHTML = PATCH_NOTES_CONTENT;
+        if (patchNotesVersionSpan) patchNotesVersionSpan.textContent = CURRENT_APP_VERSION;
+
         document.querySelectorAll('button[type="submit"]').forEach(button => {
             button.dataset.originalText = button.innerHTML;
         });
@@ -4442,6 +4455,12 @@ const generateProducaoPDF = () => {
                     }, 1500);
 
                     setupFirestoreListener(userId);
+
+                    // Lógica de exibição automática das Patch Notes
+                    const lastSeenVersion = localStorage.getItem('dentalflow_patch_version');
+                    if (lastSeenVersion !== CURRENT_APP_VERSION) {
+                        patchNotesModal.classList.remove('hidden');
+                    }
                 } else {
                     userId = null;
                     if (unsubscribeFromFirestore) unsubscribeFromFirestore();
@@ -4458,6 +4477,21 @@ const generateProducaoPDF = () => {
 
 	    initApp();
 	    initializeFirebase();
+
+        // Event Listeners das Patch Notes
+        if (viewPatchNotesBtn) {
+            viewPatchNotesBtn.addEventListener('click', () => {
+                patchNotesModal.classList.remove('hidden');
+            });
+        }
+
+        const closePatchNotes = () => {
+            localStorage.setItem('dentalflow_patch_version', CURRENT_APP_VERSION);
+            patchNotesModal.classList.add('hidden');
+        };
+
+        if (closePatchNotesBtn) closePatchNotesBtn.addEventListener('click', closePatchNotes);
+        if (closePatchNotesHeaderBtn) closePatchNotesHeaderBtn.addEventListener('click', closePatchNotes);
 
         // EXPOSE FOR TESTING
         window.appState = state;
