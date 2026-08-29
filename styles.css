@@ -741,6 +741,40 @@ select option {
     border-radius: 2px;
 }
 
+/* Timeline List Items */
+.timeline-item {
+    position: relative;
+    padding-left: 1.5rem;
+    border-left: 2px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.timeline-item:hover {
+    background: rgba(255, 255, 255, 0.03);
+    border-left-color: #6366f1;
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -0.35rem; /* Center on border */
+    top: 0.5rem;
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 50%;
+    background: #1c2128;
+    border: 2px solid #5f6368;
+    transition: all 0.3s ease;
+}
+
+.timeline-item.status-pendente::before { border-color: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
+.timeline-item.status-andamento::before { border-color: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.4); }
+.timeline-item.status-finalizado::before { border-color: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.4); }
+
+.timeline-item:hover::before {
+    transform: scale(1.2);
+}
+
 #language-select {
     min-width: 80px;
     backdrop-filter: blur(8px);
