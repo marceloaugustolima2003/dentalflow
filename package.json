@@ -1,0 +1,14 @@
+{
+  "name": "dentalflow",
+  "version": "1.0.0",
+  "description": "Sistema moderno de gestão para laboratórios de prótese dentária com controle de produção, estoque, despesas e dentistas.",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "build": "echo 'Build complete'"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

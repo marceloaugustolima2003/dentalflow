@@ -34,6 +34,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordInput = document.getElementById('password-input');
     const authErrorMessage = document.getElementById('auth-error-message');
     const toggleAuthMode = document.getElementById('toggle-auth-mode');
+    const authSubtitle = document.getElementById('auth-subtitle');
+    const authTabLogin = document.getElementById('auth-tab-login');
+    const authTabRegister = document.getElementById('auth-tab-register');
+    const togglePasswordVisibilityBtn = document.getElementById('toggle-password-visibility-btn');
+    const eyeIconOpen = document.getElementById('eye-icon-open');
+    const eyeIconClosed = document.getElementById('eye-icon-closed');
+    const rememberMeCheckbox = document.getElementById('remember-me-checkbox');
     const passwordResetButton = document.getElementById('password-reset-button');
     const logoutButton = document.getElementById('logout-button');
     const userEmailDisplay = document.getElementById('user-email-display');
@@ -177,6 +184,49 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportDentistaProducaoPdfBtn = document.getElementById('export-dentista-producao-pdf');
     const selectAllProducaoCheckbox = document.getElementById('select-all-producao');
 
+    // Elementos aprimorados: Adicionar Produção
+    const producaoDentistaSelect = document.getElementById('producao-dentista-select');
+    const btnQuickNewDentista = document.getElementById('btn-quick-new-dentist') || document.getElementById('btn-quick-new-dentista');
+    const orderPreviewCard = document.getElementById('order-preview-card');
+    const orderPreviewItems = document.getElementById('order-preview-items');
+    const orderPreviewSubtotal = document.getElementById('order-preview-subtotal');
+    const orderPreviewTotal = document.getElementById('order-preview-total');
+    const orderPreviewCount = document.getElementById('order-preview-count');
+    const formProducaoSummaryCard = document.getElementById('form-producao-summary-card');
+    const formProducaoSummaryItems = document.getElementById('form-producao-summary-items');
+    const formProducaoSummaryTotal = document.getElementById('form-producao-summary-total');
+
+    // Elementos aprimorados: Filtros Avançados
+    const filterProducaoDentistaMain = document.getElementById('filter-producao-dentista-main');
+    const filterProducaoTipo = document.getElementById('filter-producao-tipo');
+    const btnLimparFiltrosProducao = document.getElementById('btn-limpar-filtros-producao');
+    const btnResetFiltersInline = document.getElementById('btn-reset-filters-inline');
+    const filterActiveIndicator = document.getElementById('filter-active-indicator');
+    const filterResultsBadge = document.getElementById('filter-results-badge');
+    const producaoCounterBadge = document.getElementById('producao-counter-badge');
+
+    // Elementos aprimorados: Produção por Dentista
+    const dentistaQuickPills = document.getElementById('dentista-quick-pills');
+    const filterDentistaPeriodo = document.getElementById('filter-dentista-periodo');
+    const filterDentistaStatus = document.getElementById('filter-dentista-status');
+    const searchDentistaTable = document.getElementById('search-dentista-table');
+    const dentistaKpiBar = document.getElementById('dentista-kpi-bar');
+    const dentistaKpiTotalPecas = document.getElementById('dentista-kpi-total-pecas');
+    const dentistaKpiFaturamento = document.getElementById('dentista-kpi-faturamento');
+    const dentistaKpiFinalizados = document.getElementById('dentista-kpi-finalizados');
+    const dentistaKpiAndamento = document.getElementById('dentista-kpi-andamento');
+    const dentistaKpiPendentes = document.getElementById('dentista-kpi-pendentes');
+    const dentistaBatchBar = document.getElementById('dentista-batch-bar');
+    const batchSelectedCount = document.getElementById('batch-selected-count');
+    const batchSelectedTotal = document.getElementById('batch-selected-total');
+    const btnBatchPix = document.getElementById('btn-batch-pix');
+    const btnBatchFinish = document.getElementById('btn-batch-finish');
+    const btnBatchDelete = document.getElementById('btn-batch-delete');
+    const btnBatchClear = document.getElementById('btn-batch-clear');
+    const thSelectAllDentista = document.getElementById('th-select-all-dentista');
+    const btnGerarPixDentista = document.getElementById('btn-gerar-pix-dentista');
+    const btnNovaProducaoDentista = document.getElementById('btn-nova-producao-dentista');
+
     // Botão para alternar Top 15 / Todos no gráfico de dentistas
     const toggleDentistaShowAllBtn = document.getElementById('toggle-dentista-show-all');
 
@@ -273,6 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
         searchTermDentistas: '',
         searchTermEstoque: '',
         searchTermDespesas: '',
+        producaoQuickFilter: 'hoje',
         notifications: [],
         showAllDentistas: false, // controla Top 15 / Todos no gráfico
         pixKey: '',
@@ -329,6 +380,16 @@ document.addEventListener('DOMContentLoaded', () => {
             languageOptions.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
         }
 
+        // Atualiza estado ativo na aba Admin
+        document.querySelectorAll('.admin-lang-btn').forEach(btn => {
+            const isActive = btn.dataset.lang === lang;
+            btn.classList.toggle('border-accent-blue', isActive);
+            btn.classList.toggle('bg-blue-500/20', isActive);
+            btn.classList.toggle('shadow-liquid-sm', isActive);
+            btn.classList.toggle('border-gemini-border', !isActive);
+            btn.classList.toggle('bg-gemini-input', !isActive);
+        });
+
         // Atualiza UI dinâmica
         updateAuthUI();
     };
@@ -376,6 +437,110 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     const formatarMoeda = (valor) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor || 0);
+
+    const getTodayDateString = (dateObj = new Date()) => {
+        const d = new Date(dateObj);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
+
+    /**
+     * Animação suave e fluida de contagem progressiva (count-up) para valores numéricos e monetários
+     * Easing out-cubic com interpolação de alta precisão via requestAnimationFrame
+     * @param {HTMLElement} element - O elemento DOM cujo texto será animado
+     * @param {number} targetValue - O valor numérico final
+     * @param {boolean} [isCurrency=true] - Se true formata como BRL (R$ 0,00), senão número inteiro
+     * @param {number} [duration=800] - Duração da animação em milissegundos
+     */
+    const animateCountUp = (element, targetValue, isCurrency = true, duration = 800) => {
+        if (!element) return;
+
+        // Cancela animação ativa anterior para este elemento
+        if (element._countUpRaf) {
+            cancelAnimationFrame(element._countUpRaf);
+            element._countUpRaf = null;
+        }
+
+        const target = Number(targetValue) || 0;
+        const formattedTarget = isCurrency 
+            ? formatarMoeda(target) 
+            : new Intl.NumberFormat('pt-BR').format(Math.round(target));
+
+        // Registra o valor final formatado no elemento para mascaramento de privacidade e exportações
+        element._targetFormattedValue = formattedTarget;
+
+        // Se o modo ocultar valores estiver ativado no elemento/corpo
+        const isHidden = document.body.classList.contains('values-hidden');
+        if (isHidden && isCurrency) {
+            element.dataset.originalValue = formattedTarget;
+            element.textContent = '';
+            element._currentRawValue = target;
+            return;
+        }
+
+        // Limpa dataset.originalValue prévio se estiver visível
+        delete element.dataset.originalValue;
+
+        // Pega valor anterior para animar apenas a transição real se houver, ou atualizar direto
+        const previousValue = element._currentRawValue !== undefined ? element._currentRawValue : null;
+
+        // Se a duração for 0 ou se o valor for idêntico ao já exibido, atualiza imediatamente sem animação
+        if (duration === 0 || previousValue === target) {
+            element.textContent = formattedTarget;
+            element._currentRawValue = target;
+            return;
+        }
+
+        // Se é a primeira renderização do elemento, usa start = 0; se já tinha valor anterior, interpola a partir do valor anterior
+        const start = previousValue !== null ? previousValue : 0;
+        const diff = target - start;
+
+        // Se a diferença for insignificante (menos de 1 centavo), atualiza direto sem animação
+        if (Math.abs(diff) < 0.01) {
+            element.textContent = formattedTarget;
+            element._currentRawValue = target;
+            return;
+        }
+
+        const startTime = performance.now();
+
+        // Easing cúbico (Cubic Out): 1 - (1 - t)^3 -> aceleração suave inicial e desaceleração elegante
+        const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+
+        const step = (currentTime) => {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = easeOutCubic(progress);
+            const currentVal = start + (diff * eased);
+
+            // Se o usuário ocultou os valores durante a animação
+            if (document.body.classList.contains('values-hidden') && isCurrency) {
+                element.dataset.originalValue = formattedTarget;
+                element.textContent = '';
+                element._countUpRaf = null;
+                element._currentRawValue = target;
+                return;
+            }
+
+            if (isCurrency) {
+                element.textContent = formatarMoeda(currentVal);
+            } else {
+                element.textContent = new Intl.NumberFormat('pt-BR').format(Math.round(currentVal));
+            }
+
+            if (progress < 1) {
+                element._countUpRaf = requestAnimationFrame(step);
+            } else {
+                element.textContent = formattedTarget;
+                element._countUpRaf = null;
+                element._currentRawValue = target;
+            }
+        };
+
+        element._countUpRaf = requestAnimationFrame(step);
+    };
 
     // --- FUNÇÕES PIX ---
     const crc16 = (str) => {
@@ -644,62 +809,323 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- GRÁFICOS ---
+    let currentDailyChartType = 'bar';
+
+    // Plugin customizado para desenhar valores e quantidades ao final das barras horizontais dos dentistas
+    const dentistValueLabelsPlugin = {
+        id: 'dentistValueLabels',
+        afterDatasetsDraw(chart) {
+            const { ctx, chartArea } = chart;
+            const meta = chart.getDatasetMeta(0);
+            if (!meta || !meta.data || !meta.data.length) return;
+
+            ctx.save();
+            ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.textBaseline = 'middle';
+
+            meta.data.forEach((bar, index) => {
+                const val = chart.data.datasets[0].data[index];
+                if (val === undefined || val === null || val === 0) return;
+                const fullNames = chart._fullNames || [];
+                const piecesMap = chart._piecesMap || {};
+                const pieces = (fullNames[index] && piecesMap[fullNames[index]]) || 0;
+                const text = formatarMoeda(val) + (pieces > 0 ? ` • ${pieces} un.` : '');
+
+                // Posicionar ligeiramente à direita da ponta da barra
+                const x = Math.min(bar.x + 10, chartArea.right - 90);
+                const y = bar.y;
+
+                // Sombra suave para contraste
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+                ctx.fillText(text, x + 1, y + 1);
+
+                // Texto branco nítido
+                ctx.fillStyle = '#f8fafc';
+                ctx.fillText(text, x, y);
+            });
+            ctx.restore();
+        }
+    };
+
+    const buildDailyRevenueChartConfig = (type = 'bar') => {
+        return {
+            type: type,
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Faturamento',
+                    data: [],
+                    backgroundColor: function(context) {
+                        const chart = context.chart;
+                        const { ctx, chartArea } = chart;
+                        if (!chartArea) return '#38bdf8';
+                        const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                        if (type === 'line') {
+                            gradient.addColorStop(0, 'rgba(56, 189, 248, 0.45)');
+                            gradient.addColorStop(0.6, 'rgba(99, 102, 241, 0.15)');
+                            gradient.addColorStop(1, 'rgba(139, 92, 246, 0.0)');
+                        } else {
+                            gradient.addColorStop(0, 'rgba(56, 189, 248, 0.95)');
+                            gradient.addColorStop(0.5, 'rgba(99, 102, 241, 0.85)');
+                            gradient.addColorStop(1, 'rgba(139, 92, 246, 0.45)');
+                        }
+                        return gradient;
+                    },
+                    borderColor: type === 'line' ? '#38bdf8' : 'rgba(255, 255, 255, 0.35)',
+                    borderWidth: type === 'line' ? 3 : { top: 2, left: 1, right: 1, bottom: 0 },
+                    borderRadius: type === 'bar' ? { topLeft: 8, topRight: 8, bottomLeft: 2, bottomRight: 2 } : 0,
+                    borderSkipped: false,
+                    fill: type === 'line',
+                    tension: 0.4,
+                    pointBackgroundColor: '#38bdf8',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: type === 'line' ? 4 : 0,
+                    pointHoverRadius: 7,
+                    pointHoverBackgroundColor: '#ffffff',
+                    pointHoverBorderColor: '#0284c7',
+                    pointHoverBorderWidth: 2,
+                    hoverBackgroundColor: '#7dd3fc',
+                    barThickness: 'flex',
+                    maxBarThickness: 26,
+                    barPercentage: 0.7,
+                    categoryPercentage: 0.85
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 650,
+                    easing: 'easeOutQuart'
+                },
+                layout: {
+                    padding: { top: 12, bottom: 4, left: 4, right: 8 }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: 'rgba(15, 23, 42, 0.94)',
+                        titleColor: '#ffffff',
+                        bodyColor: '#38bdf8',
+                        titleFont: { weight: 'bold', size: 12, family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' },
+                        bodyFont: { weight: '600', size: 13, family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' },
+                        padding: 12,
+                        cornerRadius: 12,
+                        borderColor: 'rgba(255, 255, 255, 0.16)',
+                        borderWidth: 1,
+                        displayColors: false,
+                        callbacks: {
+                            title: function(items) {
+                                if (!items || items.length === 0) return '';
+                                const idx = items[0].dataIndex;
+                                if (charts.faturamentoDiario && charts.faturamentoDiario._fullDates && charts.faturamentoDiario._fullDates[idx]) {
+                                    return charts.faturamentoDiario._fullDates[idx];
+                                }
+                                return items[0].label;
+                            },
+                            label: function(context) {
+                                const val = (context.parsed && context.parsed.y !== undefined) ? context.parsed.y : (context.raw || 0);
+                                return 'Faturamento: ' + formatarMoeda(val);
+                            },
+                            afterLabel: function(context) {
+                                const idx = context.dataIndex;
+                                const pieces = (charts.faturamentoDiario && charts.faturamentoDiario._dayPieces) ? charts.faturamentoDiario._dayPieces[idx] : 0;
+                                if (pieces > 0) {
+                                    return `Produção: ${pieces} peça${pieces !== 1 ? 's' : ''}`;
+                                }
+                                return 'Sem produção registrada';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            display: true,
+                            color: 'rgba(255, 255, 255, 0.03)',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: '#94a3b8',
+                            font: { family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', size: 11, weight: '500' },
+                            maxTicksLimit: 9,
+                            maxRotation: 0,
+                            minRotation: 0,
+                            autoSkip: true,
+                            autoSkipPadding: 16
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)',
+                            borderDash: [4, 4],
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: '#94a3b8',
+                            font: { family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', size: 11 },
+                            maxTicksLimit: 6,
+                            callback: function(value) {
+                                return formatarMoeda(value);
+                            }
+                        }
+                    }
+                }
+            }
+        };
+    };
+
     const initializeCharts = () => {
-        // Gráfico de Faturamento Diário (Barras Verticais)
+        // 1. Gráfico de Faturamento Diário
         const faturamentoDiarioCtx = document.getElementById('faturamento-diario-chart');
         if (faturamentoDiarioCtx) {
-            charts.faturamentoDiario = new Chart(faturamentoDiarioCtx, {
+            charts.faturamentoDiario = new Chart(faturamentoDiarioCtx, buildDailyRevenueChartConfig(currentDailyChartType));
+        }
+
+        // Listeners para alternar entre Barras e Curva Suave
+        const toggleBarBtn = document.getElementById('toggle-chart-type-bar');
+        const toggleLineBtn = document.getElementById('toggle-chart-type-line');
+        if (toggleBarBtn && toggleLineBtn) {
+            toggleBarBtn.addEventListener('click', () => {
+                if (currentDailyChartType === 'bar') return;
+                currentDailyChartType = 'bar';
+                toggleBarBtn.className = 'px-2.5 py-1 text-xs font-semibold rounded-lg bg-sky-500/20 text-sky-300 border border-sky-400/30 transition-all';
+                toggleLineBtn.className = 'px-2.5 py-1 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all';
+                rebuildDailyRevenueChart();
+            });
+            toggleLineBtn.addEventListener('click', () => {
+                if (currentDailyChartType === 'line') return;
+                currentDailyChartType = 'line';
+                toggleLineBtn.className = 'px-2.5 py-1 text-xs font-semibold rounded-lg bg-sky-500/20 text-sky-300 border border-sky-400/30 transition-all';
+                toggleBarBtn.className = 'px-2.5 py-1 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all';
+                rebuildDailyRevenueChart();
+            });
+        }
+
+        // 2. Gráfico de Faturamento por Dentista (Barras Horizontais com valores visíveis)
+        const dentistaCtx = document.getElementById('dentista-chart');
+        if (dentistaCtx) {
+            charts.dentista = new Chart(dentistaCtx, {
                 type: 'bar',
+                plugins: [dentistValueLabelsPlugin],
                 data: {
                     labels: [],
                     datasets: [{
                         label: 'Faturamento',
                         data: [],
-                        backgroundColor: function(context) {
-                            const chart = context.chart;
-                            const {ctx, chartArea} = chart;
-                            if (!chartArea) return null;
-                            const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
-                            gradient.addColorStop(0, '#4f46e5'); // Azul
-                            gradient.addColorStop(1, '#7c3aed'); // Roxo
-                            return gradient;
-                        },
-                        borderRadius: 4,
-                        barThickness: 'flex',
-                        maxBarThickness: 30
+                        backgroundColor: [],
+                        borderRadius: 999, // Barra totalmente arredondada tipo cápsula Apple
+                        borderSkipped: false,
+                        barThickness: 30,
+                        maxBarThickness: 38
                     }]
                 },
                 options: {
+                    indexAxis: 'y', // barras horizontais
                     responsive: true,
                     maintainAspectRatio: false,
+                    animation: {
+                        duration: 650,
+                        easing: 'easeOutQuart'
+                    },
+                    layout: {
+                        padding: { left: 8, right: 90, top: 12, bottom: 8 }
+                    },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.94)',
+                            titleColor: '#ffffff',
+                            bodyColor: '#38bdf8',
+                            titleFont: { weight: 'bold', size: 13, family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' },
+                            bodyFont: { weight: '600', size: 12, family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' },
+                            padding: 12,
+                            cornerRadius: 12,
+                            borderColor: 'rgba(255, 255, 255, 0.16)',
+                            borderWidth: 1,
                             callbacks: {
+                                title: function(items) {
+                                    if (!items || items.length === 0) return '';
+                                    const idx = items[0].dataIndex;
+                                    return (charts.dentista && charts.dentista._fullNames && charts.dentista._fullNames[idx]) || items[0].label || '';
+                                },
                                 label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed.y !== null) {
-                                        label += formatarMoeda(context.parsed.y);
-                                    }
-                                    return label;
+                                    const value = context.parsed && (context.parsed.x ?? context.parsed) || 0;
+                                    return 'Faturamento: ' + formatarMoeda(value);
+                                },
+                                afterLabel: function(context) {
+                                    const idx = context.dataIndex;
+                                    const pieces = charts.dentista && charts.dentista._piecesMap ? charts.dentista._piecesMap[charts.dentista._fullNames[idx]] : 0;
+                                    return 'Peças produzidas: ' + (pieces || 0);
                                 }
                             }
                         }
                     },
                     scales: {
                         x: {
-                            grid: { display: false },
-                            ticks: { color: '#9aa0a6' }
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)',
+                                borderDash: [4, 4],
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                font: { size: 11, family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' },
+                                maxTicksLimit: 6,
+                                callback: function(value) {
+                                    try { return formatarMoeda(value); } catch (e) { return value; }
+                                }
+                            }
                         },
                         y: {
-                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                            ticks: { 
-                                color: '#9aa0a6',
-                                callback: function(value) {
-                                    return formatarMoeda(value);
+                            grid: { display: false, drawBorder: false },
+                            ticks: {
+                                color: '#f1f5f9',
+                                font: { size: 12, weight: '600', family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 3. Gráfico Donut de Quantidade por Tipo de Trabalho
+        const tiposTrabalhoCtx = document.getElementById('tipos-trabalho-donut-chart');
+        if (tiposTrabalhoCtx) {
+            charts.tiposTrabalho = new Chart(tiposTrabalhoCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: [
+                            '#38bdf8', '#818cf8', '#34d399', '#fbbf24', '#f472b6', '#a78bfa', '#fb7185', '#2dd4bf'
+                        ],
+                        borderWidth: 2,
+                        borderColor: 'rgba(15, 23, 42, 0.9)',
+                        hoverOffset: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '72%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.94)',
+                            titleColor: '#ffffff',
+                            bodyColor: '#38bdf8',
+                            padding: 10,
+                            cornerRadius: 10,
+                            borderColor: 'rgba(255, 255, 255, 0.15)',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function(context) {
+                                    const val = context.parsed || 0;
+                                    return ` ${context.label}: ${val} peça${val !== 1 ? 's' : ''}`;
                                 }
                             }
                         }
@@ -708,74 +1134,405 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // Gráfico de Faturamento por Dentista (Barras Horizontais)
-        const dentistaCtx = document.getElementById('dentista-chart');
-        if (dentistaCtx) {
-            charts.dentista = new Chart(dentistaCtx, {
-                type: 'bar',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Faturamento',
-                        data: [],
-                        backgroundColor: [],
-                        borderRadius: 8,
-                        barThickness: 18
-                    }]
-                },
-                options: {
-                    indexAxis: 'y', // horizontal bars
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                title: function(items) {
-                                    // Mostra o nome completo do dentista como título do tooltip
-                                    if (!items || items.length === 0) return '';
-                                    const idx = items[0].dataIndex;
-                                    return (charts.dentista && charts.dentista._fullNames && charts.dentista._fullNames[idx]) || items[0].label || '';
-                                },
-                                label: function(context) {
-                                    // context.parsed.x is the value for horizontal bars
-                                    const value = context.parsed && (context.parsed.x ?? context.parsed) || 0;
-                                    return 'Faturamento: ' + formatarMoeda(value);
-                                },
-                                afterLabel: function(context) {
-                                    const idx = context.dataIndex;
-                                    const pieces = charts.dentista && charts.dentista._piecesMap ? charts.dentista._piecesMap[charts.dentista._fullNames[idx]] : 0;
-                                    return 'Peças: ' + (pieces || 0);
-                                }
-                            },
-                            bodyFont: { weight: '600' }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            ticks: { 
-                                color: '#9aa0a6',
-                                callback: function(value) {
-                                    // Exibe no formato moeda
-                                    try { return formatarMoeda(value); } catch (e) { return value; }
-                                }
-                            },
-                            grid: { color: 'rgba(255, 255, 255, 0.05)' }
-                        },
-                        y: {
-                            ticks: { color: '#9aa0a6' },
-                            grid: { display: false }
-                        }
-                    },
-                    layout: { padding: { left: 8, right: 8, top: 8, bottom: 8 } }
-                }
+        // 4. Gráfico Comparativo Anual (Jan - Dez)
+        const comparativoAnualCtx = document.getElementById('comparativo-anual-chart');
+        if (comparativoAnualCtx) {
+            charts.comparativoAnual = new Chart(comparativoAnualCtx, buildComparativoAnualChartConfig());
+        }
+
+        const prevYearBtn = document.getElementById('anual-prev-year-btn');
+        const nextYearBtn = document.getElementById('anual-next-year-btn');
+        if (prevYearBtn && nextYearBtn) {
+            prevYearBtn.addEventListener('click', () => {
+                currentAnualYear--;
+                updateComparativoAnualChart();
+            });
+            nextYearBtn.addEventListener('click', () => {
+                currentAnualYear++;
+                updateComparativoAnualChart();
             });
         }
+
+        const btnFinancas = document.getElementById('anual-view-financas');
+        const btnLucro = document.getElementById('anual-view-lucro');
+        const btnPecas = document.getElementById('anual-view-pecas');
+
+        const updateAnualMetricButtons = (selected) => {
+            const activeClass = 'px-2.5 py-1 text-xs font-semibold rounded-lg bg-sky-500/20 text-sky-300 border border-sky-400/30 transition-all';
+            const inactiveClass = 'px-2.5 py-1 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all';
+            if (btnFinancas) btnFinancas.className = selected === 'financas' ? activeClass : inactiveClass;
+            if (btnLucro) btnLucro.className = selected === 'lucro' ? activeClass : inactiveClass;
+            if (btnPecas) btnPecas.className = selected === 'pecas' ? activeClass : inactiveClass;
+        };
+
+        if (btnFinancas && btnLucro && btnPecas) {
+            btnFinancas.addEventListener('click', () => {
+                if (currentAnualMetric === 'financas') return;
+                currentAnualMetric = 'financas';
+                updateAnualMetricButtons('financas');
+                rebuildComparativoAnualChart();
+            });
+            btnLucro.addEventListener('click', () => {
+                if (currentAnualMetric === 'lucro') return;
+                currentAnualMetric = 'lucro';
+                updateAnualMetricButtons('lucro');
+                rebuildComparativoAnualChart();
+            });
+            btnPecas.addEventListener('click', () => {
+                if (currentAnualMetric === 'pecas') return;
+                currentAnualMetric = 'pecas';
+                updateAnualMetricButtons('pecas');
+                rebuildComparativoAnualChart();
+            });
+        }
+    };
+
+    // --- LÓGICA DO GRÁFICO COMPARATIVO ANUAL ---
+    let currentAnualYear = new Date().getFullYear();
+    let currentAnualMetric = 'financas'; // 'financas' | 'lucro' | 'pecas'
+
+    const monthAbbrNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const monthFullNames = [
+        'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+
+    const buildComparativoAnualChartConfig = () => {
+        return {
+            type: 'bar',
+            data: {
+                labels: monthAbbrNames,
+                datasets: []
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                animation: {
+                    duration: 600,
+                    easing: 'easeOutQuart'
+                },
+                layout: {
+                    padding: { top: 16, bottom: 4, left: 6, right: 12 }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        align: 'end',
+                        labels: {
+                            color: '#94a3b8',
+                            font: { family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', size: 11, weight: '600' },
+                            boxWidth: 12,
+                            boxHeight: 12,
+                            borderRadius: 3,
+                            useBorderRadius: true,
+                            padding: 16
+                        }
+                    },
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: 'rgba(15, 23, 42, 0.94)',
+                        titleColor: '#ffffff',
+                        titleFont: { weight: 'bold', size: 13, family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' },
+                        bodyFont: { weight: '500', size: 12, family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' },
+                        padding: 14,
+                        cornerRadius: 12,
+                        borderColor: 'rgba(255, 255, 255, 0.16)',
+                        borderWidth: 1,
+                        callbacks: {
+                            title: function(items) {
+                                if (!items || items.length === 0) return '';
+                                const idx = items[0].dataIndex;
+                                return `${monthFullNames[idx]} de ${currentAnualYear}`;
+                            },
+                            label: function(context) {
+                                const datasetLabel = context.dataset.label || '';
+                                const val = context.parsed.y !== undefined ? context.parsed.y : (context.raw || 0);
+                                if (currentAnualMetric === 'pecas') {
+                                    return ` ${datasetLabel}: ${val} peça${val !== 1 ? 's' : ''}`;
+                                }
+                                return ` ${datasetLabel}: ${formatarMoeda(val)}`;
+                            },
+                            afterBody: function(items) {
+                                if (currentAnualMetric === 'financas' && items.length >= 2) {
+                                    const fat = items[0].parsed.y || 0;
+                                    const des = (items[1] && items[1].parsed.y) || 0;
+                                    const lucro = fat - des;
+                                    const margem = fat > 0 ? ((lucro / fat) * 100).toFixed(1) : 0;
+                                    return [
+                                        `──────────────────`,
+                                        ` Margem Real: ${margem}%`
+                                    ];
+                                }
+                                return [];
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            display: false,
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: '#94a3b8',
+                            font: { family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', size: 11, weight: '600' }
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)',
+                            borderDash: [4, 4],
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: '#94a3b8',
+                            font: { family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', size: 11 },
+                            maxTicksLimit: 6,
+                            callback: function(value) {
+                                if (currentAnualMetric === 'pecas') {
+                                    return `${value} un.`;
+                                }
+                                return formatarMoeda(value);
+                            }
+                        }
+                    }
+                }
+            }
+        };
+    };
+
+    const updateComparativoAnualChart = () => {
+        if (!charts.comparativoAnual) return;
+
+        const yearDisplay = document.getElementById('anual-year-display');
+        if (yearDisplay) {
+            yearDisplay.textContent = currentAnualYear;
+        }
+
+        const monthlyData = [];
+        let totalFaturamentoAno = 0;
+        let totalDespesasAno = 0;
+        let totalPecasAno = 0;
+        let maxFaturamento = 0;
+        let melhorMesIndex = -1;
+
+        for (let m = 0; m < 12; m++) {
+            const targetDate = new Date(currentAnualYear, m, 15);
+            const { startDate, endDate } = getBillingPeriod(targetDate);
+
+            // Filtrar produção do mês correspondente
+            const producaoDoMes = (state.producao || []).filter(p => {
+                if (!p.data) return false;
+                const d = new Date(p.data + "T00:00:00");
+                return d >= startDate && d <= endDate;
+            });
+
+            // Filtrar despesas do mês correspondente
+            const despesasDoMes = (state.despesas || []).filter(d => {
+                if (!d.data) return false;
+                const dataDesp = new Date(d.data + "T00:00:00");
+                return dataDesp >= startDate && dataDesp <= endDate;
+            });
+
+            let faturamentoMes = 0;
+            let pecasMes = 0;
+            producaoDoMes.forEach(p => {
+                const dentista = (state.dentistas || []).find(dent => dent.id === p.dentista);
+                const valorDentista = dentista ? (dentista.valores || []).find(v => v.tipo === p.tipo) : null;
+                const valorGlobal = (state.valores || []).find(v => v.tipo === p.tipo);
+                const valorFinal = valorDentista || valorGlobal;
+                const totalItem = valorFinal ? valorFinal.valor * p.qtd : 0;
+                faturamentoMes += totalItem;
+                pecasMes += (p.qtd || 0);
+            });
+
+            const totalDespesasMes = despesasDoMes.reduce((acc, d) => acc + (Number(d.valor) || 0), 0);
+            const lucroMes = faturamentoMes - totalDespesasMes;
+
+            totalFaturamentoAno += faturamentoMes;
+            totalDespesasAno += totalDespesasMes;
+            totalPecasAno += pecasMes;
+
+            if (faturamentoMes > maxFaturamento) {
+                maxFaturamento = faturamentoMes;
+                melhorMesIndex = m;
+            }
+
+            monthlyData.push({
+                faturamento: faturamentoMes,
+                despesas: totalDespesasMes,
+                lucro: lucroMes,
+                pecas: pecasMes
+            });
+        }
+
+        const totalLucroAno = totalFaturamentoAno - totalDespesasAno;
+        const mediaMensal = totalFaturamentoAno / 12;
+
+        // Atualizar mini-KPIs
+        const kpiFat = document.getElementById('anual-kpi-faturamento');
+        if (kpiFat) kpiFat.textContent = formatarMoeda(totalFaturamentoAno);
+
+        const kpiDesp = document.getElementById('anual-kpi-despesas');
+        if (kpiDesp) kpiDesp.textContent = formatarMoeda(totalDespesasAno);
+
+        const kpiLucro = document.getElementById('anual-kpi-lucro');
+        if (kpiLucro) {
+            kpiLucro.textContent = formatarMoeda(totalLucroAno);
+            kpiLucro.className = totalLucroAno >= 0 
+                ? 'text-lg font-bold text-emerald-400 mt-1 monetary-value'
+                : 'text-lg font-bold text-rose-400 mt-1 monetary-value';
+        }
+
+        const kpiMedia = document.getElementById('anual-kpi-media');
+        if (kpiMedia) kpiMedia.textContent = formatarMoeda(mediaMensal);
+
+        const melhorMesBadge = document.getElementById('comparativo-anual-melhor-mes-badge');
+        if (melhorMesBadge) {
+            if (maxFaturamento > 0 && melhorMesIndex >= 0) {
+                melhorMesBadge.textContent = `Melhor: ${monthAbbrNames[melhorMesIndex]} (${formatarMoeda(maxFaturamento)})`;
+            } else {
+                melhorMesBadge.textContent = 'Melhor: -';
+            }
+        }
+
+        // Criar gradientes pelo canvas
+        const canvas = document.getElementById('comparativo-anual-chart');
+        let fatGradient = '#38bdf8';
+        let despGradient = '#fb7185';
+        let pecasGradient = '#a855f7';
+
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            const h = canvas.height || 320;
+
+            const g1 = ctx.createLinearGradient(0, 0, 0, h);
+            g1.addColorStop(0, 'rgba(56, 189, 248, 0.95)');
+            g1.addColorStop(0.6, 'rgba(99, 102, 241, 0.85)');
+            g1.addColorStop(1, 'rgba(139, 92, 246, 0.45)');
+            fatGradient = g1;
+
+            const g2 = ctx.createLinearGradient(0, 0, 0, h);
+            g2.addColorStop(0, 'rgba(251, 113, 133, 0.95)');
+            g2.addColorStop(0.6, 'rgba(239, 68, 68, 0.85)');
+            g2.addColorStop(1, 'rgba(225, 29, 72, 0.45)');
+            despGradient = g2;
+
+            const g3 = ctx.createLinearGradient(0, 0, 0, h);
+            g3.addColorStop(0, 'rgba(168, 85, 247, 0.95)');
+            g3.addColorStop(0.6, 'rgba(129, 140, 248, 0.85)');
+            g3.addColorStop(1, 'rgba(56, 189, 248, 0.45)');
+            pecasGradient = g3;
+        }
+
+        let newDatasets = [];
+
+        if (currentAnualMetric === 'financas') {
+            newDatasets = [
+                {
+                    type: 'bar',
+                    label: 'Faturamento',
+                    data: monthlyData.map(d => d.faturamento),
+                    backgroundColor: fatGradient,
+                    borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 2, bottomRight: 2 },
+                    borderSkipped: false,
+                    barPercentage: 0.75,
+                    categoryPercentage: 0.7,
+                    order: 2
+                },
+                {
+                    type: 'bar',
+                    label: 'Despesas',
+                    data: monthlyData.map(d => d.despesas),
+                    backgroundColor: despGradient,
+                    borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 2, bottomRight: 2 },
+                    borderSkipped: false,
+                    barPercentage: 0.75,
+                    categoryPercentage: 0.7,
+                    order: 3
+                },
+                {
+                    type: 'line',
+                    label: 'Lucro Líquido',
+                    data: monthlyData.map(d => d.lucro),
+                    borderColor: '#34d399',
+                    backgroundColor: 'rgba(52, 211, 153, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.35,
+                    fill: false,
+                    pointBackgroundColor: '#34d399',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 7,
+                    order: 1
+                }
+            ];
+        } else if (currentAnualMetric === 'lucro') {
+            newDatasets = [
+                {
+                    type: 'bar',
+                    label: 'Lucro Líquido',
+                    data: monthlyData.map(d => d.lucro),
+                    backgroundColor: monthlyData.map(d => d.lucro >= 0 ? 'rgba(52, 211, 153, 0.85)' : 'rgba(244, 63, 94, 0.85)'),
+                    borderColor: monthlyData.map(d => d.lucro >= 0 ? '#34d399' : '#fb7185'),
+                    borderWidth: 1,
+                    borderRadius: 6,
+                    borderSkipped: false,
+                    barPercentage: 0.65,
+                    categoryPercentage: 0.8
+                }
+            ];
+        } else if (currentAnualMetric === 'pecas') {
+            newDatasets = [
+                {
+                    type: 'bar',
+                    label: 'Peças Produzidas',
+                    data: monthlyData.map(d => d.pecas),
+                    backgroundColor: pecasGradient,
+                    borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 2, bottomRight: 2 },
+                    borderSkipped: false,
+                    barPercentage: 0.65,
+                    categoryPercentage: 0.8
+                }
+            ];
+        }
+
+        charts.comparativoAnual.data.datasets = newDatasets;
+        charts.comparativoAnual.update();
+        toggleValuesVisibility();
+    };
+
+    const rebuildComparativoAnualChart = () => {
+        const canvas = document.getElementById('comparativo-anual-chart');
+        if (!canvas) return;
+        if (charts.comparativoAnual) {
+            charts.comparativoAnual.destroy();
+        }
+        charts.comparativoAnual = new Chart(canvas, buildComparativoAnualChartConfig());
+        updateComparativoAnualChart();
+    };
+
+    const rebuildDailyRevenueChart = () => {
+        const canvas = document.getElementById('faturamento-diario-chart');
+        if (!canvas) return;
+        if (charts.faturamentoDiario) {
+            charts.faturamentoDiario.destroy();
+        }
+        charts.faturamentoDiario = new Chart(canvas, buildDailyRevenueChartConfig(currentDailyChartType));
+        updateDailyRevenueChart();
     };
 
     const updateCharts = () => {
         updateDentistaChart();
         updateDailyRevenueChart();
+        updateComparativoAnualChart();
     };
 
     const updateDailyRevenueChart = () => {
@@ -785,36 +1542,52 @@ document.addEventListener('DOMContentLoaded', () => {
         const days = [];
         const data = [];
         const labels = [];
+        const fullDates = [];
         
-        // Generate all days in the billing period
+        // Gerar todos os dias do período de faturamento
         let currentDay = new Date(startDate);
-        // Ajuste para garantir que cobrimos todo o período sem loops infinitos ou erros de fuso
-        // Definir hora para meio-dia para evitar problemas de mudança de horário de verão
         currentDay.setHours(12, 0, 0, 0);
         
         const endDayCheck = new Date(endDate);
         endDayCheck.setHours(12, 0, 0, 0);
 
         while (currentDay <= endDayCheck) {
-            const dayStr = currentDay.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }); 
-            labels.push(dayStr.replace('.', '')); 
+            // Rótulo compacto legível (ex: "25 Jul", "01 Ago")
+            const diaNum = currentDay.getDate();
+            const mesNome = currentDay.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+            const dayStr = `${String(diaNum).padStart(2, '0')} ${mesNome.charAt(0).toUpperCase() + mesNome.slice(1)}`;
+            labels.push(dayStr); 
+
+            // Data completa para o tooltip em português
+            const dataCompleta = currentDay.toLocaleDateString('pt-BR', {
+                weekday: 'long',
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric'
+            });
+            fullDates.push(dataCompleta.charAt(0).toUpperCase() + dataCompleta.slice(1));
+
             days.push(new Date(currentDay));
             currentDay.setDate(currentDay.getDate() + 1);
         }
         
-        // Filter production for the period
+        // Filtrar produção para o período
         const producaoDoMes = (state.producao || []).filter(p => {
              if (!p.data) return false;
              const dataProducao = new Date(p.data + "T00:00:00");
              return dataProducao >= startDate && dataProducao <= endDate;
         });
         
-        // Group by day
+        // Agrupar por dia
         const productionByDay = {};
+        const piecesByDay = {};
         producaoDoMes.forEach(p => {
             const dataStr = p.data; // YYYY-MM-DD
             if (!productionByDay[dataStr]) {
                 productionByDay[dataStr] = 0;
+            }
+            if (!piecesByDay[dataStr]) {
+                piecesByDay[dataStr] = 0;
             }
             
             const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
@@ -824,21 +1597,53 @@ document.addEventListener('DOMContentLoaded', () => {
             const valorTotal = valorFinal ? valorFinal.valor * p.qtd : 0;
             
             productionByDay[dataStr] += valorTotal;
+            piecesByDay[dataStr] += (p.qtd || 0);
         });
         
-        // Map to chart data
-        days.forEach(day => {
+        let maxVal = 0;
+        let maxDayLabel = '';
+        let totalVal = 0;
+        let daysWithSales = 0;
+        const dayPieces = [];
+
+        // Mapear para dados do gráfico
+        days.forEach((day, i) => {
             const yyyy = day.getFullYear();
             const mm = String(day.getMonth() + 1).padStart(2, '0');
             const dd = String(day.getDate()).padStart(2, '0');
             const dateStr = `${yyyy}-${mm}-${dd}`;
             
-            data.push(productionByDay[dateStr] || 0);
+            const val = productionByDay[dateStr] || 0;
+            const pieces = piecesByDay[dateStr] || 0;
+            data.push(val);
+            dayPieces.push(pieces);
+            totalVal += val;
+
+            if (val > maxVal) {
+                maxVal = val;
+                maxDayLabel = labels[i];
+            }
+            if (val > 0) {
+                daysWithSales++;
+            }
         });
         
         charts.faturamentoDiario.data.labels = labels;
         charts.faturamentoDiario.data.datasets[0].data = data;
+        charts.faturamentoDiario._fullDates = fullDates;
+        charts.faturamentoDiario._dayPieces = dayPieces;
         charts.faturamentoDiario.update();
+
+        // Atualizar badges informativos do cabeçalho do gráfico
+        const bestDayBadge = document.getElementById('chart-best-day-badge');
+        if (bestDayBadge) {
+            bestDayBadge.textContent = maxVal > 0 ? `Maior: ${formatarMoeda(maxVal)} (${maxDayLabel})` : 'Maior: R$ 0,00';
+        }
+        const avgDayBadge = document.getElementById('chart-avg-day-badge');
+        if (avgDayBadge) {
+            const avgVal = daysWithSales > 0 ? (totalVal / daysWithSales) : 0;
+            avgDayBadge.textContent = avgVal > 0 ? `Média/Dia Ativo: ${formatarMoeda(avgVal)}` : `Total: ${formatarMoeda(totalVal)}`;
+        }
     };
 
     const updateDentistaChart = () => {
@@ -853,6 +1658,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Agregar faturamento e peças por dentista
         const map = {}; // nome -> { faturamento, pecas }
+        let totalGeral = 0;
         producaoDoMes.forEach(p => {
             const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
             if (!dentista) return;
@@ -867,317 +1673,1193 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!map[nome]) map[nome] = { faturamento: 0, pecas: 0 };
             map[nome].faturamento += faturamento;
             map[nome].pecas += p.qtd || 0;
+            totalGeral += faturamento;
         });
 
-    // Converter para array, ordenar
-    const entries = Object.entries(map).map(([nome, v]) => ({ nome, faturamento: v.faturamento, pecas: v.pecas }));
-    entries.sort((a, b) => b.faturamento - a.faturamento);
-    // Se o usuário escolheu ver todos, mostramos todos; senão limitamos ao Top 15
-    const top = state.showAllDentistas ? entries : entries.slice(0, 15);
+        // Converter para array, ordenar
+        const entries = Object.entries(map).map(([nome, v]) => ({ nome, faturamento: v.faturamento, pecas: v.pecas }));
+        entries.sort((a, b) => b.faturamento - a.faturamento);
+        const top = state.showAllDentistas ? entries : entries.slice(0, 15);
 
-    const fullNames = top.map(e => e.nome);
-    const shortLabels = fullNames.map(n => abbreviateName(n, 28));
-    const data = top.map(e => Number(e.faturamento.toFixed(2)));
+        const fullNames = top.map(e => e.nome);
+        const shortLabels = fullNames.map(n => abbreviateName(n, 28));
+        const data = top.map(e => Number(e.faturamento.toFixed(2)));
 
-        // Paleta: gradiente de roxo (Top 1 = mais claro, Top N = mais escuro)
-    // Tonalidade clara (Top 1) — ligeiramente mais viva que antes para melhor visibilidade
-    const purpleLight = '#d6a8ff'; // Top 1 (mais claro e mais vivo)
-        const purpleDark = '#4c1d95';  // Top N (mais escuro)
+        // Cores vibrantes com gradientes de alta tecnologia para cada barra
+        const canvas = document.getElementById('dentista-chart');
+        let backgroundColors = [];
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            backgroundColors = top.map((_, i) => {
+                const gradient = ctx.createLinearGradient(0, 0, 400, 0);
+                if (i === 0) {
+                    // Top 1: Azul Safira para Ciano Brilhante com Violeta
+                    gradient.addColorStop(0, '#0284c7');
+                    gradient.addColorStop(0.5, '#38bdf8');
+                    gradient.addColorStop(1, '#818cf8');
+                } else if (i === 1) {
+                    // Top 2: Esmeralda Radiante
+                    gradient.addColorStop(0, '#059669');
+                    gradient.addColorStop(0.6, '#10b981');
+                    gradient.addColorStop(1, '#34d399');
+                } else if (i === 2) {
+                    // Top 3: Roxo Ametista
+                    gradient.addColorStop(0, '#7c3aed');
+                    gradient.addColorStop(0.6, '#8b5cf6');
+                    gradient.addColorStop(1, '#c084fc');
+                } else if (i === 3) {
+                    // Top 4: Âmbar Ouro
+                    gradient.addColorStop(0, '#d97706');
+                    gradient.addColorStop(0.6, '#f59e0b');
+                    gradient.addColorStop(1, '#fbbf24');
+                } else {
+                    // Demais: Azul Clínico Apple
+                    gradient.addColorStop(0, '#1d4ed8');
+                    gradient.addColorStop(0.6, '#3b82f6');
+                    gradient.addColorStop(1, '#93c5fd');
+                }
+                return gradient;
+            });
+        }
 
-        // Helpers simples para misturar cores hex
-        const hexToRgb = (hex) => {
-            const h = hex.replace('#','');
-            return [parseInt(h.substring(0,2),16), parseInt(h.substring(2,4),16), parseInt(h.substring(4,6),16)];
-        };
-        const rgbToHex = (r,g,b) => '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
-        const blend = (startHex, endHex, t) => {
-            const s = hexToRgb(startHex);
-            const e = hexToRgb(endHex);
-            const r = Math.round(s[0] + (e[0] - s[0]) * t);
-            const g = Math.round(s[1] + (e[1] - s[1]) * t);
-            const b = Math.round(s[2] + (e[2] - s[2]) * t);
-            return rgbToHex(r,g,b);
-        };
-
-        // Inverte o gradiente: Top1 (maior faturamento) deve ser mais escuro
-        const backgroundColors = top.map((_, i) => {
-            if (top.length === 1) return purpleDark;
-            const t = i / (top.length - 1); // 0 => Top1, 1 => TopN
-            return blend(purpleDark, purpleLight, t);
-        });
-
-    charts.dentista.data.labels = shortLabels;
+        charts.dentista.data.labels = shortLabels;
         charts.dentista.data.datasets[0].data = data;
         charts.dentista.data.datasets[0].backgroundColor = backgroundColors;
 
-    // Guardar mapa de peças e nomes completos para tooltips
-    charts.dentista._piecesMap = top.reduce((acc, cur) => { acc[cur.nome] = cur.pecas; return acc; }, {});
-    charts.dentista._fullNames = fullNames;
+        // Guardar mapa de peças e nomes completos para tooltips e plugin
+        charts.dentista._piecesMap = top.reduce((acc, cur) => { acc[cur.nome] = cur.pecas; return acc; }, {});
+        charts.dentista._fullNames = fullNames;
 
-        // Ajustar altura do canvas para que cada barra tenha espaço vertical suficiente
+        // Ajustar altura dinâmica do canvas e espessura da barra (Evita tela preta vazia quando há poucos dentistas!)
         try {
-            const canvas = document.getElementById('dentista-chart');
             if (canvas) {
-                const perBar = 40; // px por item
-                const computedHeight = Math.max(300, shortLabels.length * perBar + 80);
-                // Set the canvas height attribute (not CSS) so Chart.js recalculates
+                const count = top.length;
+                let computedHeight = 140;
+                let barThickness = 32;
+
+                if (count === 0) {
+                    computedHeight = 140;
+                    barThickness = 28;
+                } else if (count === 1) {
+                    computedHeight = 130;
+                    barThickness = 36;
+                } else if (count === 2) {
+                    computedHeight = 175;
+                    barThickness = 32;
+                } else if (count <= 4) {
+                    computedHeight = count * 52 + 65;
+                    barThickness = 28;
+                } else {
+                    computedHeight = Math.min(550, count * 44 + 60);
+                    barThickness = 22;
+                }
+
                 canvas.height = computedHeight;
+                canvas.style.height = `${computedHeight}px`;
+                charts.dentista.data.datasets[0].barThickness = barThickness;
             }
         } catch (e) {
-            console.warn('Não foi possível ajustar a altura do canvas do dentista:', e);
+            console.warn('Erro ao ajustar dimensões dinâmicas do canvas do dentista:', e);
         }
 
         charts.dentista.update();
+
+        // Atualizar badges do card
+        const totalBadge = document.getElementById('dentista-chart-total-badge');
+        if (totalBadge) {
+            totalBadge.textContent = `Total: ${formatarMoeda(totalGeral)}`;
+        }
+        const countBadge = document.getElementById('dentista-chart-count-badge');
+        if (countBadge) {
+            countBadge.textContent = `${top.length} Dentista${top.length !== 1 ? 's' : ''}`;
+        }
+
+        // Exibir destaque do pódio para o Top 1
+        const podiumContainer = document.getElementById('dentista-podium-container');
+        if (podiumContainer) {
+            if (top.length > 0) {
+                const leader = top[0];
+                const leaderShare = totalGeral > 0 ? ((leader.faturamento / totalGeral) * 100).toFixed(0) : 0;
+                podiumContainer.innerHTML = `
+                    <div class="flex flex-col sm:flex-row items-center justify-between p-3.5 rounded-xl bg-slate-900/60 border border-amber-400/25 shadow-sm gap-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-400/30 text-amber-400 flex items-center justify-center font-bold text-lg shadow-[0_0_12px_rgba(245,158,11,0.2)]">
+                                👑
+                            </div>
+                            <div>
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-amber-400">Principal Parceiro do Mês</span>
+                                <p class="font-bold text-white text-base">${leader.nome}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4 text-right">
+                            <div>
+                                <span class="font-bold text-emerald-400 text-base monetary-value">${formatarMoeda(leader.faturamento)}</span>
+                                <p class="text-xs text-slate-400">${leader.pecas} peça${leader.pecas !== 1 ? 's' : ''} • ${leaderShare}% da receita</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                podiumContainer.classList.remove('hidden');
+            } else {
+                podiumContainer.classList.add('hidden');
+            }
+        }
     };
 
-    // --- EXPORTAÇÃO PDF ---
+    // Helper global para escape de strings no DOM
+    const escapeHtml = (str) => {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    };
 
-const generateDashboardPDF = () => {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    const mesAno = new Date(state.mesAtual).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    // Resolução precisa de preços (preço exclusivo do dentista com fallback para tabela geral)
+    const getItemValorUnitarioGlobal = (dentistaId, tipo) => {
+        const dentista = (state.dentistas || []).find(d => String(d.id) === String(dentistaId));
+        const valDentista = dentista ? (dentista.valores || []).find(v => v.tipo === tipo) : null;
+        const valGlobal = (state.valores || []).find(v => v.tipo === tipo);
+        return (valDentista || valGlobal)?.valor || 0;
+    };
 
-    doc.setFontSize(16);
-    doc.text(t('pdf_dashboard_report_title', 'Relatório do Dashboard'), 14, 15);
-    doc.setFontSize(10);
-    doc.text(`${t('pdf_reference_period', 'Período de Referência')}: ${mesAno}`, 14, 20);
+    // --- EXPORTAÇÃO PDF EXECUTIVA ---
 
-    // Kpis
-    const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
-    const producaoDoMes = (state.producao || []).filter(p => {
-        if (!p.data) return false;
-        const data = new Date(p.data + "T00:00:00");
-        return data >= startDate && data <= endDate;
-    });
-
-    let totalPecas = 0;
-    let totalFaturamento = 0;
-    
-    producaoDoMes.forEach(p => {
-        totalPecas += Number(p.qtd) || 0;
-        const valorItem = (state.valores || []).find(v => v.tipo === p.tipo);
-        const valorUnitario = valorItem ? valorItem.valor : 0;
-        totalFaturamento += valorUnitario * p.qtd;
-    });
-
-    doc.autoTable({
-        startY: 30,
-        head: [['Métrica', 'Valor']],
-        body: [
-            ['Total de Peças Produzidas', totalPecas.toString()],
-            ['Faturamento Total', formatarMoeda(totalFaturamento)]
-        ],
-        theme: 'striped',
-        headStyles: { fillColor: [66, 133, 244] }
-    });
-
-    doc.save(`dashboard_relatorio_${mesAno.replace(/ /g, '_')}.pdf`);
-};
-
-const generateAnalisePDF = () => {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    const mesAno = new Date(state.mesAtual).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-
-    doc.setFontSize(16);
-    doc.text(t('pdf_analise_report_title', 'Relatório de Análise por Dentista'), 14, 15);
-    doc.setFontSize(10);
-    doc.text(`${t('pdf_reference_period', 'Período de Referência')}: ${mesAno}`, 14, 20);
-
-    const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
-    
-    // Calcula totais por dentista
-    const totaisPorDentista = {};
-    (state.producao || []).forEach(p => {
-        if (!p.data) return;
-        const data = new Date(p.data + "T00:00:00");
-        if (data >= startDate && data <= endDate) {
-            const dentistaId = p.dentista;
-            const valorItem = (state.valores || []).find(v => v.tipo === p.tipo);
-            const valorUnitario = valorItem ? valorItem.valor : 0;
-            const valorTotal = valorUnitario * p.qtd;
-
-            if (!totaisPorDentista[dentistaId]) {
-                const d = (state.dentistas || []).find(d => d.id === dentistaId);
-                totaisPorDentista[dentistaId] = {
-                    nome: d ? d.nome : t('dentist_unknown'),
-                    quantidade: 0,
-                    faturamento: 0
-                };
-            }
-            totaisPorDentista[dentistaId].quantidade += p.qtd;
-            totaisPorDentista[dentistaId].faturamento += valorTotal;
-        }
-    });
-
-    const tableRows = Object.values(totaisPorDentista).map(d => [
-        d.nome,
-        d.quantidade.toString(),
-        formatarMoeda(d.faturamento)
-    ]);
-    
-    // Ordena por faturamento (maior para menor)
-    tableRows.sort((a, b) => {
-        const valA = parseFloat(a[2].replace(/[^0-9,-]+/g,"").replace(",", "."));
-        const valB = parseFloat(b[2].replace(/[^0-9,-]+/g,"").replace(",", "."));
-        return valB - valA;
-    });
-
-    doc.autoTable({
-        startY: 30,
-        head: [['Dentista', 'Qtd Peças', 'Faturamento']],
-        body: tableRows,
-        theme: 'striped',
-        headStyles: { fillColor: [66, 133, 244] }
-    });
-
-    doc.save(`analise_dentistas_${mesAno.replace(/ /g, '_')}.pdf`);
-};
-
-const generateResumoPDF = () => {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    const mesAno = new Date(state.mesAtual).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-
-    doc.setFontSize(16);
-    doc.text(t('pdf_resumo_report_title', 'Relatório de Resumo Mensal'), 14, 15);
-    doc.setFontSize(10);
-    doc.text(`${t('pdf_reference_period', 'Período de Referência')}: ${mesAno}`, 14, 20);
-
-    const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
-    
-    let faturamento = 0;
-    (state.producao || []).forEach(p => {
-        if (!p.data) return;
-        const data = new Date(p.data + "T00:00:00");
-        if (data >= startDate && data <= endDate) {
-            const valorItem = (state.valores || []).find(v => v.tipo === p.tipo);
-            const valorUnitario = valorItem ? valorItem.valor : 0;
-            faturamento += valorUnitario * p.qtd;
-        }
-    });
-
-    let despesas = 0;
-    (state.despesas || []).forEach(d => {
-        if (!d.data) return;
-        const data = new Date(d.data + "T00:00:00");
-        if (data >= startDate && data <= endDate) {
-            despesas += d.valor;
-        }
-    });
-
-    const saldo = faturamento - despesas;
-
-    doc.autoTable({
-        startY: 30,
-        head: [['Resumo Financeiro', 'Valor']],
-        body: [
-            ['Faturamento Bruto', formatarMoeda(faturamento)],
-            ['Despesas', formatarMoeda(despesas)],
-            ['Saldo Líquido', formatarMoeda(saldo)]
-        ],
-        theme: 'striped',
-        headStyles: { fillColor: [66, 133, 244] }
-    });
-
-    doc.save(`resumo_mensal_${mesAno.replace(/ /g, '_')}.pdf`);
-};
-
-const generateProducaoPDF = () => {
-        // Usa o estado atual do mês para determinar o período de fechamento
+    /**
+     * Coleta e consolida todos os indicadores financeiros e operacionais do mês atual
+     */
+    const getMonthlyReportConsolidatedData = () => {
         const { startDate, endDate } = getBillingPeriod(new Date(state.mesAtual));
         const mesAno = new Date(state.mesAtual).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 
-        // Filtra todas as produções que estão DENTRO do período de faturamento
+        // Mês anterior para cálculo de tendências
+        const prevMonthDate = new Date(state.mesAtual);
+        prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
+        const { startDate: prevStart, endDate: prevEnd } = getBillingPeriod(prevMonthDate);
+
+        // Produção do ciclo atual
         const producaoDoMes = (state.producao || []).filter(p => {
             if (!p.data) return false;
-            const dataProducao = new Date(p.data + "T00:00:00");
-            return dataProducao >= startDate && dataProducao <= endDate;
+            const dataProd = new Date(p.data + "T00:00:00");
+            return dataProd >= startDate && dataProd <= endDate;
         });
 
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        let totalFaturamentoMes = 0;
+        // Produção do ciclo anterior
+        const producaoMesAnterior = (state.producao || []).filter(p => {
+            if (!p.data) return false;
+            const dataProd = new Date(p.data + "T00:00:00");
+            return dataProd >= prevStart && dataProd <= prevEnd;
+        });
 
-        // Colunas (inalteradas)
-        const tableColumns = ["PACIENTE", "DENTISTA", "TIPO DE TRABALHO", "OBS.", "STATUS", "QTD", "VALOR"];
-        const tableRows = [];
-        
-        // Define a ordem das colunas e seus índices (inalterado)
-        const columnMap = {
-            'PACIENTE': 0,
-            'DENTISTA': 1,
-            'TIPO DE TRABALHO': 2,
-            'OBS.': 3,
-            'STATUS': 4,
-            'QTD': 5,
-            'VALOR': 6
-        };
+        // Despesas do ciclo atual
+        const despesasDoMes = (state.despesas || []).filter(d => {
+            if (!d.data) return false;
+            const dataDesp = new Date(d.data + "T00:00:00");
+            return dataDesp >= startDate && dataDesp <= endDate;
+        });
+
+        // Despesas do ciclo anterior
+        const despesasMesAnterior = (state.despesas || []).filter(d => {
+            if (!d.data) return false;
+            const dataDesp = new Date(d.data + "T00:00:00");
+            return dataDesp >= prevStart && dataDesp <= prevEnd;
+        });
+
+        // Resolução precisa de preços (preço do dentista com fallback para tabela geral)
+        const getItemValorUnitario = (dentistaId, tipo) => getItemValorUnitarioGlobal(dentistaId, tipo);
+
+        let faturamentoBruto = 0;
+        let totalPecas = 0;
+        const tiposMap = {};
+        const dentistasMap = {};
+        const diasComProducao = new Set();
 
         producaoDoMes.forEach(p => {
-            // Busca o nome do dentista
-            const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
-            const dentistaName = dentista ? dentista.nome : t('dentist_unknown');
+            const qtd = Number(p.qtd) || 0;
+            const unitVal = getItemValorUnitario(p.dentista, p.tipo);
+            const totalItem = unitVal * qtd;
 
-            // Busca o valor unitário
-            const valorItem = (state.valores || []).find(v => v.tipo === p.tipo);
-            const valorUnitario = valorItem ? valorItem.valor : 0;
-            const valorTotal = valorUnitario * p.qtd;
-            
-            totalFaturamentoMes += valorTotal;
-            
-            // OBS. usa o conteúdo completo
-            const obsConteudo = (p.obs || '-'); 
+            faturamentoBruto += totalItem;
+            totalPecas += qtd;
+            if (p.data) diasComProducao.add(p.data);
 
-            const producaoData = [
-                p.nomePaciente || t('patient_not_informed'),
+            // Agrupamento por tipo de trabalho
+            if (!tiposMap[p.tipo]) {
+                tiposMap[p.tipo] = { tipo: p.tipo, qtd: 0, total: 0 };
+            }
+            tiposMap[p.tipo].qtd += qtd;
+            tiposMap[p.tipo].total += totalItem;
+
+            // Agrupamento por dentista
+            const dId = p.dentista ? String(p.dentista) : 'desconhecido';
+            if (!dentistasMap[dId]) {
+                const dObj = (state.dentistas || []).find(d => String(d.id) === dId);
+                dentistasMap[dId] = {
+                    id: dId,
+                    nome: dObj ? dObj.nome : 'Dentista Não Cadastrado',
+                    clinica: dObj?.clinica || '-',
+                    qtd: 0,
+                    total: 0
+                };
+            }
+            dentistasMap[dId].qtd += qtd;
+            dentistasMap[dId].total += totalItem;
+        });
+
+        const totalDespesas = despesasDoMes.reduce((acc, d) => acc + (Number(d.valor) || 0), 0);
+        const lucroLiquido = faturamentoBruto - totalDespesas;
+        const margemLucro = faturamentoBruto > 0 ? ((lucroLiquido / faturamentoBruto) * 100).toFixed(1) : '0.0';
+
+        // Cálculos do mês anterior
+        let faturamentoAnterior = 0;
+        producaoMesAnterior.forEach(p => {
+            const qtd = Number(p.qtd) || 0;
+            const unitVal = getItemValorUnitario(p.dentista, p.tipo);
+            faturamentoAnterior += unitVal * qtd;
+        });
+        const totalDespesasAnterior = despesasMesAnterior.reduce((acc, d) => acc + (Number(d.valor) || 0), 0);
+        const lucroAnterior = faturamentoAnterior - totalDespesasAnterior;
+
+        const varFaturamento = faturamentoAnterior > 0 
+            ? (((faturamentoBruto - faturamentoAnterior) / faturamentoAnterior) * 100).toFixed(1)
+            : null;
+
+        const ticketMedioPeca = totalPecas > 0 ? faturamentoBruto / totalPecas : 0;
+        const diasProdutivosCount = Math.max(diasComProducao.size, 1);
+        const mediaDiariaFaturamento = faturamentoBruto / diasProdutivosCount;
+
+        // Despesas agrupadas por categoria
+        const categoriasDespesasMap = {};
+        despesasDoMes.forEach(d => {
+            const cat = d.categoria || 'Outros';
+            if (!categoriasDespesasMap[cat]) {
+                categoriasDespesasMap[cat] = { categoria: cat, count: 0, total: 0 };
+            }
+            categoriasDespesasMap[cat].count += 1;
+            categoriasDespesasMap[cat].total += Number(d.valor) || 0;
+        });
+
+        return {
+            startDate,
+            endDate,
+            mesAno,
+            producaoDoMes,
+            despesasDoMes,
+            faturamentoBruto,
+            totalDespesas,
+            lucroLiquido,
+            margemLucro,
+            totalPecas,
+            ticketMedioPeca,
+            mediaDiariaFaturamento,
+            diasProdutivosCount,
+            varFaturamento,
+            faturamentoAnterior,
+            totalDespesasAnterior,
+            lucroAnterior,
+            tiposMap,
+            dentistasMap,
+            categoriasDespesasMap,
+            getItemValorUnitario
+        };
+    };
+
+    /**
+     * Retorna a logo do aplicativo para inclusão em relatórios e faturas PDF
+     */
+    const getAppLogo = () => {
+        if (window.APP_LOGO_BASE64) return window.APP_LOGO_BASE64;
+        const imgEl = document.querySelector('img[src="logo.png"]') || document.querySelector('img[src="logo2.png"]');
+        return imgEl || null;
+    };
+
+    /**
+     * Desenha o cabeçalho executivo institucional nas páginas do relatório com logo no canto superior esquerdo
+     */
+    const drawExecutiveHeader = (doc, titleText, subtitleText, startDate, endDate, mesAno) => {
+        // Barra de fundo azul-escuro / obsidiana (Slate 900)
+        doc.setFillColor(15, 23, 42);
+        doc.rect(0, 0, 210, 29, 'F');
+
+        // Faixa de realce superior safira
+        doc.setFillColor(99, 102, 241);
+        doc.rect(0, 0, 210, 1.8, 'F');
+
+        // Linha inferior de brilho ciano
+        doc.setFillColor(56, 189, 248);
+        doc.rect(0, 28.4, 210, 0.6, 'F');
+
+        // Logo no canto superior esquerdo
+        const logo = getAppLogo();
+        let textStartX = 14;
+        if (logo) {
+            try {
+                // Cápsula squircle branca com acabamento limpo
+                doc.setFillColor(255, 255, 255);
+                doc.roundedRect(14, 4.5, 20, 20, 2.5, 2.5, 'F');
+                doc.addImage(logo, 'PNG', 15, 5.5, 18, 18);
+                textStartX = 38;
+            } catch (e) {
+                console.warn('Erro ao inserir logo no cabeçalho:', e);
+                textStartX = 14;
+            }
+        }
+
+        // Nome da Empresa / Sistema
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.setTextColor(255, 255, 255);
+        doc.text('DENTALFLOW LAB', textStartX, 12);
+
+        // Subtítulo da Seção
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.2);
+        doc.setTextColor(56, 189, 248);
+        doc.text(subtitleText.toUpperCase(), textStartX, 17.8);
+
+        // Cápsula do Mês de Referência (Canto Superior Direito)
+        doc.setFillColor(30, 41, 59);
+        doc.setDrawColor(71, 85, 105);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(126, 6, 70, 15.5, 2.5, 2.5, 'FD');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.setTextColor(255, 255, 255);
+        const mesCapitalizado = mesAno.charAt(0).toUpperCase() + mesAno.slice(1);
+        doc.text(mesCapitalizado.toUpperCase(), 161, 11.8, { align: 'center' });
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.8);
+        doc.setTextColor(148, 163, 184);
+        const cicloText = `Ciclo: ${startDate.toLocaleDateString('pt-BR')} a ${endDate.toLocaleDateString('pt-BR')}`;
+        doc.text(cicloText, 161, 17.5, { align: 'center' });
+    };
+
+    /**
+     * Aplica o rodapé profissional em todas as páginas do documento
+     */
+    const applyExecutiveFooters = (doc) => {
+        const totalPages = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+            doc.setPage(i);
+            // Linha divisória suave
+            doc.setDrawColor(226, 232, 240);
+            doc.setLineWidth(0.3);
+            doc.line(14, 286.5, 196, 286.5);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7.2);
+            doc.setTextColor(148, 163, 184);
+            doc.text('DentalFlow • Gestão Laboratorial Odontológica Especializada', 14, 291.5);
+            doc.text('Documento Gerencial Confidencial', 105, 291.5, { align: 'center' });
+            doc.text(`Página ${i} de ${totalPages}`, 196, 291.5, { align: 'right' });
+        }
+    };
+
+    /**
+     * Desenha o título de uma seção com indicador visual
+     */
+    const drawSectionTitle = (doc, yPos, title) => {
+        doc.setFillColor(79, 70, 229);
+        doc.roundedRect(14, yPos - 3.4, 2.8, 4.8, 0.6, 0.6, 'F');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(30, 41, 59);
+        doc.text(title, 19.5, yPos);
+    };
+
+    /**
+     * GERAÇÃO DO RELATÓRIO EXECUTIVO COMPLETO DO MÊS (Dashboard & Resumo Mensal)
+     */
+    const generateMonthlyExecutiveReport = (reportType = 'dashboard') => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const data = getMonthlyReportConsolidatedData();
+
+        const titleText = reportType === 'dashboard' ? 'Relatório Executivo do Dashboard' : 'Fechamento de Resumo Mensal';
+        const subtitleText = 'Relatório Mensal de Gestão & Fechamento Financeiro';
+
+        // 1. Cabeçalho Institucional
+        drawExecutiveHeader(doc, titleText, subtitleText, data.startDate, data.endDate, data.mesAno);
+
+        // 2. Faixa de Metadados
+        doc.setFillColor(220, 252, 231);
+        doc.setDrawColor(187, 247, 208);
+        doc.setLineWidth(0.2);
+        doc.roundedRect(14, 30.5, 23, 4.6, 1, 1, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.5);
+        doc.setTextColor(21, 128, 61);
+        doc.text('CONSOLIDADO', 25.5, 33.8, { align: 'center' });
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(100, 116, 139);
+        const emissaoData = new Date().toLocaleString('pt-BR');
+        const userEmail = (state.user && state.user.email) || (document.getElementById('user-email-display')?.textContent?.trim()) || 'Laboratório';
+        doc.text(`Unidade: Matriz • Laboratório Especializado`, 40, 34);
+        doc.text(`Emissão: ${emissaoData} • Resp.: ${userEmail}`, 196, 34, { align: 'right' });
+
+        // 3. Quatro Cartões de KPI Principais (Estilo Apple Glass)
+        const cardY = 38;
+        const cardH = 21.5;
+        const cardW = 43;
+        const cardGap = 3.3;
+
+        // Card 1: Faturamento Bruto (Sky)
+        doc.setFillColor(240, 249, 255);
+        doc.setDrawColor(186, 230, 253);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(14, cardY, cardW, cardH, 2, 2, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.8);
+        doc.setTextColor(3, 105, 161);
+        doc.text('FATURAMENTO BRUTO', 17.5, cardY + 5.2);
+        doc.setFontSize(11.5);
+        doc.setTextColor(12, 74, 110);
+        doc.text(formatarMoeda(data.faturamentoBruto), 17.5, cardY + 12.8);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.6);
+        doc.setTextColor(2, 132, 199);
+        const subFat = data.varFaturamento !== null ? `${data.varFaturamento >= 0 ? '+' : ''}${data.varFaturamento}% vs. mês anterior` : 'Receita total do ciclo';
+        doc.text(subFat, 17.5, cardY + 18.2);
+
+        // Card 2: Despesas Totais (Rose)
+        const card2X = 14 + cardW + cardGap;
+        doc.setFillColor(254, 242, 242);
+        doc.setDrawColor(254, 205, 211);
+        doc.roundedRect(card2X, cardY, cardW, cardH, 2, 2, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.8);
+        doc.setTextColor(185, 28, 28);
+        doc.text('DESPESAS TOTAIS', card2X + 3.5, cardY + 5.2);
+        doc.setFontSize(11.5);
+        doc.setTextColor(136, 19, 55);
+        doc.text(formatarMoeda(data.totalDespesas), card2X + 3.5, cardY + 12.8);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.6);
+        doc.setTextColor(225, 29, 72);
+        doc.text(`${data.despesasDoMes.length} despesas lançadas`, card2X + 3.5, cardY + 18.2);
+
+        // Card 3: Lucro Líquido (Emerald / Red)
+        const card3X = card2X + cardW + cardGap;
+        const isLucroPositivo = data.lucroLiquido >= 0;
+        doc.setFillColor(isLucroPositivo ? 240 : 254, isLucroPositivo ? 253 : 242, isLucroPositivo ? 244 : 242);
+        doc.setDrawColor(isLucroPositivo ? 187 : 254, isLucroPositivo ? 247 : 205, isLucroPositivo ? 208 : 211);
+        doc.roundedRect(card3X, cardY, cardW, cardH, 2, 2, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.8);
+        doc.setTextColor(isLucroPositivo ? 21 : 185, isLucroPositivo ? 128 : 28, isLucroPositivo ? 61 : 28);
+        doc.text('LUCRO LÍQUIDO', card3X + 3.5, cardY + 5.2);
+        doc.setFontSize(11.5);
+        doc.setTextColor(isLucroPositivo ? 20 : 136, isLucroPositivo ? 83 : 19, isLucroPositivo ? 45 : 55);
+        doc.text(formatarMoeda(data.lucroLiquido), card3X + 3.5, cardY + 12.8);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.6);
+        doc.setTextColor(isLucroPositivo ? 22 : 225, isLucroPositivo ? 163 : 29, isLucroPositivo ? 74 : 72);
+        doc.text(`Margem Real: ${data.margemLucro}%`, card3X + 3.5, cardY + 18.2);
+
+        // Card 4: Volume de Peças (Purple)
+        const card4X = card3X + cardW + cardGap;
+        doc.setFillColor(245, 243, 255);
+        doc.setDrawColor(221, 214, 254);
+        doc.roundedRect(card4X, cardY, cardW, cardH, 2, 2, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.8);
+        doc.setTextColor(109, 40, 217);
+        doc.text('PEÇAS PRODUZIDAS', card4X + 3.5, cardY + 5.2);
+        doc.setFontSize(11.5);
+        doc.setTextColor(76, 29, 149);
+        doc.text(`${data.totalPecas} un.`, card4X + 3.5, cardY + 12.8);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.6);
+        doc.setTextColor(124, 58, 237);
+        doc.text(`Ticket Médio: ${formatarMoeda(data.ticketMedioPeca)}`, card4X + 3.5, cardY + 18.2);
+
+        let currentY = 66;
+
+        // --- SEÇÃO 1: Demonstrativo Financeiro Sintético ---
+        drawSectionTitle(doc, currentY, '1. DEMONSTRATIVO FINANCEIRO SINTÉTICO');
+        currentY += 4;
+
+        doc.autoTable({
+            startY: currentY,
+            margin: { left: 14, right: 14 },
+            head: [['Indicador Financeiro', 'Base de Apuração & Detalhes', 'Valor Consolidado']],
+            body: [
+                ['Faturamento Bruto', 'Total de próteses e serviços entregues no ciclo', formatarMoeda(data.faturamentoBruto)],
+                ['Despesas Operacionais', 'Custos fixos, insumos, pró-labore e manutenção', formatarMoeda(data.totalDespesas)],
+                ['Resultado Operacional Líquido', 'Saldo real disponível pós-dedução de despesas', formatarMoeda(data.lucroLiquido)],
+                ['Margem Operacional Líquida', 'Percentual de rentabilidade sobre a receita bruta', `${data.margemLucro}%`],
+                ['Média Diária de Faturamento', `Média sobre ${data.diasProdutivosCount} dia(s) com movimentação`, formatarMoeda(data.mediaDiariaFaturamento)],
+                ['Ticket Médio por Elemento Protético', `Média faturada por peça (${data.totalPecas} un. no mês)`, formatarMoeda(data.ticketMedioPeca)]
+            ],
+            theme: 'striped',
+            styles: {
+                font: 'helvetica',
+                fontSize: 8,
+                cellPadding: 2.8,
+                textColor: [51, 65, 85],
+                lineColor: [226, 232, 240],
+                lineWidth: 0.1
+            },
+            headStyles: {
+                fillColor: [30, 41, 59],
+                textColor: [255, 255, 255],
+                fontStyle: 'bold',
+                fontSize: 8,
+                cellPadding: 3.2
+            },
+            alternateRowStyles: {
+                fillColor: [248, 250, 252]
+            },
+            columnStyles: {
+                0: { cellWidth: 64, fontStyle: 'bold' },
+                1: { cellWidth: 70 },
+                2: { cellWidth: 48, halign: 'right', fontStyle: 'bold' }
+            }
+        });
+
+        currentY = doc.autoTable.previous.finalY + 10;
+
+        // --- SEÇÃO 2: Distribuição por Tipo de Trabalho ---
+        const tiposArray = Object.values(data.tiposMap);
+        tiposArray.sort((a, b) => b.total - a.total);
+
+        if (currentY > 220) {
+            doc.addPage();
+            currentY = 20;
+        }
+
+        drawSectionTitle(doc, currentY, '2. DISTRIBUIÇÃO POR TIPO DE TRABALHO & ESPECIALIDADE');
+        currentY += 4;
+
+        const tiposBody = tiposArray.map(item => {
+            const percQtd = data.totalPecas > 0 ? ((item.qtd / data.totalPecas) * 100).toFixed(1) + '%' : '0%';
+            const percFat = data.faturamentoBruto > 0 ? ((item.total / data.faturamentoBruto) * 100).toFixed(1) + '%' : '0%';
+            const unitMedio = item.qtd > 0 ? item.total / item.qtd : 0;
+            return [
+                item.tipo,
+                `${item.qtd} un.`,
+                percQtd,
+                formatarMoeda(item.total),
+                percFat,
+                formatarMoeda(unitMedio)
+            ];
+        });
+
+        // Linha totalizadora
+        tiposBody.push([
+            'TOTAL CONSOLIDADO',
+            `${data.totalPecas} un.`,
+            '100%',
+            formatarMoeda(data.faturamentoBruto),
+            '100%',
+            formatarMoeda(data.ticketMedioPeca)
+        ]);
+
+        doc.autoTable({
+            startY: currentY,
+            margin: { left: 14, right: 14 },
+            head: [['Tipo de Trabalho', 'Qtd (un)', '% Volume', 'Faturamento (R$)', '% Receita', 'Valor Médio']],
+            body: tiposBody.length > 1 ? tiposBody : [['Nenhum trabalho registrado no ciclo', '-', '-', '-', '-', '-']],
+            theme: 'striped',
+            styles: {
+                font: 'helvetica',
+                fontSize: 8,
+                cellPadding: 2.7,
+                textColor: [51, 65, 85],
+                lineColor: [226, 232, 240],
+                lineWidth: 0.1
+            },
+            headStyles: {
+                fillColor: [30, 41, 59],
+                textColor: [255, 255, 255],
+                fontStyle: 'bold',
+                fontSize: 8,
+                cellPadding: 3.2
+            },
+            alternateRowStyles: {
+                fillColor: [248, 250, 252]
+            },
+            columnStyles: {
+                0: { cellWidth: 54 },
+                1: { cellWidth: 20, halign: 'center' },
+                2: { cellWidth: 22, halign: 'center' },
+                3: { cellWidth: 32, halign: 'right' },
+                4: { cellWidth: 24, halign: 'center' },
+                5: { cellWidth: 30, halign: 'right' }
+            },
+            didParseCell: (hookData) => {
+                if (hookData.section === 'body' && hookData.row.index === tiposBody.length - 1 && tiposBody.length > 1) {
+                    hookData.cell.styles.fontStyle = 'bold';
+                    hookData.cell.styles.fillColor = [241, 245, 249];
+                    hookData.cell.styles.textColor = [15, 23, 42];
+                }
+            }
+        });
+
+        currentY = doc.autoTable.previous.finalY + 10;
+
+        // --- SEÇÃO 3: Desempenho dos Principais Dentistas / Clínicas ---
+        const dentistasArray = Object.values(data.dentistasMap);
+        dentistasArray.sort((a, b) => b.total - a.total);
+
+        if (currentY > 220) {
+            doc.addPage();
+            currentY = 20;
+        }
+
+        drawSectionTitle(doc, currentY, '3. RANKING DE PARCEIROS & DENTISTAS (FATURAMENTO)');
+        currentY += 4;
+
+        const dentistasBody = dentistasArray.map(item => {
+            const perc = data.faturamentoBruto > 0 ? ((item.total / data.faturamentoBruto) * 100).toFixed(1) + '%' : '0%';
+            const tm = item.qtd > 0 ? item.total / item.qtd : 0;
+            return [
+                item.nome,
+                item.clinica,
+                `${item.qtd} un.`,
+                formatarMoeda(item.total),
+                perc,
+                formatarMoeda(tm)
+            ];
+        });
+
+        dentistasBody.push([
+            'TOTAL CONSOLIDADO',
+            '-',
+            `${data.totalPecas} un.`,
+            formatarMoeda(data.faturamentoBruto),
+            '100%',
+            formatarMoeda(data.ticketMedioPeca)
+        ]);
+
+        doc.autoTable({
+            startY: currentY,
+            margin: { left: 14, right: 14 },
+            head: [['Dentista / Parceiro', 'Clínica / Unidade', 'Qtd Peças', 'Faturamento (R$)', '% do Mês', 'Ticket Médio']],
+            body: dentistasBody.length > 1 ? dentistasBody : [['Nenhum dentista com produção no ciclo', '-', '-', '-', '-', '-']],
+            theme: 'striped',
+            styles: {
+                font: 'helvetica',
+                fontSize: 8,
+                cellPadding: 2.7,
+                textColor: [51, 65, 85],
+                lineColor: [226, 232, 240],
+                lineWidth: 0.1
+            },
+            headStyles: {
+                fillColor: [30, 41, 59],
+                textColor: [255, 255, 255],
+                fontStyle: 'bold',
+                fontSize: 8,
+                cellPadding: 3.2
+            },
+            alternateRowStyles: {
+                fillColor: [248, 250, 252]
+            },
+            columnStyles: {
+                0: { cellWidth: 54 },
+                1: { cellWidth: 38 },
+                2: { cellWidth: 20, halign: 'center' },
+                3: { cellWidth: 32, halign: 'right' },
+                4: { cellWidth: 18, halign: 'center' },
+                5: { cellWidth: 20, halign: 'right' }
+            },
+            didParseCell: (hookData) => {
+                if (hookData.section === 'body' && hookData.row.index === dentistasBody.length - 1 && dentistasBody.length > 1) {
+                    hookData.cell.styles.fontStyle = 'bold';
+                    hookData.cell.styles.fillColor = [241, 245, 249];
+                    hookData.cell.styles.textColor = [15, 23, 42];
+                }
+            }
+        });
+
+        currentY = doc.autoTable.previous.finalY + 10;
+
+        // --- SEÇÃO 4: Composição de Despesas por Categoria (se houver) ---
+        const categoriasArray = Object.values(data.categoriasDespesasMap);
+        if (categoriasArray.length > 0) {
+            categoriasArray.sort((a, b) => b.total - a.total);
+
+            if (currentY > 220) {
+                doc.addPage();
+                currentY = 20;
+            }
+
+            drawSectionTitle(doc, currentY, '4. COMPOSIÇÃO DE DESPESAS OPERACIONAIS POR CATEGORIA');
+            currentY += 4;
+
+            const despBody = categoriasArray.map(item => {
+                const perc = data.totalDespesas > 0 ? ((item.total / data.totalDespesas) * 100).toFixed(1) + '%' : '0%';
+                return [
+                    item.categoria,
+                    `${item.count} registro(s)`,
+                    formatarMoeda(item.total),
+                    perc
+                ];
+            });
+
+            despBody.push([
+                'TOTAL DE DESPESAS',
+                `${data.despesasDoMes.length} registro(s)`,
+                formatarMoeda(data.totalDespesas),
+                '100%'
+            ]);
+
+            doc.autoTable({
+                startY: currentY,
+                margin: { left: 14, right: 14 },
+                head: [['Categoria de Custo / Despesa', 'Lançamentos', 'Total Gasto (R$)', '% das Despesas']],
+                body: despBody,
+                theme: 'striped',
+                styles: {
+                    font: 'helvetica',
+                    fontSize: 8,
+                    cellPadding: 2.7,
+                    textColor: [51, 65, 85],
+                    lineColor: [226, 232, 240],
+                    lineWidth: 0.1
+                },
+                headStyles: {
+                    fillColor: [30, 41, 59],
+                    textColor: [255, 255, 255],
+                    fontStyle: 'bold',
+                    fontSize: 8,
+                    cellPadding: 3.2
+                },
+                alternateRowStyles: {
+                    fillColor: [248, 250, 252]
+                },
+                columnStyles: {
+                    0: { cellWidth: 72 },
+                    1: { cellWidth: 34, halign: 'center' },
+                    2: { cellWidth: 44, halign: 'right' },
+                    3: { cellWidth: 32, halign: 'center' }
+                },
+                didParseCell: (hookData) => {
+                    if (hookData.section === 'body' && hookData.row.index === despBody.length - 1) {
+                        hookData.cell.styles.fontStyle = 'bold';
+                        hookData.cell.styles.fillColor = [241, 245, 249];
+                        hookData.cell.styles.textColor = [15, 23, 42];
+                    }
+                }
+            });
+
+            currentY = doc.autoTable.previous.finalY + 10;
+        }
+
+        // --- SEÇÃO 5: Relação das Ordens de Serviço do Mês ---
+        if (data.producaoDoMes.length > 0) {
+            // Nova página para a relação detalhada de trabalhos para melhor leitura e organização
+            doc.addPage();
+            currentY = 20;
+
+            drawSectionTitle(doc, currentY, '5. RELAÇÃO COMPLETA DE TRABALHOS & ORDENS DO MÊS');
+            currentY += 4;
+
+            const ordensRows = data.producaoDoMes.map(p => {
+                const dentista = (state.dentistas || []).find(d => String(d.id) === String(p.dentista));
+                const dNome = dentista ? dentista.nome : '-';
+                const unitVal = data.getItemValorUnitario(p.dentista, p.tipo);
+                const totalItem = unitVal * p.qtd;
+                const dataFormatada = p.data ? new Date(p.data + 'T00:00:00').toLocaleDateString('pt-BR') : '-';
+
+                return [
+                    dataFormatada,
+                    p.nomePaciente || 'Não informado',
+                    dNome,
+                    p.tipo,
+                    `${p.qtd}x`,
+                    formatarMoeda(totalItem),
+                    p.status || 'Entregue'
+                ];
+            });
+
+            doc.autoTable({
+                startY: currentY,
+                margin: { left: 14, right: 14 },
+                head: [['Data', 'Paciente', 'Dentista / Parceiro', 'Tipo de Trabalho', 'Qtd', 'Total (R$)', 'Status']],
+                body: ordensRows,
+                theme: 'striped',
+                styles: {
+                    font: 'helvetica',
+                    fontSize: 7.6,
+                    cellPadding: 2.4,
+                    textColor: [51, 65, 85],
+                    lineColor: [226, 232, 240],
+                    lineWidth: 0.1,
+                    overflow: 'ellipsize'
+                },
+                headStyles: {
+                    fillColor: [30, 41, 59],
+                    textColor: [255, 255, 255],
+                    fontStyle: 'bold',
+                    fontSize: 7.8,
+                    cellPadding: 3
+                },
+                alternateRowStyles: {
+                    fillColor: [248, 250, 252]
+                },
+                columnStyles: {
+                    0: { cellWidth: 18, halign: 'center' },
+                    1: { cellWidth: 38 },
+                    2: { cellWidth: 36 },
+                    3: { cellWidth: 40 },
+                    4: { cellWidth: 12, halign: 'center' },
+                    5: { cellWidth: 22, halign: 'right', fontStyle: 'bold' },
+                    6: { cellWidth: 16, halign: 'center' }
+                }
+            });
+        }
+
+        // Aplica o rodapé em todas as páginas
+        applyExecutiveFooters(doc);
+
+        // Salvar com nome limpo e descritivo
+        const mesAnoSlug = data.mesAno.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        const filename = `${reportType}_gerencial_${mesAnoSlug}.pdf`;
+        doc.save(filename);
+    };
+
+    const generateDashboardPDF = () => {
+        generateMonthlyExecutiveReport('dashboard');
+    };
+
+    const generateResumoPDF = () => {
+        generateMonthlyExecutiveReport('resumo');
+    };
+
+    const generateAnalisePDF = () => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const data = getMonthlyReportConsolidatedData();
+
+        // Cabeçalho Institucional
+        drawExecutiveHeader(doc, 'Relatório de Análise por Dentista', 'Desempenho Comercial & Operacional', data.startDate, data.endDate, data.mesAno);
+
+        // Faixa de Metadados
+        doc.setFillColor(220, 252, 231);
+        doc.setDrawColor(187, 247, 208);
+        doc.setLineWidth(0.2);
+        doc.roundedRect(14, 30.5, 23, 4.6, 1, 1, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.5);
+        doc.setTextColor(21, 128, 61);
+        doc.text('CONSOLIDADO', 25.5, 33.8, { align: 'center' });
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(100, 116, 139);
+        const emissaoData = new Date().toLocaleString('pt-BR');
+        const userEmail = (state.user && state.user.email) || (document.getElementById('user-email-display')?.textContent?.trim()) || 'Laboratório';
+        doc.text(`Unidade: Matriz • Laboratório Especializado`, 40, 34);
+        doc.text(`Emissão: ${emissaoData} • Resp.: ${userEmail}`, 196, 34, { align: 'right' });
+
+        // 3 Cards de Resumo Rápido
+        const cardY = 38;
+        const cardH = 21;
+        const cardW = 58;
+        const cardGap = 4;
+
+        // Card 1: Faturamento do Mês
+        doc.setFillColor(240, 249, 255);
+        doc.setDrawColor(186, 230, 253);
+        doc.roundedRect(14, cardY, cardW, cardH, 2, 2, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.8);
+        doc.setTextColor(3, 105, 161);
+        doc.text('RECEITA TOTAL DO CICLO', 17.5, cardY + 5.2);
+        doc.setFontSize(12);
+        doc.setTextColor(12, 74, 110);
+        doc.text(formatarMoeda(data.faturamentoBruto), 17.5, cardY + 12.8);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.6);
+        doc.setTextColor(2, 132, 199);
+        doc.text('Faturamento consolidado', 17.5, cardY + 18);
+
+        // Card 2: Dentistas Ativos
+        const dentistasArray = Object.values(data.dentistasMap);
+        const card2X = 14 + cardW + cardGap;
+        doc.setFillColor(245, 243, 255);
+        doc.setDrawColor(221, 214, 254);
+        doc.roundedRect(card2X, cardY, cardW, cardH, 2, 2, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.8);
+        doc.setTextColor(109, 40, 217);
+        doc.text('PARCEIROS ATENDIDOS', card2X + 3.5, cardY + 5.2);
+        doc.setFontSize(12);
+        doc.setTextColor(76, 29, 149);
+        doc.text(`${dentistasArray.length} Dentistas`, card2X + 3.5, cardY + 12.8);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.6);
+        doc.setTextColor(124, 58, 237);
+        doc.text(`${data.totalPecas} peças solicitadas`, card2X + 3.5, cardY + 18);
+
+        // Card 3: Média por Dentista
+        const mediaPorDentista = dentistasArray.length > 0 ? data.faturamentoBruto / dentistasArray.length : 0;
+        const card3X = card2X + cardW + cardGap;
+        doc.setFillColor(240, 253, 244);
+        doc.setDrawColor(187, 247, 208);
+        doc.roundedRect(card3X, cardY, cardW, cardH, 2, 2, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.8);
+        doc.setTextColor(21, 128, 61);
+        doc.text('FATURAMENTO MÉDIO / PARCEIRO', card3X + 3.5, cardY + 5.2);
+        doc.setFontSize(12);
+        doc.setTextColor(20, 83, 45);
+        doc.text(formatarMoeda(mediaPorDentista), card3X + 3.5, cardY + 12.8);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.6);
+        doc.setTextColor(22, 163, 74);
+        doc.text(`Ticket Médio/Peça: ${formatarMoeda(data.ticketMedioPeca)}`, card3X + 3.5, cardY + 18);
+
+        let currentY = 66;
+        drawSectionTitle(doc, currentY, '1. RANKING COMPLETO DE DENTISTAS NO CICLO');
+        currentY += 4;
+
+        dentistasArray.sort((a, b) => b.total - a.total);
+
+        const tableRows = dentistasArray.map(d => {
+            const perc = data.faturamentoBruto > 0 ? ((d.total / data.faturamentoBruto) * 100).toFixed(1) + '%' : '0%';
+            const tm = d.qtd > 0 ? d.total / d.qtd : 0;
+            return [
+                d.nome,
+                d.clinica,
+                `${d.qtd} un.`,
+                formatarMoeda(d.total),
+                perc,
+                formatarMoeda(tm)
+            ];
+        });
+
+        tableRows.push([
+            'TOTAL CONSOLIDADO',
+            '-',
+            `${data.totalPecas} un.`,
+            formatarMoeda(data.faturamentoBruto),
+            '100%',
+            formatarMoeda(data.ticketMedioPeca)
+        ]);
+
+        doc.autoTable({
+            startY: currentY,
+            margin: { left: 14, right: 14 },
+            head: [['Dentista / Parceiro', 'Clínica', 'Qtd Peças', 'Faturamento (R$)', '% Receita', 'Ticket Médio']],
+            body: tableRows,
+            theme: 'striped',
+            styles: {
+                font: 'helvetica',
+                fontSize: 8,
+                cellPadding: 2.8,
+                textColor: [51, 65, 85],
+                lineColor: [226, 232, 240],
+                lineWidth: 0.1
+            },
+            headStyles: {
+                fillColor: [30, 41, 59],
+                textColor: [255, 255, 255],
+                fontStyle: 'bold',
+                fontSize: 8,
+                cellPadding: 3.2
+            },
+            alternateRowStyles: {
+                fillColor: [248, 250, 252]
+            },
+            columnStyles: {
+                0: { cellWidth: 54 },
+                1: { cellWidth: 38 },
+                2: { cellWidth: 20, halign: 'center' },
+                3: { cellWidth: 32, halign: 'right' },
+                4: { cellWidth: 18, halign: 'center' },
+                5: { cellWidth: 20, halign: 'right' }
+            },
+            didParseCell: (hookData) => {
+                if (hookData.section === 'body' && hookData.row.index === tableRows.length - 1) {
+                    hookData.cell.styles.fontStyle = 'bold';
+                    hookData.cell.styles.fillColor = [241, 245, 249];
+                    hookData.cell.styles.textColor = [15, 23, 42];
+                }
+            }
+        });
+
+        applyExecutiveFooters(doc);
+        const mesAnoSlug = data.mesAno.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        doc.save(`analise_dentistas_${mesAnoSlug}.pdf`);
+    };
+
+    const generateProducaoPDF = () => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const data = getMonthlyReportConsolidatedData();
+
+        // Cabeçalho Institucional
+        drawExecutiveHeader(doc, 'Relatório Mensal de Produção', 'Relação Operacional de Trabalhos', data.startDate, data.endDate, data.mesAno);
+
+        // Faixa de Metadados
+        doc.setFillColor(220, 252, 231);
+        doc.setDrawColor(187, 247, 208);
+        doc.setLineWidth(0.2);
+        doc.roundedRect(14, 30.5, 23, 4.6, 1, 1, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.5);
+        doc.setTextColor(21, 128, 61);
+        doc.text('CONSOLIDADO', 25.5, 33.8, { align: 'center' });
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(100, 116, 139);
+        const emissaoData = new Date().toLocaleString('pt-BR');
+        const userEmail = (state.user && state.user.email) || (document.getElementById('user-email-display')?.textContent?.trim()) || 'Laboratório';
+        doc.text(`Unidade: Matriz • Laboratório Especializado`, 40, 34);
+        doc.text(`Emissão: ${emissaoData} • Resp.: ${userEmail}`, 196, 34, { align: 'right' });
+
+        // Cartões de Resumo no topo
+        const cardY = 38;
+        const cardH = 21;
+        const cardW = 58;
+        const cardGap = 4;
+
+        // Card 1: Faturamento da Produção
+        doc.setFillColor(240, 249, 255);
+        doc.setDrawColor(186, 230, 253);
+        doc.roundedRect(14, cardY, cardW, cardH, 2, 2, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.8);
+        doc.setTextColor(3, 105, 161);
+        doc.text('FATURAMENTO TOTAL', 17.5, cardY + 5.2);
+        doc.setFontSize(12);
+        doc.setTextColor(12, 74, 110);
+        doc.text(formatarMoeda(data.faturamentoBruto), 17.5, cardY + 12.8);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.6);
+        doc.setTextColor(2, 132, 199);
+        doc.text('Total bruto faturado', 17.5, cardY + 18);
+
+        // Card 2: Peças Produzidas
+        const card2X = 14 + cardW + cardGap;
+        doc.setFillColor(245, 243, 255);
+        doc.setDrawColor(221, 214, 254);
+        doc.roundedRect(card2X, cardY, cardW, cardH, 2, 2, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.8);
+        doc.setTextColor(109, 40, 217);
+        doc.text('VOLUME FABRICADO', card2X + 3.5, cardY + 5.2);
+        doc.setFontSize(12);
+        doc.setTextColor(76, 29, 149);
+        doc.text(`${data.totalPecas} Peças`, card2X + 3.5, cardY + 12.8);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.6);
+        doc.setTextColor(124, 58, 237);
+        doc.text(`${data.producaoDoMes.length} ordens de trabalho`, card2X + 3.5, cardY + 18);
+
+        // Card 3: Ticket Médio
+        const card3X = card2X + cardW + cardGap;
+        doc.setFillColor(240, 253, 244);
+        doc.setDrawColor(187, 247, 208);
+        doc.roundedRect(card3X, cardY, cardW, cardH, 2, 2, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.8);
+        doc.setTextColor(21, 128, 61);
+        doc.text('TICKET MÉDIO POR PEÇA', card3X + 3.5, cardY + 5.2);
+        doc.setFontSize(12);
+        doc.setTextColor(20, 83, 45);
+        doc.text(formatarMoeda(data.ticketMedioPeca), card3X + 3.5, cardY + 12.8);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.6);
+        doc.setTextColor(22, 163, 74);
+        doc.text(`Média faturada por elemento`, card3X + 3.5, cardY + 18);
+
+        let currentY = 66;
+        drawSectionTitle(doc, currentY, '1. RELAÇÃO COMPLETA DE TRABALHOS DA PRODUÇÃO MENSAL');
+        currentY += 4;
+
+        const tableColumns = ["Data", "Paciente", "Dentista", "Tipo de Trabalho", "Obs.", "Status", "Qtd", "Valor (R$)"];
+        const tableRows = data.producaoDoMes.map(p => {
+            const dentista = (state.dentistas || []).find(d => String(d.id) === String(p.dentista));
+            const dentistaName = dentista ? dentista.nome : '-';
+            const unitVal = data.getItemValorUnitario(p.dentista, p.tipo);
+            const valorTotal = unitVal * p.qtd;
+            const dataStr = p.data ? new Date(p.data + 'T00:00:00').toLocaleDateString('pt-BR') : '-';
+
+            return [
+                dataStr,
+                p.nomePaciente || '-',
                 dentistaName,
                 p.tipo,
-                obsConteudo,
-                p.status,
-                p.qtd.toString(),
+                p.obs || '-',
+                p.status || 'Entregue',
+                `${p.qtd}x`,
                 formatarMoeda(valorTotal)
             ];
-            tableRows.push(producaoData);
         });
-        
-        // Título e Período
-        doc.setFontSize(16);
-        doc.text(t('pdf_production_report_title'), 14, 15);
-        doc.setFontSize(10);
-        doc.text(`${t('pdf_reference_period')}: ${mesAno}`, 14, 20);
 
-        // Tabela
-        doc.autoTable({ 
-            head: [tableColumns], 
-            body: tableRows, 
-            startY: 25,
-            // Mantemos 'ellipsize' mas o aumento de largura deve reduzir a necessidade de truncamento.
-            styles: { fontSize: 9, cellPadding: 2, overflow: 'ellipsize' }, 
-            headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
-            // NOVO AJUSTE FINO (Reduz TIPO DE TRABALHO e VALOR, Aumenta nomes)
+        // Adiciona linha de totalização se houver itens
+        if (tableRows.length > 0) {
+            tableRows.push([
+                '-',
+                'TOTAL CONSOLIDADO',
+                '-',
+                '-',
+                '-',
+                '-',
+                `${data.totalPecas}x`,
+                formatarMoeda(data.faturamentoBruto)
+            ]);
+        }
+
+        doc.autoTable({
+            startY: currentY,
+            margin: { left: 14, right: 14 },
+            head: [tableColumns],
+            body: tableRows.length > 0 ? tableRows : [['-', 'Nenhum trabalho registrado neste período', '-', '-', '-', '-', '-', '-']],
+            theme: 'striped',
+            styles: {
+                font: 'helvetica',
+                fontSize: 7.5,
+                cellPadding: 2.3,
+                textColor: [51, 65, 85],
+                lineColor: [226, 232, 240],
+                lineWidth: 0.1,
+                overflow: 'ellipsize'
+            },
+            headStyles: {
+                fillColor: [30, 41, 59],
+                textColor: [255, 255, 255],
+                fontStyle: 'bold',
+                fontSize: 7.8,
+                cellPadding: 3
+            },
+            alternateRowStyles: {
+                fillColor: [248, 250, 252]
+            },
             columnStyles: {
-                // Largura em mm. Largura total do documento é ~190mm
-                [columnMap['PACIENTE']]: { cellWidth: 44 },     // +2mm (Prioridade máxima)
-                [columnMap['DENTISTA']]: { cellWidth: 44 },     // +2mm (Prioridade máxima)
-                [columnMap['TIPO DE TRABALHO']]: { cellWidth: 40 }, // -5mm (Mais compacto)
-                [columnMap['OBS.']]: { cellWidth: 20 },         // Mantido
-                [columnMap['STATUS']]: { cellWidth: 15 },       // Mantido
-                [columnMap['QTD']]: { cellWidth: 8, halign: 'center' }, // Mantido no mínimo
-                [columnMap['VALOR']]: { cellWidth: 19, halign: 'right' } // +1mm (Apenas o necessário para o formato R$ X,XX)
+                0: { cellWidth: 16, halign: 'center' },
+                1: { cellWidth: 32 },
+                2: { cellWidth: 32 },
+                3: { cellWidth: 32 },
+                4: { cellWidth: 20 },
+                5: { cellWidth: 16, halign: 'center' },
+                6: { cellWidth: 12, halign: 'center' },
+                7: { cellWidth: 22, halign: 'right', fontStyle: 'bold' }
+            },
+            didParseCell: (hookData) => {
+                if (hookData.section === 'body' && hookData.row.index === tableRows.length - 1 && tableRows.length > 1) {
+                    hookData.cell.styles.fontStyle = 'bold';
+                    hookData.cell.styles.fillColor = [241, 245, 249];
+                    hookData.cell.styles.textColor = [15, 23, 42];
+                }
             }
-            // Soma das larguras: 44 + 44 + 40 + 20 + 15 + 8 + 19 = 190mm (Uso total do espaço)
         });
-        
-        // Posição final da tabela
-        const finalY = doc.autoTable.previous.finalY;
-        
-        // VALOR TOTAL (em destaque)
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`${t('pdf_total_value_gross')}: ${formatarMoeda(totalFaturamentoMes)}`, 14, finalY + 10);
 
-        doc.save(`producao-mensal-${mesAno.replace(/\s+/g, '_').toLowerCase()}.pdf`);
+        applyExecutiveFooters(doc);
+        const mesAnoSlug = data.mesAno.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        doc.save(`producao_mensal_${mesAnoSlug}.pdf`);
     };
 
     const handleGerarCobrancaPix = () => {
@@ -1242,124 +2924,343 @@ const generateProducaoPDF = () => {
             const canvas = qrContainer.querySelector('canvas');
             if (canvas) {
                 const qrBase64 = canvas.toDataURL("image/png");
-                gerarPDFCobrancaPix(dentista, selectedItems, totalValor, qrBase64);
+                gerarPDFCobrancaPix(dentista, selectedItems, totalValor, qrBase64, payload);
             } else {
                 showToast('Erro ao gerar QR Code.', 'error');
             }
         }, 300);
     };
 
-    const gerarPDFCobrancaPix = (dentista, items, totalValor, qrBase64) => {
+    /**
+     * GERAÇÃO DA NOTA DE COBRANÇA PERSONALIZADA COM PIX
+     * Layout executivo com logo, dados do dentista e do emissor, tabela de trabalhos
+     * e box de pagamento PIX com QR Code de alta fidelidade e código Copia e Cola
+     */
+    const gerarPDFCobrancaPix = (dentista, items, totalValor, qrBase64, pixPayload = null) => {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        
-        // --- CORES DA IDENTIDADE VISUAL ---
-        const corPrimaria = [115, 103, 240]; // Roxo/Lilás (#7367F0)
-        const corSucesso = [40, 199, 111];   // Verde Sucesso (#28C76F)
-        const corTexto = [75, 75, 90];       // Cinza Escuro quase preto (#4B4B5A)
-        const corFundoCinza = [248, 248, 248]; // Cinza bem claro para zebra stripe (#F8F8F8)
 
-        // --- CABEÇALHO ---
-        // 1. Logotipo (Adicione sua base64 aqui)
-        // const logoBase64 = 'data:image/png;base64,...';
-        // doc.addImage(logoBase64, 'PNG', 14, 10, 40, 15); // Exemplo de uso: ajuste x, y, width, height
-        
-        // 2. Informações alinhadas à direita
-        doc.setTextColor(corTexto[0], corTexto[1], corTexto[2]);
-        doc.setFontSize(14);
+        if (!pixPayload && state.pixKey) {
+            pixPayload = generatePixPayload(state.pixKey, totalValor, state.pixName, state.pixCity, `PGTO${Date.now()}`);
+        }
+
+        // 1. CABEÇALHO INSTITUCIONAL
+        doc.setFillColor(15, 23, 42); // Slate 900
+        doc.rect(0, 0, 210, 30, 'F');
+
+        // Barra de realce superior índigo
+        doc.setFillColor(99, 102, 241);
+        doc.rect(0, 0, 210, 1.8, 'F');
+
+        // Linha inferior de brilho esmeralda
+        doc.setFillColor(16, 185, 129); // Emerald 500
+        doc.rect(0, 29.4, 210, 0.6, 'F');
+
+        // Logo no canto superior esquerdo
+        const logo = getAppLogo();
+        let textStartX = 14;
+        if (logo) {
+            try {
+                doc.setFillColor(255, 255, 255);
+                doc.roundedRect(14, 5, 20, 20, 2.5, 2.5, 'F');
+                doc.addImage(logo, 'PNG', 15, 6, 18, 18);
+                textStartX = 38;
+            } catch (e) {
+                console.warn('Erro ao inserir logo na fatura:', e);
+                textStartX = 14;
+            }
+        }
+
+        // Título e Subtítulo da Fatura
         doc.setFont('helvetica', 'bold');
-        doc.text('Fatura / Cobrança', 196, 15, { align: 'right' });
-        
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Data de Emissão: ${new Date().toLocaleDateString('pt-BR')}`, 196, 20, { align: 'right' });
-        doc.text(`Dentista: ${dentista.nome}`, 196, 25, { align: 'right' });
-        
-        // 3. Linha Horizontal Primária
-        doc.setDrawColor(corPrimaria[0], corPrimaria[1], corPrimaria[2]);
-        doc.setLineWidth(0.5);
-        doc.line(14, 30, 196, 30);
+        doc.setFontSize(14);
+        doc.setTextColor(255, 255, 255);
+        doc.text('DENTALFLOW LAB', textStartX, 12.5);
 
-        // --- TABELA DE SERVIÇOS ---
-        const tableColumns = ['Paciente', 'Tipo de Trabalho', 'Quantidade', 'Valor (R$)'];
-        const tableRows = items.map(item => [
-            item.paciente || '-',
-            item.tipo,
-            item.qtd.toString(),
-            formatarMoeda(item.valor)
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(52, 211, 153); // Emerald 400
+        doc.text('NOTA DE COBRANÇA & PRESTAÇÃO DE SERVIÇOS', textStartX, 18);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.8);
+        doc.setTextColor(148, 163, 184); // Slate 400
+        doc.text('Laboratório de Prótese Odontológica de Alta Precisão', textStartX, 23);
+
+        // Cápsula da Fatura (Canto Superior Direito)
+        doc.setFillColor(30, 41, 59); // Slate 800
+        doc.setDrawColor(71, 85, 105);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(128, 5.5, 68, 19, 2.5, 2.5, 'FD');
+
+        const invoiceId = `FAT-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(Date.now()).slice(-4)}`;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(255, 255, 255);
+        doc.text(invoiceId, 162, 11, { align: 'center' });
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.8);
+        doc.setTextColor(148, 163, 184);
+        doc.text(`Emissão: ${new Date().toLocaleDateString('pt-BR')}`, 162, 15.5, { align: 'center' });
+
+        // Badge Aguardando Pagamento
+        doc.setFillColor(254, 243, 199); // Amber 100
+        doc.setDrawColor(253, 230, 138); // Amber 200
+        doc.roundedRect(144, 18, 36, 4.2, 1, 1, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.2);
+        doc.setTextColor(180, 83, 9); // Amber 700
+        doc.text('AGUARDANDO PAGAMENTO', 162, 21.1, { align: 'center' });
+
+        // 2. PAINEL DE DADOS DO CLIENTE E EMISSOR (Side-by-side cards)
+        const infoCardY = 35;
+        const infoCardH = 24;
+        const infoCardW = 88;
+
+        // Card Cliente (Esquerda)
+        doc.setFillColor(248, 250, 252); // Slate 50
+        doc.setDrawColor(226, 232, 240); // Slate 200
+        doc.setLineWidth(0.2);
+        doc.roundedRect(14, infoCardY, infoCardW, infoCardH, 2, 2, 'FD');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.5);
+        doc.setTextColor(100, 116, 139); // Slate 500
+        doc.text('TOMADOR DOS SERVIÇOS (DENTISTA)', 18, infoCardY + 5.5);
+
+        doc.setFontSize(9.5);
+        doc.setTextColor(15, 23, 42); // Slate 900
+        doc.text(dentista.nome || 'Cliente / Dentista', 18, infoCardY + 11.5);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.2);
+        doc.setTextColor(71, 85, 105);
+        doc.text(`Clínica: ${dentista.clinica || 'Consultório Odontológico'}`, 18, infoCardY + 16.5);
+        doc.text(`Contato: ${dentista.telefone || dentista.email || 'Cadastrado no sistema'}`, 18, infoCardY + 21);
+
+        // Card Emissor / PIX (Direita)
+        const infoCardRightX = 108;
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(226, 232, 240);
+        doc.roundedRect(infoCardRightX, infoCardY, infoCardW, infoCardH, 2, 2, 'FD');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text('DADOS DO PRESTADOR & RECEBIMENTO', infoCardRightX + 4, infoCardY + 5.5);
+
+        doc.setFontSize(9.5);
+        doc.setTextColor(15, 23, 42);
+        doc.text('DentalFlow Lab Protese', infoCardRightX + 4, infoCardY + 11.5);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.2);
+        doc.setTextColor(71, 85, 105);
+        doc.text(`Titular PIX: ${state.pixName || 'Laboratório de Prótese'}`, infoCardRightX + 4, infoCardY + 16.5);
+        doc.text(`Chave: ${state.pixKey || '-'} • Cidade: ${state.pixCity || '-'}`, infoCardRightX + 4, infoCardY + 21);
+
+        // 3. SEÇÃO: DISCRIMINAÇÃO DOS SERVIÇOS
+        let currentY = 64;
+        doc.setFillColor(79, 70, 229);
+        doc.roundedRect(14, currentY - 3.4, 2.8, 4.8, 0.6, 0.6, 'F');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.8);
+        doc.setTextColor(30, 41, 59);
+        doc.text('DISCRIMINAÇÃO DOS SERVIÇOS & PRÓTESES EXECUTADAS', 19.5, currentY);
+        currentY += 4;
+
+        let totalQtdItens = 0;
+        const tableColumns = ['Item', 'Paciente', 'Descrição do Trabalho / Especialidade', 'Qtd', 'Valor Unit.', 'Subtotal (R$)'];
+        const tableRows = items.map((item, idx) => {
+            const qtd = Number(item.qtd) || 1;
+            totalQtdItens += qtd;
+            const subtotal = Number(item.valor) || 0;
+            const unitario = qtd > 0 ? subtotal / qtd : subtotal;
+
+            return [
+                `#${String(idx + 1).padStart(2, '0')}`,
+                item.paciente || 'Não informado',
+                item.tipo,
+                `${qtd} un.`,
+                formatarMoeda(unitario),
+                formatarMoeda(subtotal)
+            ];
+        });
+
+        // Linha de Total Geral
+        tableRows.push([
+            'TOTAL GERAL A PAGAR',
+            '',
+            '',
+            `${totalQtdItens} un.`,
+            '',
+            formatarMoeda(totalValor)
         ]);
-        
+
         doc.autoTable({
             head: [tableColumns],
             body: tableRows,
-            startY: 35,
+            startY: currentY,
+            margin: { left: 14, right: 14 },
             theme: 'striped',
-            styles: { 
-                fontSize: 10, 
-                cellPadding: 4, 
-                textColor: corTexto,
-                font: 'helvetica'
+            styles: {
+                font: 'helvetica',
+                fontSize: 8,
+                cellPadding: 3,
+                textColor: [51, 65, 85],
+                lineColor: [226, 232, 240],
+                lineWidth: 0.1
             },
-            headStyles: { 
-                fillColor: corPrimaria, 
-                textColor: [255, 255, 255], 
+            headStyles: {
+                fillColor: [30, 41, 59],
+                textColor: [255, 255, 255],
                 fontStyle: 'bold',
-                halign: 'left'
+                fontSize: 8,
+                cellPadding: 3.2
             },
-            alternateRowStyles: { 
-                fillColor: corFundoCinza 
+            alternateRowStyles: {
+                fillColor: [248, 250, 252]
             },
             columnStyles: {
-                0: { cellWidth: 'auto' }, // Paciente
-                1: { cellWidth: 'auto' }, // Tipo
-                2: { cellWidth: 25, halign: 'center' }, // Quantidade
-                3: { cellWidth: 35, halign: 'right' }   // Valor
+                0: { cellWidth: 14, halign: 'center' },
+                1: { cellWidth: 46 },
+                2: { cellWidth: 60 },
+                3: { cellWidth: 16, halign: 'center' },
+                4: { cellWidth: 22, halign: 'right' },
+                5: { cellWidth: 24, halign: 'right', fontStyle: 'bold' }
+            },
+            didParseCell: (hookData) => {
+                if (hookData.section === 'body' && hookData.row.index === tableRows.length - 1) {
+                    hookData.cell.styles.fontStyle = 'bold';
+                    hookData.cell.styles.fillColor = [241, 245, 249];
+                    hookData.cell.styles.textColor = [15, 23, 42];
+                    if (hookData.column.index === 5) {
+                        hookData.cell.styles.textColor = [21, 128, 61];
+                        hookData.cell.styles.fontSize = 9;
+                    }
+                }
             }
         });
-        
-        // --- RODAPÉ E PAGAMENTO ---
-        let finalY = doc.autoTable.previous.finalY + 15;
-        
-        // 1. Total a pagar
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(corTexto[0], corTexto[1], corTexto[2]);
-        doc.text('TOTAL A PAGAR:', 150, finalY, { align: 'right' });
 
-        doc.setFontSize(14);
-        doc.setTextColor(corSucesso[0], corSucesso[1], corSucesso[2]);
-        doc.text(formatarMoeda(totalValor), 196, finalY, { align: 'right' });
-        
-        finalY += 15;
+        let finalY = doc.autoTable.previous.finalY + 8;
 
-        // 2. Caixa do PIX
-        const boxWidth = 100;
-        const boxHeight = 70;
-        const boxX = (210 - boxWidth) / 2; // Centralizado na página A4 (210mm de largura)
-        const boxY = finalY;
-
-        // Fundo e borda da caixa
-        doc.setFillColor(250, 250, 250); // Fundo super claro
-        doc.setDrawColor(220, 220, 220); // Borda cinza clara
-        doc.roundedRect(boxX, boxY, boxWidth, boxHeight, 3, 3, 'FD'); // Fill and Draw
-
-        // Texto centralizado na caixa
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(corTexto[0], corTexto[1], corTexto[2]);
-        doc.text('Pague via PIX escaneando o QR Code abaixo', 105, boxY + 10, { align: 'center' });
-
-        // Imagem do QR Code (Tamanho sugerido 45x45 mm)
-        const qrSize = 45;
-        const qrX = 105 - (qrSize / 2); // 105 é o centro de 210mm
-        const qrY = boxY + 15;
-        
-        // Insira sua variável qrBase64 aqui (já fornecida nos parâmetros)
-        if (qrBase64) {
-            doc.addImage(qrBase64, 'PNG', qrX, qrY, qrSize, qrSize);
+        // Se o espaço restante na folha for insuficiente para o painel PIX (~68mm), quebra página
+        if (finalY > 210) {
+            doc.addPage();
+            finalY = 20;
         }
 
-        doc.save(`cobranca_pix_${dentista.nome.replace(/\s+/g, '_').toLowerCase()}.pdf`);
+        // 4. PAINEL DE PAGAMENTO PIX MODERNO
+        const pixBoxW = 182;
+        const pixBoxH = 68;
+        const pixBoxX = 14;
+        const pixBoxY = finalY;
+
+        // Container externo com fundo suave e borda
+        doc.setFillColor(250, 250, 252);
+        doc.setDrawColor(203, 213, 225);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(pixBoxX, pixBoxY, pixBoxW, pixBoxH, 3, 3, 'FD');
+
+        // Barra superior escura do painel PIX
+        doc.setFillColor(15, 23, 42);
+        doc.rect(pixBoxX, pixBoxY, pixBoxW, 7, 'F');
+        doc.setFillColor(16, 185, 129); // Accent verde esmeralda no topo
+        doc.rect(pixBoxX, pixBoxY, pixBoxW, 0.8, 'F');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(255, 255, 255);
+        doc.text('PAGAMENTO INSTANTÂNEO VIA PIX • LEITURA DE QR CODE OU CHAVE DIRETA', pixBoxX + 6, pixBoxY + 5);
+
+        // Coluna da Esquerda: QR Code dentro de moldura branca
+        const qrCardW = 46;
+        const qrCardH = 46;
+        const qrCardX = pixBoxX + 6;
+        const qrCardY = pixBoxY + 11;
+
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(226, 232, 240);
+        doc.roundedRect(qrCardX, qrCardY, qrCardW, qrCardH, 2.5, 2.5, 'FD');
+
+        if (qrBase64) {
+            doc.addImage(qrBase64, 'PNG', qrCardX + 2.5, qrCardY + 2.5, 41, 41);
+        }
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.2);
+        doc.setTextColor(100, 116, 139);
+        doc.text('Aponte a câmera do seu banco', qrCardX + qrCardW / 2, qrCardY + qrCardH + 4.5, { align: 'center' });
+
+        // Coluna da Direita: Dados de Cobrança e Chave
+        const rightColX = pixBoxX + 58;
+
+        // Label Total
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text('VALOR TOTAL DA COBRANÇA:', rightColX, pixBoxY + 15);
+
+        // Valor em Destaque
+        doc.setFontSize(16);
+        doc.setTextColor(21, 128, 61); // Verde Esmeralda
+        doc.text(formatarMoeda(totalValor), rightColX, pixBoxY + 22.5);
+
+        // Dados do Favorecido
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(71, 85, 105);
+        doc.text(`Favorecido: ${state.pixName || '-'} • Cidade: ${state.pixCity || '-'}`, rightColX, pixBoxY + 28);
+
+        // Chave PIX Direta em destaque
+        doc.setFillColor(241, 245, 249); // Slate 100
+        doc.setDrawColor(203, 213, 225);
+        doc.roundedRect(rightColX, pixBoxY + 31.5, 118, 9, 1.5, 1.5, 'FD');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7);
+        doc.setTextColor(15, 23, 42);
+        doc.text('CHAVE PIX:', rightColX + 3.5, pixBoxY + 37);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(3, 105, 161); // Azul Sky
+        doc.text(state.pixKey || 'Não configurada', rightColX + 22, pixBoxY + 37);
+
+        // Box de Código Copia e Cola (se houver payload)
+        if (pixPayload) {
+            doc.setFillColor(255, 255, 255);
+            doc.setDrawColor(226, 232, 240);
+            doc.roundedRect(rightColX, pixBoxY + 43, 118, 14, 1.5, 1.5, 'FD');
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(6.2);
+            doc.setTextColor(100, 116, 139);
+            doc.text('CÓDIGO PIX COPIA E COLA (SELECIONE PARA COPIAR):', rightColX + 3.5, pixBoxY + 47);
+
+            doc.setFont('courier', 'normal');
+            doc.setFontSize(6.2);
+            doc.setTextColor(71, 85, 105);
+            
+            // Quebra o texto da payload para caber na caixinha
+            const splitPayload = doc.splitTextToSize(pixPayload, 112);
+            doc.text(splitPayload.slice(0, 2), rightColX + 3.5, pixBoxY + 51.5);
+        }
+
+        // Nota de rodapé do painel
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(6.5);
+        doc.setTextColor(148, 163, 184);
+        doc.text('* O comprovante pode ser enviado ao laboratório para confirmação e baixa automática.', rightColX, pixBoxY + 63);
+
+        // 5. RODAPÉ EXECUTIVO
+        applyExecutiveFooters(doc);
+
+        // Salvar documento
+        const dentistaSlug = (dentista.nome || 'cliente').replace(/\s+/g, '_').toLowerCase();
+        doc.save(`nota_cobranca_pix_${dentistaSlug}.pdf`);
     };
 
     const generateProducaoDentistaPDF = () => {
@@ -1410,12 +3311,12 @@ const generateProducaoPDF = () => {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
         let totalValor = 0;
+        let totalPecasDentista = 0;
         
-        const tableColumns = ["PACIENTE", "DENTISTA", "TIPO DE TRABALHO", "OBS.", "STATUS", "QUANTIDADE", "VALOR"];
+        const tableColumns = ["Data", "Paciente", "Tipo de Trabalho", "Obs.", "Status", "Qtd", "Valor (R$)"];
         const tableRows = [];
 
         producaoFiltrada.forEach(p => {
-             // Calculate value
             const valorDentista = (dentista.valores || []).find(v => v.tipo === p.tipo);
             const valorGlobal = (state.valores || []).find(v => v.tipo === p.tipo);
             const valorFinal = valorDentista || valorGlobal;
@@ -1423,48 +3324,160 @@ const generateProducaoPDF = () => {
             const valorTotal = valorUnitario * p.qtd;
             
             totalValor += valorTotal;
+            totalPecasDentista += (Number(p.qtd) || 0);
+            const dataStr = p.data ? new Date(p.data + 'T00:00:00').toLocaleDateString('pt-BR') : '-';
             
             const row = [
-                p.nomePaciente || '',
-                dentista.nome,
+                dataStr,
+                p.nomePaciente || 'Não informado',
                 p.tipo,
-                p.obs || '',
-                p.status,
-                p.qtd.toString(),
+                p.obs || '-',
+                p.status || 'Entregue',
+                `${p.qtd}x`,
                 formatarMoeda(valorTotal)
             ];
             tableRows.push(row);
         });
-        
-        // Title
-        doc.setFontSize(16);
-        doc.text(`${t('pdf_dentist_production_report')} - ${dentista.nome}`, 14, 15);
-        doc.setFontSize(10);
-        doc.text(`${t('pdf_emission_date')}: ${new Date().toLocaleDateString('pt-BR')}`, 14, 20);
+
+        const mesAno = new Date(state.mesAtual).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+        // Cabeçalho Institucional
+        drawExecutiveHeader(doc, `Extrato de Produção - ${dentista.nome}`, `Demonstrativo do Parceiro: ${dentista.nome}`, startDate, endDate, mesAno);
+
+        // Faixa de Metadados
+        doc.setFillColor(220, 252, 231);
+        doc.setDrawColor(187, 247, 208);
+        doc.setLineWidth(0.2);
+        doc.roundedRect(14, 30.5, 23, 4.6, 1, 1, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.5);
+        doc.setTextColor(21, 128, 61);
+        doc.text('EXTRATO', 25.5, 33.8, { align: 'center' });
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(100, 116, 139);
+        const emissaoData = new Date().toLocaleString('pt-BR');
+        doc.text(`Dentista: ${dentista.nome} • Clínica: ${dentista.clinica || '-'}`, 40, 34);
+        doc.text(`Emissão: ${emissaoData}`, 196, 34, { align: 'right' });
+
+        // Cartões de Resumo
+        const cardY = 38;
+        const cardH = 21;
+        const cardW = 58;
+        const cardGap = 4;
+
+        // Card 1: Faturamento do Dentista
+        doc.setFillColor(240, 249, 255);
+        doc.setDrawColor(186, 230, 253);
+        doc.roundedRect(14, cardY, cardW, cardH, 2, 2, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.8);
+        doc.setTextColor(3, 105, 161);
+        doc.text('TOTAL FATURADO', 17.5, cardY + 5.2);
+        doc.setFontSize(12);
+        doc.setTextColor(12, 74, 110);
+        doc.text(formatarMoeda(totalValor), 17.5, cardY + 12.8);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.6);
+        doc.setTextColor(2, 132, 199);
+        doc.text('Saldo total de serviços no ciclo', 17.5, cardY + 18);
+
+        // Card 2: Peças Solicitadas
+        const card2X = 14 + cardW + cardGap;
+        doc.setFillColor(245, 243, 255);
+        doc.setDrawColor(221, 214, 254);
+        doc.roundedRect(card2X, cardY, cardW, cardH, 2, 2, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.8);
+        doc.setTextColor(109, 40, 217);
+        doc.text('VOLUME DE PEÇAS', card2X + 3.5, cardY + 5.2);
+        doc.setFontSize(12);
+        doc.setTextColor(76, 29, 149);
+        doc.text(`${totalPecasDentista} Peças`, card2X + 3.5, cardY + 12.8);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.6);
+        doc.setTextColor(124, 58, 237);
+        doc.text(`${producaoFiltrada.length} trabalhos realizados`, card2X + 3.5, cardY + 18);
+
+        // Card 3: Ticket Médio
+        const tmDentista = totalPecasDentista > 0 ? totalValor / totalPecasDentista : 0;
+        const card3X = card2X + cardW + cardGap;
+        doc.setFillColor(240, 253, 244);
+        doc.setDrawColor(187, 247, 208);
+        doc.roundedRect(card3X, cardY, cardW, cardH, 2, 2, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.8);
+        doc.setTextColor(21, 128, 61);
+        doc.text('VALOR MÉDIO / PEÇA', card3X + 3.5, cardY + 5.2);
+        doc.setFontSize(12);
+        doc.setTextColor(20, 83, 45);
+        doc.text(formatarMoeda(tmDentista), card3X + 3.5, cardY + 12.8);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.6);
+        doc.setTextColor(22, 163, 74);
+        doc.text('Média por elemento produzido', card3X + 3.5, cardY + 18);
+
+        let currentY = 66;
+        drawSectionTitle(doc, currentY, `1. DETALHAMENTO DE TRABALHOS DE ${dentista.nome.toUpperCase()}`);
+        currentY += 4;
+
+        if (tableRows.length > 0) {
+            tableRows.push([
+                '-',
+                'TOTAL CONSOLIDADO',
+                '-',
+                '-',
+                '-',
+                `${totalPecasDentista}x`,
+                formatarMoeda(totalValor)
+            ]);
+        }
         
         doc.autoTable({
             head: [tableColumns],
             body: tableRows,
-            startY: 25,
-            styles: { fontSize: 9, cellPadding: 2, overflow: 'ellipsize' },
-            headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
+            startY: currentY,
+            margin: { left: 14, right: 14 },
+            theme: 'striped',
+            styles: {
+                font: 'helvetica',
+                fontSize: 7.8,
+                cellPadding: 2.4,
+                textColor: [51, 65, 85],
+                lineColor: [226, 232, 240],
+                lineWidth: 0.1,
+                overflow: 'ellipsize'
+            },
+            headStyles: {
+                fillColor: [30, 41, 59],
+                textColor: [255, 255, 255],
+                fontStyle: 'bold',
+                fontSize: 8,
+                cellPadding: 3
+            },
+            alternateRowStyles: {
+                fillColor: [248, 250, 252]
+            },
             columnStyles: {
-                0: { cellWidth: 40 }, // Paciente
-                1: { cellWidth: 40 }, // Dentista
-                2: { cellWidth: 30 }, // Tipo
-                3: { cellWidth: 30 }, // Obs
-                4: { cellWidth: 20 }, // Status
-                5: { cellWidth: 10, halign: 'center' }, // Qtd
-                6: { cellWidth: 20, halign: 'right' } // Valor
+                0: { cellWidth: 18, halign: 'center' },
+                1: { cellWidth: 38 },
+                2: { cellWidth: 38 },
+                3: { cellWidth: 32 },
+                4: { cellWidth: 18, halign: 'center' },
+                5: { cellWidth: 14, halign: 'center' },
+                6: { cellWidth: 24, halign: 'right', fontStyle: 'bold' }
+            },
+            didParseCell: (hookData) => {
+                if (hookData.section === 'body' && hookData.row.index === tableRows.length - 1 && tableRows.length > 1) {
+                    hookData.cell.styles.fontStyle = 'bold';
+                    hookData.cell.styles.fillColor = [241, 245, 249];
+                    hookData.cell.styles.textColor = [15, 23, 42];
+                }
             }
         });
-        
-        const finalY = doc.autoTable.previous.finalY;
-        
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`TOTAL: ${formatarMoeda(totalValor)}`, 14, finalY + 10);
-        
+
+        applyExecutiveFooters(doc);
         doc.save(`producao_${dentista.nome.replace(/\s+/g, '_').toLowerCase()}.pdf`);
     };
 
@@ -1474,34 +3487,91 @@ const generateProducaoPDF = () => {
         
         // Filtro por busca
         if (state.searchTermProducao) {
-            const searchLower = state.searchTermProducao.toLowerCase();
+            const searchLower = state.searchTermProducao.trim().toLowerCase();
             producaoFiltrada = producaoFiltrada.filter(p => {
-                const dentista = (state.dentistas || []).find(d => d.id === p.dentista);
+                const dentista = (state.dentistas || []).find(d => String(d.id) === String(p.dentista));
                 const dentistaName = dentista ? dentista.nome.toLowerCase() : '';
                 const pacienteName = p.nomePaciente ? p.nomePaciente.toLowerCase() : '';
                 const obs = p.obs ? p.obs.toLowerCase() : '';
+                const tipo = p.tipo ? p.tipo.toLowerCase() : '';
                 
-                return p.tipo.toLowerCase().includes(searchLower) ||
+                return tipo.includes(searchLower) ||
                        dentistaName.includes(searchLower) ||
                        pacienteName.includes(searchLower) ||
                        obs.includes(searchLower);
             });
         }
         
+        // Filtro por dentista no painel geral
+        if (filterProducaoDentistaMain && filterProducaoDentistaMain.value) {
+            producaoFiltrada = producaoFiltrada.filter(p => String(p.dentista) === String(filterProducaoDentistaMain.value));
+        }
+
+        // Filtro por tipo de trabalho
+        if (filterProducaoTipo && filterProducaoTipo.value) {
+            producaoFiltrada = producaoFiltrada.filter(p => p.tipo === filterProducaoTipo.value);
+        }
+
         // Filtro por status
         if (filterStatusSelect && filterStatusSelect.value) {
             producaoFiltrada = producaoFiltrada.filter(p => p.status === filterStatusSelect.value);
         }
         
-        // Filtro por data
-        if (filterDataInicio && filterDataInicio.value) {
-            const dataInicio = new Date(filterDataInicio.value + 'T00:00:00');
-            producaoFiltrada = producaoFiltrada.filter(p => new Date(p.data + 'T00:00:00') >= dataInicio);
+        // Filtros Rápidos
+        const todayStr = getTodayDateString();
+        const quickFilter = state.producaoQuickFilter !== undefined ? state.producaoQuickFilter : 'hoje';
+
+        if (quickFilter === 'atrasados') {
+            producaoFiltrada = producaoFiltrada.filter(p => p.status !== 'Finalizado' && p.entrega && p.entrega < todayStr);
+        } else if (quickFilter === 'pendentes') {
+            producaoFiltrada = producaoFiltrada.filter(p => p.status === 'Pendente');
+        } else if (quickFilter === 'andamento') {
+            producaoFiltrada = producaoFiltrada.filter(p => p.status === 'Em Andamento');
+        } else if (quickFilter === 'finalizados') {
+            producaoFiltrada = producaoFiltrada.filter(p => p.status === 'Finalizado');
+        } else if (quickFilter === 'hoje') {
+            producaoFiltrada = producaoFiltrada.filter(p => p.data === todayStr || p.entrega === todayStr);
+        } else if (quickFilter === 'semana') {
+            const today = new Date();
+            const dayOfWeek = today.getDay();
+            const diffToMonday = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
+            const monday = new Date(today);
+            monday.setDate(today.getDate() + diffToMonday);
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            const startStr = getTodayDateString(monday);
+            const endStr = getTodayDateString(sunday);
+            producaoFiltrada = producaoFiltrada.filter(p => {
+                const dataInRange = Boolean(p.data && p.data >= startStr && p.data <= endStr);
+                const entregaInRange = Boolean(p.entrega && p.entrega >= startStr && p.entrega <= endStr);
+                return dataInRange || entregaInRange;
+            });
+        } else if (quickFilter === 'mes') {
+            const today = new Date();
+            const startOfMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
+            const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+            const endOfMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+            producaoFiltrada = producaoFiltrada.filter(p => {
+                const dataInRange = Boolean(p.data && p.data >= startOfMonth && p.data <= endOfMonth);
+                const entregaInRange = Boolean(p.entrega && p.entrega >= startOfMonth && p.entrega <= endOfMonth);
+                return dataInRange || entregaInRange;
+            });
         }
-        
-        if (filterDataFim && filterDataFim.value) {
-            const dataFim = new Date(filterDataFim.value + 'T23:59:59');
-            producaoFiltrada = producaoFiltrada.filter(p => new Date(p.data + 'T00:00:00') <= dataFim);
+
+        // Filtro por data (início / fim) - se o usuário informou datas manualmente nos inputs
+        const dtInicio = filterDataInicio && filterDataInicio.value ? filterDataInicio.value : null;
+        const dtFim = filterDataFim && filterDataFim.value ? filterDataFim.value : null;
+
+        if (dtInicio && dtFim) {
+            producaoFiltrada = producaoFiltrada.filter(p => {
+                const dataInRange = Boolean(p.data && p.data >= dtInicio && p.data <= dtFim);
+                const entregaInRange = Boolean(p.entrega && p.entrega >= dtInicio && p.entrega <= dtFim);
+                return dataInRange || entregaInRange;
+            });
+        } else if (dtInicio) {
+            producaoFiltrada = producaoFiltrada.filter(p => (p.data && p.data >= dtInicio) || (p.entrega && p.entrega >= dtInicio));
+        } else if (dtFim) {
+            producaoFiltrada = producaoFiltrada.filter(p => (p.data && p.data <= dtFim) || (p.entrega && p.entrega <= dtFim));
         }
         
         return producaoFiltrada;
@@ -1522,9 +3592,28 @@ const generateProducaoPDF = () => {
             e.preventDefault();
             const targetViewId = link.getAttribute('data-view');
             views.forEach(view => view.classList.add('hidden'));
-            document.getElementById(targetViewId).classList.remove('hidden');
+            const targetEl = document.getElementById(targetViewId);
+            if (targetEl) targetEl.classList.remove('hidden');
             navLinks.forEach(nav => nav.classList.remove('active'));
             link.classList.add('active');
+
+            if (targetViewId === 'view-dashboard') {
+                renderizarDashboard();
+            } else if (targetViewId === 'view-resumo') {
+                renderizarResumoMensal();
+                updateDailyRevenueChart();
+            } else if (targetViewId === 'view-analise-dentista') {
+                renderizarAnaliseDentista();
+                updateDentistaChart();
+            }
+
+            setTimeout(() => {
+                if (charts.faturamentoDiario) charts.faturamentoDiario.resize();
+                if (charts.dentista) charts.dentista.resize();
+                if (charts.tiposTrabalho) charts.tiposTrabalho.resize();
+                if (charts.comparativoAnual) charts.comparativoAnual.resize();
+            }, 60);
+
             if (window.innerWidth < 1024) { toggleMenu(); }
         });
     });
@@ -1532,21 +3621,89 @@ const generateProducaoPDF = () => {
     // --- LÓGICA DE AUTENTICAÇÃO ---
     function updateAuthUI() { 
         authTitle.textContent = isLoginMode ? t('auth_title_login') : t('auth_title_register');
-        authButton.textContent = isLoginMode ? t('auth_button_login') : t('auth_button_register');
+        
+        const authBtnText = document.getElementById('auth-button-text');
+        if (authBtnText) {
+            authBtnText.textContent = isLoginMode ? t('auth_button_login') : t('auth_button_register');
+        } else {
+            authButton.textContent = isLoginMode ? t('auth_button_login') : t('auth_button_register');
+        }
+
         toggleAuthMode.textContent = isLoginMode ? t('auth_toggle_register') : t('auth_toggle_login');
+
+        if (authSubtitle) {
+            authSubtitle.textContent = isLoginMode ? t('auth_subtitle_login') : t('auth_subtitle_register');
+        }
+
+        if (authTabLogin && authTabRegister) {
+            if (isLoginMode) {
+                authTabLogin.className = "flex-1 py-2 px-3 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 bg-blue-600 text-white shadow-sm cursor-pointer";
+                authTabRegister.className = "flex-1 py-2 px-3 text-xs font-medium rounded-lg transition-all flex items-center justify-center gap-1.5 text-slate-400 hover:text-white cursor-pointer";
+            } else {
+                authTabRegister.className = "flex-1 py-2 px-3 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 bg-blue-600 text-white shadow-sm cursor-pointer";
+                authTabLogin.className = "flex-1 py-2 px-3 text-xs font-medium rounded-lg transition-all flex items-center justify-center gap-1.5 text-slate-400 hover:text-white cursor-pointer";
+            }
+        }
+
         authErrorMessage.classList.add('hidden');
     }
     
     toggleAuthMode.addEventListener('click', () => { isLoginMode = !isLoginMode; updateAuthUI(); });
+
+    if (authTabLogin) {
+        authTabLogin.addEventListener('click', () => {
+            if (!isLoginMode) {
+                isLoginMode = true;
+                updateAuthUI();
+            }
+        });
+    }
+
+    if (authTabRegister) {
+        authTabRegister.addEventListener('click', () => {
+            if (isLoginMode) {
+                isLoginMode = false;
+                updateAuthUI();
+            }
+        });
+    }
+
+    if (togglePasswordVisibilityBtn && passwordInput) {
+        togglePasswordVisibilityBtn.addEventListener('click', () => {
+            const isPassword = passwordInput.type === 'password';
+            passwordInput.type = isPassword ? 'text' : 'password';
+            if (eyeIconOpen && eyeIconClosed) {
+                eyeIconOpen.classList.toggle('hidden', isPassword);
+                eyeIconClosed.classList.toggle('hidden', !isPassword);
+            }
+        });
+    }
+
+    // Inicializar "Lembrar meu e-mail" se salvo anteriormente
+    if (rememberMeCheckbox && emailInput) {
+        const savedEmail = localStorage.getItem('dentalflow_remember_email');
+        if (savedEmail) {
+            emailInput.value = savedEmail;
+            rememberMeCheckbox.checked = true;
+        }
+    }
     
     authForm.addEventListener('submit', async (e) => { 
         e.preventDefault(); 
-        const email = emailInput.value; 
+        const email = emailInput.value.trim(); 
         const password = passwordInput.value; 
         authErrorMessage.classList.add('hidden'); 
         setButtonLoading(authButton, true, isLoginMode ? 'Entrar' : 'Registar');
+
+        // Salvar ou limpar e-mail se "Lembrar meu e-mail" estiver ativo
+        if (rememberMeCheckbox && rememberMeCheckbox.checked) {
+            localStorage.setItem('dentalflow_remember_email', email);
+        } else {
+            localStorage.removeItem('dentalflow_remember_email');
+        }
+
         try { 
-                        if (isLoginMode) { 
+            if (isLoginMode) { 
                 await signInWithEmailAndPassword(auth, email, password); 
             } else { 
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password); 
@@ -1660,6 +3817,7 @@ const generateProducaoPDF = () => {
                     closingDayStart: data.closingDayStart || 25,
                     closingDayEnd: data.closingDayEnd || 24,
                     notifications: data.notifications || [],
+                    producaoQuickFilter: state.producaoQuickFilter || 'hoje'
                 };
             } else {
                 // Novo usuário ou documento ainda não criado
@@ -1779,7 +3937,7 @@ const generateProducaoPDF = () => {
         }, 0);
     };
 
-	    const renderizarDashboard = () => {
+	    const renderizarDashboard = (animate = true) => {
         updateMonthDisplay();
     
         // Período Atual
@@ -1820,11 +3978,13 @@ const generateProducaoPDF = () => {
         const lucroLiquido = faturamentoBruto - totalDespesas;
         const lucroAnterior = faturamentoAnterior - totalDespesasAnterior;
 
-        // Atualizar KPIs
-        kpiFaturamentoMes.textContent = formatarMoeda(faturamentoBruto);
-        kpiLucroMes.textContent = formatarMoeda(lucroLiquido);
-        kpiPecasMes.textContent = producaoDoMes.reduce((acc, p) => acc + p.qtd, 0);
-        kpiDespesasMes.textContent = formatarMoeda(totalDespesas);
+        // Atualizar KPIs com animação fluida (count-up) ou direto se animate === false
+        const totalPecas = producaoDoMes.reduce((acc, p) => acc + (Number(p.qtd) || 0), 0);
+        const animDuration = animate ? 800 : 0;
+        animateCountUp(kpiFaturamentoMes, faturamentoBruto, true, animDuration);
+        animateCountUp(kpiLucroMes, lucroLiquido, true, animDuration);
+        animateCountUp(kpiPecasMes, totalPecas, false, animDuration);
+        animateCountUp(kpiDespesasMes, totalDespesas, true, animDuration);
     
         // Renderizar Indicador de Tendência
         const renderTrend = (current, previous, element) => {
@@ -1861,101 +4021,368 @@ const generateProducaoPDF = () => {
 
         toggleValuesVisibility();
     
+        renderizarEntregasDashboard();
+    };
+
+    /**
+     * Renderização aprimorada do Cronograma de Entregas & Prazos no Dashboard
+     */
+    const renderizarEntregasDashboard = () => {
+        if (!listaEntregasProximas) return;
+
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
-        const trintaDiasDepois = new Date();
+        const trintaDiasDepois = new Date(hoje);
         trintaDiasDepois.setDate(hoje.getDate() + 30);
-    
-        const entregasAtrasadas = (state.producao || []).filter(p => {
+
+        // Todas as ordens pendentes com prazo de entrega válido
+        const todasEntregas = (state.producao || []).filter(p => {
+            if (p.status === 'Finalizado' || !p.entrega) return false;
             const dataEntrega = new Date(p.entrega + 'T00:00:00');
-            return p.status !== 'Finalizado' && dataEntrega < hoje;
-        }).sort((a, b) => new Date(a.entrega) - new Date(b.entrega));
-    
-        const entregasProximas = (state.producao || []).filter(p => {
-            const dataEntrega = new Date(p.entrega + 'T00:00:00');
-            return p.status !== 'Finalizado' && dataEntrega >= hoje && dataEntrega <= trintaDiasDepois;
-        }).sort((a, b) => new Date(a.entrega) - new Date(b.entrega));
-        
-        const todasAsEntregas = [...entregasAtrasadas, ...entregasProximas];
-    
+            return dataEntrega <= trintaDiasDepois;
+        }).sort((a, b) => new Date(a.entrega + 'T00:00:00') - new Date(b.entrega + 'T00:00:00'));
+
+        // Métricas e Indicadores Globais
+        const totalCount = todasEntregas.length;
+        const atrasadasCount = todasEntregas.filter(p => new Date(p.entrega + 'T00:00:00') < hoje).length;
+        const hojeCount = todasEntregas.filter(p => new Date(p.entrega + 'T00:00:00').getTime() === hoje.getTime()).length;
+        const totalValorPrevisto = todasEntregas.reduce((acc, p) => {
+            const unitVal = getItemValorUnitarioGlobal(p.dentista, p.tipo);
+            return acc + (unitVal * (Number(p.qtd) || 1));
+        }, 0);
+
+        // Atualizar Badges e Cards de Métricas
+        const entregasBadgeTotal = document.getElementById('entregas-badge-total');
+        const entregasBadgeAtrasadas = document.getElementById('entregas-badge-atrasadas');
+        const kpiEntregasTotalCount = document.getElementById('kpi-entregas-total-count');
+        const kpiEntregasHojeCount = document.getElementById('kpi-entregas-hoje-count');
+        const kpiEntregasAtrasadasCount = document.getElementById('kpi-entregas-atrasadas-count');
+        const kpiEntregasValorTotal = document.getElementById('kpi-entregas-valor-total');
+
+        if (entregasBadgeTotal) entregasBadgeTotal.textContent = `${totalCount} ${totalCount === 1 ? 'ordem' : 'ordens'}`;
+        if (entregasBadgeAtrasadas) {
+            if (atrasadasCount > 0) {
+                entregasBadgeAtrasadas.classList.remove('hidden');
+                entregasBadgeAtrasadas.textContent = `${atrasadasCount} ${atrasadasCount === 1 ? 'atrasada' : 'atrasadas'}`;
+            } else {
+                entregasBadgeAtrasadas.classList.add('hidden');
+            }
+        }
+        if (kpiEntregasTotalCount) kpiEntregasTotalCount.textContent = totalCount;
+        if (kpiEntregasHojeCount) kpiEntregasHojeCount.textContent = hojeCount;
+        if (kpiEntregasAtrasadasCount) kpiEntregasAtrasadasCount.textContent = atrasadasCount;
+        if (kpiEntregasValorTotal) kpiEntregasValorTotal.textContent = formatarMoeda(totalValorPrevisto);
+
+        // Modo de Filtro Atual
+        const filterMode = state.dashboardEntregasFilter || 'todos';
+        let filtradas = todasEntregas;
+
+        if (filterMode === 'atrasados') {
+            filtradas = filtradas.filter(p => new Date(p.entrega + 'T00:00:00') < hoje);
+        } else if (filterMode === 'hoje') {
+            filtradas = filtradas.filter(p => new Date(p.entrega + 'T00:00:00').getTime() === hoje.getTime());
+        } else if (filterMode === 'semana') {
+            const seteDias = new Date(hoje);
+            seteDias.setDate(hoje.getDate() + 7);
+            filtradas = filtradas.filter(p => {
+                const d = new Date(p.entrega + 'T00:00:00');
+                return d >= hoje && d <= seteDias;
+            });
+        } else if (filterMode === 'mes') {
+            filtradas = filtradas.filter(p => {
+                const d = new Date(p.entrega + 'T00:00:00');
+                return d >= hoje && d <= trintaDiasDepois;
+            });
+        }
+
+        // Filtro por termo de busca
+        const searchQuery = (state.dashboardEntregasSearch || '').trim().toLowerCase();
+        const clearBtn = document.getElementById('clear-search-entregas-btn');
+        if (clearBtn) {
+            clearBtn.classList.toggle('hidden', !searchQuery);
+        }
+
+        if (searchQuery) {
+            filtradas = filtradas.filter(p => {
+                const dentista = (state.dentistas || []).find(d => String(d.id) === String(p.dentista));
+                const dNome = dentista ? dentista.nome.toLowerCase() : '';
+                const clinica = dentista && dentista.clinica ? dentista.clinica.toLowerCase() : '';
+                const paciente = (p.nomePaciente || '').toLowerCase();
+                const tipo = (p.tipo || '').toLowerCase();
+                const obs = (p.obs || '').toLowerCase();
+                return paciente.includes(searchQuery) || dNome.includes(searchQuery) || clinica.includes(searchQuery) || tipo.includes(searchQuery) || obs.includes(searchQuery);
+            });
+        }
+
         listaEntregasProximas.innerHTML = '';
-        if (todasAsEntregas.length === 0) {
-            listaEntregasProximas.innerHTML = '<p class="text-center text-gemini-secondary">Nenhuma entrega próxima ou atrasada</p>';
-        } else {
-            todasAsEntregas.forEach(entrega => {
-                const dentista = (state.dentistas || []).find(d => d.id === entrega.dentista);
-                const dentistaName = dentista ? dentista.nome : 'Dentista desconhecido';
-                const dataEntrega = new Date(entrega.entrega + 'T00:00:00');
-                const isUrgent = dataEntrega < hoje;
 
-                // Buscar os detalhes extras
-                const tipoTrabalho = entrega.tipo || 'Tipo não informado';
-                const observacoes = entrega.obs || 'Nenhuma observação';
+        if (filtradas.length === 0) {
+            listaEntregasProximas.innerHTML = `
+                <div class="py-10 px-4 text-center rounded-2xl bg-slate-950/40 border border-white/5 my-1">
+                    <div class="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center mx-auto mb-3">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <p class="font-semibold text-white text-sm">Nenhuma entrega encontrada</p>
+                    <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                        ${searchQuery ? 'Nenhum resultado corresponde à pesquisa informada.' : 'Não há trabalhos pendentes para este filtro no momento.'}
+                    </p>
+                    ${(searchQuery || filterMode !== 'todos') ? `
+                        <button type="button" id="btn-reset-entregas-filter" class="mt-3 px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-white/10 text-xs text-cyan-300 font-medium transition-colors cursor-pointer">
+                            Limpar Filtros e Ver Todos
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+            return;
+        }
 
-                const entregaEl = document.createElement('div');
-                entregaEl.className = `entrega-item-container p-3 rounded-lg border ${isUrgent ? 'border-red-500 bg-red-500/10' : 'border-yellow-500 bg-yellow-500/10'}`;
-                
-                // HTML reestruturado para expansão (e CORRIGIDO sem os '+')
-                entregaEl.innerHTML = `
-                    <div class="entrega-item-header flex justify-between items-center cursor-pointer">
-                        <div class="flex-1 min-w-0">
-                            <p class="font-medium truncate">${entrega.nomePaciente || 'Paciente não informado'}</p>
-                            <p class="text-sm text-gemini-secondary truncate">${dentistaName}</p>
-                        </div>
-                        <div class="flex items-center space-x-3 flex-shrink-0 ml-3">
-                             <div class="text-right">
-                                <p class="text-sm font-medium">${dataEntrega.toLocaleDateString('pt-BR')}</p>
-                                <span class="text-xs px-2 py-1 rounded-full ${isUrgent ? 'bg-red-500 text-white' : 'bg-yellow-500 text-black'}">${isUrgent ? 'ATRASADO' : 'PRÓXIMO'}</span>
+        filtradas.forEach(entrega => {
+            const dentista = (state.dentistas || []).find(d => String(d.id) === String(entrega.dentista));
+            const dentistaName = dentista ? dentista.nome : 'Dentista não informado';
+            const clinicaText = dentista && dentista.clinica ? dentista.clinica : '';
+            const dataEntrega = new Date(entrega.entrega + 'T00:00:00');
+            const dataEntrada = entrega.data ? new Date(entrega.data + 'T00:00:00') : null;
+            const diffTime = dataEntrega.getTime() - hoje.getTime();
+            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+            let timingLabel = '';
+            let timingBadgeClass = '';
+            let accentBorderClass = '';
+            let statusDotClass = '';
+            let isUrgent = false;
+
+            if (diffDays < 0) {
+                isUrgent = true;
+                const absDays = Math.abs(diffDays);
+                timingLabel = absDays === 1 ? 'Atrasado há 1 dia' : `Atrasado há ${absDays} dias`;
+                timingBadgeClass = 'text-rose-300 bg-rose-500/20 border border-rose-500/35';
+                accentBorderClass = 'border-l-4 border-l-rose-500 hover:border-l-rose-400 bg-rose-500/[0.04]';
+                statusDotClass = 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.7)]';
+            } else if (diffDays === 0) {
+                timingLabel = 'Entrega Hoje!';
+                timingBadgeClass = 'text-amber-300 bg-amber-500/20 border border-amber-500/35';
+                accentBorderClass = 'border-l-4 border-l-amber-400 hover:border-l-amber-300 bg-amber-400/[0.04]';
+                statusDotClass = 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.7)] animate-pulse';
+            } else if (diffDays === 1) {
+                timingLabel = 'Amanhã';
+                timingBadgeClass = 'text-cyan-300 bg-cyan-500/15 border border-cyan-500/30';
+                accentBorderClass = 'border-l-4 border-l-cyan-400 hover:border-l-cyan-300 bg-cyan-400/[0.02]';
+                statusDotClass = 'bg-cyan-400';
+            } else if (diffDays <= 7) {
+                timingLabel = `Em ${diffDays} dias`;
+                timingBadgeClass = 'text-sky-300 bg-sky-500/10 border border-sky-500/25';
+                accentBorderClass = 'border-l-4 border-l-sky-500 hover:border-l-sky-400 bg-sky-500/[0.02]';
+                statusDotClass = 'bg-sky-400';
+            } else {
+                timingLabel = `Em ${diffDays} dias`;
+                timingBadgeClass = 'text-slate-400 bg-white/5 border border-white/10';
+                accentBorderClass = 'border-l-4 border-l-slate-700 hover:border-l-slate-600 bg-slate-800/10';
+                statusDotClass = 'bg-slate-500';
+            }
+
+            const unitVal = getItemValorUnitarioGlobal(entrega.dentista, entrega.tipo);
+            const qtdNum = Number(entrega.qtd) || 1;
+            const valorTotal = unitVal * qtdNum;
+            const valorFormatado = formatarMoeda(valorTotal);
+            const tipoTrabalho = entrega.tipo || 'Trabalho padrão';
+            const pacienteNome = entrega.nomePaciente || 'Paciente não informado';
+            const observacoes = (entrega.obs && entrega.obs.trim() !== '') ? entrega.obs.trim() : null;
+            const dataEntregaFormatada = dataEntrega.toLocaleDateString('pt-BR');
+            const dataEntradaFormatada = dataEntrada ? dataEntrada.toLocaleDateString('pt-BR') : '-';
+
+            // Botão WhatsApp com mensagem pré-configurada
+            let whatsappBtnHtml = '';
+            if (dentista && dentista.telefone) {
+                let cleanPhone = String(dentista.telefone).replace(/\D/g, '');
+                if (cleanPhone.length >= 10) {
+                    if (!cleanPhone.startsWith('55') && cleanPhone.length <= 11) {
+                        cleanPhone = '55' + cleanPhone;
+                    }
+                    const msgText = encodeURIComponent(`Olá Dr(a). ${dentistaName}, informamos que o trabalho do paciente *${pacienteNome}* (${tipoTrabalho}) está pronto para entrega.`);
+                    whatsappBtnHtml = `
+                        <a href="https://wa.me/${cleanPhone}?text=${msgText}" target="_blank" rel="noopener noreferrer" class="whatsapp-btn px-2.5 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 hover:text-white text-xs font-medium transition-all flex items-center gap-1.5" onclick="event.stopPropagation()">
+                            <svg class="w-3.5 h-3.5 text-emerald-400" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                            <span>Avisar no WhatsApp</span>
+                        </a>
+                    `;
+                }
+            }
+
+            const entregaEl = document.createElement('div');
+            entregaEl.className = `entrega-item-container group bg-slate-900/60 hover:bg-slate-900/90 border border-white/10 hover:border-slate-700 rounded-xl transition-all duration-200 overflow-hidden ${accentBorderClass}`;
+            entregaEl.dataset.id = String(entrega.id);
+
+            entregaEl.innerHTML = `
+                <div class="entrega-item-header p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer select-none">
+                    <div class="flex items-start gap-3 min-w-0">
+                        <div class="w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${statusDotClass}"></div>
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <h4 class="font-bold text-white text-sm sm:text-base tracking-tight truncate">${escapeHtml(pacienteNome)}</h4>
+                                <span class="text-[11px] font-medium px-2 py-0.5 rounded-md bg-white/5 text-cyan-300 border border-cyan-500/20">${escapeHtml(tipoTrabalho)}</span>
+                                <span class="text-[11px] font-medium px-1.5 py-0.5 rounded text-slate-400 bg-white/5">${qtdNum} ${qtdNum === 1 ? 'peça' : 'peças'}</span>
                             </div>
-                            <button class="finalize-entrega-btn p-2 rounded-full bg-green-500/20 hover:bg-green-500/40" data-id="${entrega.id}" title="Finalizar Entrega">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-green-400" style="pointer-events: none;">
+                            <div class="flex items-center gap-1.5 text-xs text-slate-400 mt-1 flex-wrap">
+                                <span class="text-slate-300 font-medium">${escapeHtml(dentistaName)}</span>
+                                ${clinicaText ? `<span class="text-slate-600">·</span><span class="text-slate-400">${escapeHtml(clinicaText)}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between sm:justify-end gap-3 flex-shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-white/5">
+                        <div class="text-left sm:text-right">
+                            <div class="flex items-center sm:justify-end gap-1.5">
+                                <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full ${timingBadgeClass}">${timingLabel}</span>
+                            </div>
+                            <div class="flex items-center sm:justify-end gap-2 text-xs text-slate-400 mt-1">
+                                <span class="font-mono tabular-nums text-slate-300">${dataEntregaFormatada}</span>
+                                <span class="text-slate-600">·</span>
+                                <span class="font-mono font-medium text-emerald-400 monetary-value">${valorFormatado}</span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                            <button type="button" class="finalize-entrega-btn px-2.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 hover:border-emerald-500/50 text-emerald-300 hover:text-emerald-200 text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer" data-id="${entrega.id}" title="Marcar como Finalizado e Concluído">
+                                <svg class="w-3.5 h-3.5 text-emerald-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
                                     <polyline points="20 6 9 17 4 12"></polyline>
                                 </svg>
+                                <span>Finalizar</span>
                             </button>
-                            <svg class="entrega-expand-icon w-4 h-4 text-gemini-secondary transition-transform" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+
+                            <div class="p-1.5 rounded-lg text-slate-400 group-hover:text-white transition-colors">
+                                <svg class="entrega-expand-icon w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </div>
                         </div>
-                     </div>
- 
-                     <div class="entrega-item-details hidden mt-3 pt-3 border-t border-gemini-border/50">
-                         <p class="text-sm"><strong class="text-gemini-secondary">Trabalho:</strong> ${tipoTrabalho}</p>
-                         <p class="text-sm mt-1 break-words"><strong class="text-gemini-secondary">Obs:</strong> ${observacoes}</p>
-                     </div>
-                 `;
-                 listaEntregasProximas.appendChild(entregaEl);
-            });
-        } 
+                    </div>
+                </div>
+
+                <!-- Painel de Detalhes Expansível -->
+                <div class="entrega-item-details hidden px-4 pb-4 pt-1 border-t border-white/5 bg-slate-950/40">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 my-3 text-xs">
+                        <div class="p-2.5 rounded-lg bg-white/[0.02] border border-white/5">
+                            <span class="text-slate-400 block mb-0.5">Entrada no Lab</span>
+                            <span class="font-mono font-medium text-slate-200 text-sm">${dataEntradaFormatada}</span>
+                        </div>
+                        <div class="p-2.5 rounded-lg bg-white/[0.02] border border-white/5">
+                            <span class="text-slate-400 block mb-0.5">Prazo de Entrega</span>
+                            <span class="font-mono font-medium ${isUrgent ? 'text-rose-400 font-bold' : 'text-cyan-300'} text-sm">${dataEntregaFormatada}</span>
+                        </div>
+                        <div class="p-2.5 rounded-lg bg-white/[0.02] border border-white/5">
+                            <span class="text-slate-400 block mb-0.5">Valor do Trabalho</span>
+                            <span class="font-mono font-bold text-emerald-400 text-sm monetary-value">${valorFormatado}</span>
+                        </div>
+                    </div>
+
+                    ${observacoes ? `
+                        <div class="p-2.5 rounded-lg bg-slate-900/80 border border-white/5 text-xs text-slate-300 mb-3">
+                            <span class="font-semibold text-slate-400 block mb-1">Observações do Trabalho:</span>
+                            <p class="break-words leading-relaxed">${escapeHtml(observacoes)}</p>
+                        </div>
+                    ` : ''}
+
+                    <div class="flex items-center justify-between flex-wrap gap-2 pt-2 border-t border-white/5">
+                        <div class="flex items-center gap-2">
+                            ${whatsappBtnHtml}
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button type="button" class="view-in-producao-btn px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-white/10 text-slate-300 hover:text-white text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer" data-paciente="${escapeHtml(pacienteNome)}" data-id="${entrega.id}">
+                                <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                                    <polyline points="2 17 12 22 22 17"></polyline>
+                                    <polyline points="2 12 12 17 22 12"></polyline>
+                                </svg>
+                                <span>Ver na Produção</span>
+                            </button>
+                            <button type="button" class="finalize-entrega-btn px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer" data-id="${entrega.id}">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                                <span>Concluir Entrega</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            listaEntregasProximas.appendChild(entregaEl);
+        });
     };
     
 
     const renderizarProducaoDia = () => {
         let producaoFiltrada = getFilteredProducao();
         
-        const isSearchActive = state.searchTermProducao && state.searchTermProducao.trim() !== '';
-        const isStatusActive = filterStatusSelect && filterStatusSelect.value !== '';
-        const isDataInicioActive = filterDataInicio && filterDataInicio.value !== '';
-        const isDataFimActive = filterDataFim && filterDataFim.value !== '';
-        const isAnyFilterActive = isSearchActive || isStatusActive || isDataInicioActive || isDataFimActive;
+        const isSearchActive = Boolean(state.searchTermProducao && state.searchTermProducao.trim() !== '');
+        const isStatusActive = Boolean(filterStatusSelect && filterStatusSelect.value !== '');
+        const isDataInicioActive = Boolean(filterDataInicio && filterDataInicio.value !== '');
+        const isDataFimActive = Boolean(filterDataFim && filterDataFim.value !== '');
+        const isDentistaActive = Boolean(filterProducaoDentistaMain && filterProducaoDentistaMain.value !== '');
+        const isTipoActive = Boolean(filterProducaoTipo && filterProducaoTipo.value !== '');
+        const isQuickFilterActive = Boolean(state.producaoQuickFilter);
+        const isAnyFilterActive = isSearchActive || isStatusActive || isDataInicioActive || isDataFimActive || isDentistaActive || isTipoActive || isQuickFilterActive;
 
-        const titleEl = document.querySelector('.producao-section-title') || document.querySelector('[data-i18n="production_today_title"]');
+        const titleEl = document.getElementById('producao-list-title') || document.querySelector('.producao-section-title') || document.querySelector('[data-i18n="production_today_title"]');
         if (titleEl && !titleEl.classList.contains('producao-section-title')) {
             titleEl.classList.add('producao-section-title');
         }
 
-        if (!isAnyFilterActive) {
-            const dataSelecionada = producaoDataInput ? producaoDataInput.value : null;
-            if (!dataSelecionada) return;
-            producaoFiltrada = producaoFiltrada.filter(p => p.data === dataSelecionada);
-            
-            if (titleEl) {
-                titleEl.setAttribute('data-i18n', 'production_today_title');
-                titleEl.textContent = typeof t === 'function' ? t('production_today_title') : 'Produção do Dia';
-            }
-        } else {
-            if (titleEl) {
-                titleEl.removeAttribute('data-i18n');
-                titleEl.textContent = 'Resultados da Busca';
+        // Atualizar Badge de Filtros Ativos
+        const badgeFiltros = document.getElementById('badge-filtros-ativos') || filterResultsBadge;
+        let countActive = 0;
+        if (isSearchActive) countActive++;
+        if (isStatusActive) countActive++;
+        if (isDataInicioActive || isDataFimActive) countActive++;
+        if (isDentistaActive) countActive++;
+        if (isTipoActive) countActive++;
+        if (isQuickFilterActive && state.producaoQuickFilter !== 'todos') countActive++;
+
+        if (badgeFiltros) {
+            if (countActive > 0) {
+                badgeFiltros.textContent = `${countActive} ${countActive === 1 ? 'ativo' : 'ativos'}`;
+                badgeFiltros.classList.remove('hidden');
+            } else {
+                badgeFiltros.classList.add('hidden');
             }
         }
+
+        // Título dinâmico inteligente
+        if (titleEl) {
+            if (state.producaoQuickFilter === 'todos') {
+                titleEl.textContent = 'Todas as Ordens de Produção';
+            } else if (state.producaoQuickFilter === 'atrasados') {
+                titleEl.textContent = '⚠️ Produções Atrasadas';
+            } else if (state.producaoQuickFilter === 'hoje') {
+                titleEl.textContent = 'Produção de Hoje';
+            } else if (state.producaoQuickFilter === 'semana') {
+                titleEl.textContent = 'Produção desta Semana';
+            } else if (state.producaoQuickFilter === 'mes') {
+                titleEl.textContent = 'Produção do Mês Atual';
+            } else if (state.producaoQuickFilter === 'pendentes') {
+                titleEl.textContent = 'Ordens Pendentes';
+            } else if (state.producaoQuickFilter === 'andamento') {
+                titleEl.textContent = 'Ordens Em Andamento';
+            } else if (state.producaoQuickFilter === 'finalizados') {
+                titleEl.textContent = 'Ordens Finalizadas';
+            } else if (isAnyFilterActive) {
+                titleEl.textContent = 'Resultados Filtrados';
+            } else {
+                titleEl.textContent = typeof t === 'function' ? t('production_today_title') : 'Produção do Dia';
+            }
+        }
+
+        // Sincronizar classes ativas dos botões de atalho rápido
+        const currentQuickFilter = state.producaoQuickFilter || 'hoje';
+        document.querySelectorAll('.btn-quick-filter').forEach(b => {
+            const btnMode = b.dataset.filter || b.dataset.quickFilter;
+            if (btnMode === currentQuickFilter) {
+                b.classList.add('active');
+            } else {
+                b.classList.remove('active');
+            }
+        });
         
         listaProducaoDia.innerHTML = '';
         let totalPecas = 0;
@@ -2102,102 +4529,315 @@ const generateProducaoPDF = () => {
         toggleValuesVisibility();
     };
 
-    const renderizarProducaoPorDentista = () => {
-        const selectedDentistaId = filterDentistaSelect.value;
-        producaoDentistaTableBody.innerHTML = '';
+    const updateDentistaBatchBar = () => {
+        if (!dentistaBatchBar) return;
+        const checkedBoxes = producaoDentistaTableBody ? producaoDentistaTableBody.querySelectorAll('.producao-checkbox:checked') : [];
+        const count = checkedBoxes.length;
 
-        if (!selectedDentistaId) {
-            producaoDentistaTableBody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-gemini-secondary">Selecione um dentista para começar.</td></tr>';
-            exportDentistaProducaoPdfBtn.classList.add('hidden'); // Oculta o botão
+        if (count === 0) {
+            dentistaBatchBar.classList.add('hidden');
+            if (thSelectAllDentista) thSelectAllDentista.checked = false;
+            if (selectAllProducaoCheckbox) selectAllProducaoCheckbox.checked = false;
             return;
         }
 
-        const dentista = (state.dentistas || []).find(d => d.id == selectedDentistaId);
-        
-        // Considerar fechamento personalizado do dentista se existir
-        let startDay = dentista?.customClosingDayStart || state.closingDayStart || 25;
-        let endDay = dentista?.customClosingDayEnd || state.closingDayEnd || 24;
-
-        let targetDate = new Date(state.mesAtual);
-        let year = targetDate.getFullYear();
-        let month = targetDate.getMonth();
-
-        let startDate, endDate;
-
-        if (startDay > endDay) {
-            endDate = new Date(year, month, endDay, 23, 59, 59);
-            startDate = new Date(year, month - 1, startDay, 0, 0, 0);
-        } else {
-            startDate = new Date(year, month, startDay, 0, 0, 0);
-            endDate = new Date(year, month, endDay, 23, 59, 59);
-        }
-
-        const producaoFiltrada = (state.producao || []).filter(p => {
-             if (p.dentista != selectedDentistaId) return false;
-             if (!p.data) return false;
-             const dataProducao = new Date(p.data + "T00:00:00");
-             return dataProducao >= startDate && dataProducao <= endDate;
+        let totalVal = 0;
+        checkedBoxes.forEach(cb => {
+            totalVal += parseFloat(cb.dataset.valor) || 0;
         });
 
-        if (producaoFiltrada.length === 0) {
-            producaoDentistaTableBody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-gemini-secondary">Nenhuma produção encontrada para este dentista.</td></tr>';
-            exportDentistaProducaoPdfBtn.classList.add('hidden'); // Oculta o botão
+        dentistaBatchBar.classList.remove('hidden');
+        if (batchSelectedCount) {
+            batchSelectedCount.textContent = `${count} ${count === 1 ? 'trabalho selecionado' : 'trabalhos selecionados'}`;
+        }
+        if (batchSelectedTotal) {
+            batchSelectedTotal.textContent = formatarMoeda(totalVal);
+        }
+    };
+
+    const renderDentistaQuickPills = () => {
+        if (!dentistaQuickPills) return;
+        dentistaQuickPills.innerHTML = '';
+
+        const currentSelectedId = filterDentistaSelect ? filterDentistaSelect.value : '';
+        const allDentistas = [...(state.dentistas || [])].sort((a, b) => a.nome.localeCompare(b.nome));
+
+        if (allDentistas.length === 0) {
+            dentistaQuickPills.innerHTML = '<span class="text-xs text-gemini-secondary italic py-1">Nenhum dentista cadastrado</span>';
             return;
         }
-        
-        exportDentistaProducaoPdfBtn.classList.remove('hidden'); // Exibe o botão
+
+        allDentistas.forEach(d => {
+            const activeWorks = (state.producao || []).filter(p => String(p.dentista) === String(d.id) && p.status !== 'Finalizado').length;
+            const isSelected = String(d.id) === String(currentSelectedId);
+
+            const pill = document.createElement('button');
+            pill.type = 'button';
+            pill.className = `flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex-shrink-0 cursor-pointer ${
+                isSelected 
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30 ring-2 ring-indigo-400/80 scale-105' 
+                    : 'bg-gemini-input/80 text-gemini-secondary hover:text-white hover:bg-gemini-input border border-gemini-border/80'
+            }`;
+
+            pill.innerHTML = `
+                <span>${d.nome}</span>
+                ${activeWorks > 0 ? `<span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isSelected ? 'bg-white text-indigo-700' : 'bg-indigo-500/25 text-indigo-300 border border-indigo-500/30'}">${activeWorks}</span>` : ''}
+            `;
+
+            pill.addEventListener('click', () => {
+                if (filterDentistaSelect) {
+                    filterDentistaSelect.value = d.id;
+                    renderizarProducaoPorDentista();
+                }
+            });
+
+            dentistaQuickPills.appendChild(pill);
+        });
+    };
+
+    const renderizarProducaoPorDentista = () => {
+        const selectedDentistaId = filterDentistaSelect ? filterDentistaSelect.value : '';
+        producaoDentistaTableBody.innerHTML = '';
+
+        // Atualizar quick pills
+        renderDentistaQuickPills();
+
+        if (!selectedDentistaId) {
+            // Esconder elementos específicos de dentista selecionado
+            if (dentistaKpiBar) dentistaKpiBar.classList.add('hidden');
+            if (dentistaBatchBar) dentistaBatchBar.classList.add('hidden');
+            if (exportDentistaProducaoPdfBtn) exportDentistaProducaoPdfBtn.classList.add('hidden');
+            if (btnGerarPixDentista) btnGerarPixDentista.classList.add('hidden');
+
+            producaoDentistaTableBody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="p-8 text-center text-gemini-secondary">
+                        <div class="flex flex-col items-center justify-center py-6">
+                            <div class="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mb-3">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                            </div>
+                            <p class="font-bold text-gemini-primary text-base">Selecione um dentista para visualizar a produção</p>
+                            <p class="text-sm text-gemini-secondary mt-1 max-w-md">Utilize a barra de atalhos rápidos de dentistas acima ou selecione no menu suspenso.</p>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        const dentista = (state.dentistas || []).find(d => String(d.id) === String(selectedDentistaId));
+        if (!dentista) {
+            producaoDentistaTableBody.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-red-400">Dentista não encontrado.</td></tr>';
+            return;
+        }
+
+        // Exibir elementos
+        if (dentistaKpiBar) dentistaKpiBar.classList.remove('hidden');
+        if (exportDentistaProducaoPdfBtn) exportDentistaProducaoPdfBtn.classList.remove('hidden');
+        if (btnGerarPixDentista) btnGerarPixDentista.classList.remove('hidden');
+
+        // Lógica de período
+        const periodoModo = filterDentistaPeriodo ? filterDentistaPeriodo.value : 'ciclo';
+        let startDate = null;
+        let endDate = null;
+
+        if (periodoModo === 'ciclo') {
+            let startDay = dentista?.customClosingDayStart || state.closingDayStart || 25;
+            let endDay = dentista?.customClosingDayEnd || state.closingDayEnd || 24;
+            let targetDate = new Date(state.mesAtual);
+            let year = targetDate.getFullYear();
+            let month = targetDate.getMonth();
+
+            if (startDay > endDay) {
+                endDate = new Date(year, month, endDay, 23, 59, 59);
+                startDate = new Date(year, month - 1, startDay, 0, 0, 0);
+            } else {
+                startDate = new Date(year, month, startDay, 0, 0, 0);
+                endDate = new Date(year, month, endDay, 23, 59, 59);
+            }
+        } else if (periodoModo === '30dias') {
+            const now = new Date();
+            endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+            startDate = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+            startDate.setHours(0, 0, 0, 0);
+        } else if (periodoModo === 'mes') {
+            const targetDate = new Date(state.mesAtual);
+            startDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1, 0, 0, 0);
+            endDate = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0, 23, 59, 59);
+        }
+        // Se 'todos', startDate e endDate permanecem null
+
+        const statusFilter = filterDentistaStatus ? filterDentistaStatus.value : '';
+        const searchTableText = searchDentistaTable ? searchDentistaTable.value.trim().toLowerCase() : '';
+
+        // Filtrar produção do dentista
+        const producaoFiltrada = (state.producao || []).filter(p => {
+            if (String(p.dentista) !== String(selectedDentistaId)) return false;
+            
+            // Período
+            if (startDate && endDate) {
+                if (!p.data) return false;
+                const dataProd = new Date(p.data + 'T00:00:00');
+                if (dataProd < startDate || dataProd > endDate) return false;
+            }
+
+            // Status
+            if (statusFilter && p.status !== statusFilter) return false;
+
+            // Busca na tabela
+            if (searchTableText) {
+                const paciente = (p.nomePaciente || '').toLowerCase();
+                const tipo = (p.tipo || '').toLowerCase();
+                const obs = (p.obs || '').toLowerCase();
+                if (!paciente.includes(searchTableText) && !tipo.includes(searchTableText) && !obs.includes(searchTableText)) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+
+        // Calcular KPIs do dentista no recorte atual
+        let kpiPecas = 0;
+        let kpiFaturamento = 0;
+        let kpiFinalizados = 0;
+        let kpiAndamento = 0;
+        let kpiPendentes = 0;
+
+        producaoFiltrada.forEach(p => {
+            const valorDentista = (dentista.valores || []).find(v => v.tipo === p.tipo);
+            const valorGlobal = (state.valores || []).find(v => v.tipo === p.tipo);
+            const valorFinal = valorDentista || valorGlobal;
+            const itemTotal = valorFinal ? valorFinal.valor * (parseInt(p.qtd) || 0) : 0;
+
+            kpiPecas += (parseInt(p.qtd) || 0);
+            kpiFaturamento += itemTotal;
+
+            if (p.status === 'Finalizado') kpiFinalizados++;
+            else if (p.status === 'Em Andamento') kpiAndamento++;
+            else if (p.status === 'Pendente') kpiPendentes++;
+        });
+
+        if (dentistaKpiTotalPecas) dentistaKpiTotalPecas.textContent = kpiPecas;
+        if (dentistaKpiFaturamento) dentistaKpiFaturamento.textContent = formatarMoeda(kpiFaturamento);
+        if (dentistaKpiFinalizados) dentistaKpiFinalizados.textContent = kpiFinalizados;
+        if (dentistaKpiAndamento) dentistaKpiAndamento.textContent = kpiAndamento;
+        if (dentistaKpiPendentes) dentistaKpiPendentes.textContent = kpiPendentes;
+
+        if (producaoFiltrada.length === 0) {
+            producaoDentistaTableBody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="p-8 text-center text-gemini-secondary">
+                        <div class="py-4">
+                            <p class="font-medium text-gemini-primary">Nenhum registro encontrado para este dentista com os filtros selecionados.</p>
+                            <p class="text-xs text-gemini-secondary mt-1">Tente alterar o período (ex: Todos os Períodos) ou o filtro de status.</p>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            if (dentistaBatchBar) dentistaBatchBar.classList.add('hidden');
+            return;
+        }
+
+        // Ordenar por data decrescente
+        producaoFiltrada.sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0));
+
+        const hojeStr = new Date().toISOString().split('T')[0];
 
         producaoFiltrada.forEach(producao => {
-            const dentista = (state.dentistas || []).find(d => d.id === producao.dentista);
-            const dentistaName = dentista ? dentista.nome : 'Desconhecido';
-
-            const valorDentista = dentista ? (dentista.valores || []).find(v => v.tipo === producao.tipo) : null;
+            const valorDentista = (dentista.valores || []).find(v => v.tipo === producao.tipo);
             const valorGlobal = (state.valores || []).find(v => v.tipo === producao.tipo);
             const valorFinal = valorDentista || valorGlobal;
-            const valorTotal = valorFinal ? valorFinal.valor * producao.qtd : 0;
+            const unitVal = valorFinal ? valorFinal.valor : 0;
+            const valorTotal = unitVal * (parseInt(producao.qtd) || 0);
+
+            const isAtrasado = producao.status !== 'Finalizado' && producao.entrega && producao.entrega < hojeStr;
 
             const statusClass = {
-                'Pendente': 'text-red-400',
-                'Em Andamento': 'text-yellow-400',
-                'Finalizado': 'text-green-400'
-            }[producao.status] || 'text-gemini-secondary';
+                'Pendente': 'bg-red-500/15 text-red-300 border border-red-500/30',
+                'Em Andamento': 'bg-yellow-500/15 text-yellow-300 border border-yellow-500/30',
+                'Finalizado': 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+            }[producao.status] || 'bg-gray-500/15 text-gray-300 border border-gray-500/30';
+
+            const dataEntradaFmt = producao.data ? new Date(producao.data + 'T00:00:00').toLocaleDateString('pt-BR') : '-';
+            const dataEntregaFmt = producao.entrega ? new Date(producao.entrega + 'T00:00:00').toLocaleDateString('pt-BR') : '-';
+
+            const anexoHtml = producao.anexoURL ? `
+                <a href="${producao.anexoURL}" target="_blank" class="p-1.5 rounded-lg hover:bg-indigo-600/30 text-indigo-400 hover:text-indigo-200 transition-colors inline-flex items-center" title="Ver Arquivo Anexo">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                </a>
+            ` : '';
 
             const row = document.createElement('tr');
-            row.className = 'border-b border-gemini-border hover:bg-gray-700/50 transition-colors';
+            row.className = 'border-b border-gemini-border/40 hover:bg-gemini-input/30 transition-colors group';
             
-            // [MODIFICADO] Adicionado checkbox e o botão de excluir
             row.innerHTML = `
                 <td class="p-3 text-center">
-                    <input type="checkbox" class="producao-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" 
+                    <input type="checkbox" class="producao-checkbox h-4 w-4 rounded border-gemini-border text-indigo-600 focus:ring-indigo-500 cursor-pointer bg-gemini-input" 
                         data-id="${producao.id}" 
                         data-paciente="${producao.nomePaciente || ''}" 
                         data-tipo="${producao.tipo}" 
                         data-qtd="${producao.qtd}"
                         data-valor="${valorTotal}">
                 </td>
-                <td class="p-3 text-gemini-primary font-medium">${dentistaName}</td>
-                <td class="p-3 text-gemini-secondary">${producao.nomePaciente || '-'}</td>
-                <td class="p-3 text-gemini-secondary">${producao.tipo}</td>
-                <td class="p-3 text-gemini-secondary text-sm">${producao.obs || '-'}</td>
-                <td class="p-3 font-semibold ${statusClass}">${producao.status}</td>
-                <td class="p-3 text-accent-green font-semibold monetary-value">${formatarMoeda(valorTotal)}</td>
+                <td class="p-3">
+                    <div class="text-xs space-y-0.5">
+                        <div class="text-gemini-secondary">Entrada: <span class="text-gemini-primary font-medium">${dataEntradaFmt}</span></div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-gemini-secondary">Entrega:</span>
+                            <span class="font-medium ${isAtrasado ? 'text-red-400 font-bold' : 'text-gemini-primary'}">${dataEntregaFmt}</span>
+                            ${isAtrasado ? '<span class="px-1.5 py-0.2 bg-red-500/20 text-red-400 rounded text-[10px] font-bold">ATRASADO</span>' : ''}
+                        </div>
+                    </div>
+                </td>
+                <td class="p-3">
+                    <div class="flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-full bg-gemini-input flex items-center justify-center text-xs font-bold text-gemini-secondary border border-gemini-border">
+                            ${(producao.nomePaciente || 'P')[0].toUpperCase()}
+                        </div>
+                        <span class="text-gemini-primary font-semibold text-sm">${producao.nomePaciente || 'Não informado'}</span>
+                    </div>
+                </td>
+                <td class="p-3">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-gemini-primary font-medium text-sm">${producao.tipo}</span>
+                        <span class="px-1.5 py-0.5 rounded-full text-xs font-bold bg-gemini-input text-indigo-300 border border-indigo-500/30">x${producao.qtd}</span>
+                    </div>
+                </td>
+                <td class="p-3">
+                    ${producao.obs ? `<span class="inline-block max-w-[180px] truncate text-xs text-gemini-secondary bg-gemini-input/60 px-2 py-1 rounded border border-gemini-border/40" title="${producao.obs}">${producao.obs}</span>` : '<span class="text-gemini-secondary text-xs">-</span>'}
+                </td>
+                <td class="p-3">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${statusClass}">
+                        ${producao.status}
+                    </span>
+                </td>
+                <td class="p-3 text-right">
+                    <div class="text-accent-green font-bold text-sm monetary-value">${formatarMoeda(valorTotal)}</div>
+                    ${producao.qtd > 1 ? `<div class="text-[11px] text-gemini-secondary">${formatarMoeda(unitVal)}/un</div>` : ''}
+                </td>
                 <td class="p-3 text-center">
-                    <button class="edit-producao-btn p-1 rounded hover:bg-gray-700 transition-colors" data-id="${producao.id}" title="Editar">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                        </svg>
-                    </button>
-                    <button class="remove-producao-btn p-1 rounded hover:bg-red-700 transition-colors text-red-400" data-id="${producao.id}" title="Excluir">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="3,6 5,6 21,6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        </svg>
-                    </button>
+                    <div class="flex items-center justify-center gap-1">
+                        ${anexoHtml}
+                        <button class="edit-producao-btn p-1.5 rounded-lg hover:bg-gray-700 transition-colors text-gray-300 hover:text-white" data-id="${producao.id}" title="Editar trabalho">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        </button>
+                        <button class="remove-producao-btn p-1.5 rounded-lg hover:bg-red-700/30 transition-colors text-red-400 hover:text-red-300" data-id="${producao.id}" title="Excluir trabalho">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
+                    </div>
                 </td>
             `;
             producaoDentistaTableBody.appendChild(row);
         });
+
+        // Adicionar listener aos checkboxes para atualizar batch bar
+        const checkboxes = producaoDentistaTableBody.querySelectorAll('.producao-checkbox');
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', updateDentistaBatchBar);
+        });
+
+        updateDentistaBatchBar();
         toggleValuesVisibility();
     };
 
@@ -2273,22 +4913,22 @@ const generateProducaoPDF = () => {
                 const valorTotal = valorFinal ? valorFinal.valor * p.qtd : 0;
 
                 const itemEl = document.createElement('div');
-                itemEl.className = 'card-enhanced p-3 border border-gemini-border';
+                itemEl.className = 'modal-subpanel p-3.5 border border-white/10 hover:border-white/20 transition-all rounded-xl';
                 
                 itemEl.innerHTML = `
                     <div class="flex justify-between items-start">
                         <div>
-                            <p class="font-medium text-gemini-primary">${p.nomePaciente || 'Paciente não informado'}</p>
-                            <p class="text-sm text-gemini-secondary">${dentistaName}</p>
-                            <p class="text-xs text-gemini-secondary mt-1">Data: ${dataFormatada}</p>
+                            <p class="font-semibold text-white">${p.nomePaciente || 'Paciente não informado'}</p>
+                            <p class="text-xs text-sky-400 font-medium mt-0.5">${dentistaName}</p>
+                            <p class="text-xs text-slate-400 mt-1">Data: ${dataFormatada}</p>
                         </div>
                         <div class="text-right">
-                             <div class="font-bold text-accent-purple">${p.qtd} un.</div>
-                             <div class="text-sm text-accent-green monetary-value">${formatarMoeda(valorTotal)}</div>
-                             <div class="text-xs text-gemini-secondary mt-1">${p.status}</div>
+                             <div class="font-bold text-purple-400 text-sm">${p.qtd} un.</div>
+                             <div class="text-sm font-semibold text-emerald-400 monetary-value">${formatarMoeda(valorTotal)}</div>
+                             <div class="text-[11px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-slate-300 inline-block mt-1">${p.status}</div>
                         </div>
                     </div>
-                    ${p.obs ? `<div class="mt-2 text-xs text-gemini-secondary border-t border-gemini-border pt-1">Obs: ${p.obs}</div>` : ''}
+                    ${p.obs ? `<div class="mt-2 text-xs text-slate-400 border-t border-white/10 pt-1.5 italic">Obs: ${p.obs}</div>` : ''}
                 `;
                 workTypeDetailsList.appendChild(itemEl);
             });
@@ -2327,10 +4967,10 @@ const generateProducaoPDF = () => {
         const totalDespesasValue = despesasDoMes.reduce((acc, d) => acc + d.valor, 0);
         const lucroLiquido = faturamentoBruto - totalDespesasValue;
         
-        totalPecasMes.textContent = totalPecasValue;
-        totalFaturamentoMes.textContent = formatarMoeda(faturamentoBruto);
-        totalDespesasMes.textContent = formatarMoeda(totalDespesasValue);
-        lucroLiquidoMes.textContent = formatarMoeda(lucroLiquido);
+        animateCountUp(totalPecasMes, totalPecasValue, false, 800);
+        animateCountUp(totalFaturamentoMes, faturamentoBruto, true, 800);
+        animateCountUp(totalDespesasMes, totalDespesasValue, true, 800);
+        animateCountUp(lucroLiquidoMes, lucroLiquido, true, 800);
         
         // Atualizar barras de progresso
         const maxValue = Math.max(faturamentoBruto, totalDespesasValue);
@@ -2348,6 +4988,22 @@ const generateProducaoPDF = () => {
         faturamentoBarLabel.textContent = formatarMoeda(faturamentoBruto);
         despesasBarLabel.textContent = formatarMoeda(totalDespesasValue);
         
+        // Atualizar badge de margem de lucro
+        const margemLucroBadge = document.getElementById('margem-lucro-badge');
+        if (margemLucroBadge) {
+            if (faturamentoBruto > 0) {
+                const margemPercent = ((lucroLiquido / faturamentoBruto) * 100).toFixed(1);
+                const isPos = lucroLiquido >= 0;
+                margemLucroBadge.textContent = `Margem: ${margemPercent}%`;
+                margemLucroBadge.className = isPos
+                    ? 'px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-400/30'
+                    : 'px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-300 border border-rose-400/30';
+            } else {
+                margemLucroBadge.textContent = 'Margem: 0%';
+                margemLucroBadge.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-slate-500/15 text-slate-300 border border-slate-400/30';
+            }
+        }
+
         // Renderizar despesas
         despesasContainer.innerHTML = '';
         if (despesasDoMes.length === 0) {
@@ -2367,37 +5023,62 @@ const generateProducaoPDF = () => {
             });
         }
         
-        // Renderizar quantidade por tipo de trabalho
-        if (resumoTiposContainer) {
-            const resumoTipos = {};
-            producaoDoMes.forEach(p => {
-                const qtd = Number(p.qtd) || 0;
-                resumoTipos[p.tipo] = (resumoTipos[p.tipo] || 0) + qtd;
-            });
+        // Renderizar quantidade por tipo de trabalho e atualizar gráfico de Donut
+        const tiposTrabalhoColors = [
+            '#38bdf8', '#818cf8', '#34d399', '#fbbf24', '#f472b6', 
+            '#a78bfa', '#fb7185', '#2dd4bf', '#60a5fa', '#f97316', '#4ade80', '#c084fc'
+        ];
+
+        const resumoTipos = {};
+        producaoDoMes.forEach(p => {
+            const qtd = Number(p.qtd) || 0;
+            resumoTipos[p.tipo] = (resumoTipos[p.tipo] || 0) + qtd;
+        });
+        
+        const resumoTiposArray = Object.entries(resumoTipos)
+            .map(([tipo, qtd]) => ({ tipo, qtd }))
+            .sort((a, b) => b.qtd - a.qtd);
+
+        // Atualizar Donut Chart
+        if (charts.tiposTrabalho) {
+            charts.tiposTrabalho.data.labels = resumoTiposArray.map(item => item.tipo);
+            charts.tiposTrabalho.data.datasets[0].data = resumoTiposArray.map(item => item.qtd);
+            charts.tiposTrabalho.data.datasets[0].backgroundColor = resumoTiposArray.map((_, i) => tiposTrabalhoColors[i % tiposTrabalhoColors.length]);
+            charts.tiposTrabalho.update();
+        }
+
+        const donutTotalNumber = document.getElementById('donut-total-number');
+        if (donutTotalNumber) {
+            donutTotalNumber.textContent = totalPecasValue;
+        }
+
+        const tiposTotalBadge = document.getElementById('resumo-tipos-total-badge');
+        if (tiposTotalBadge) {
+            tiposTotalBadge.textContent = `${resumoTiposArray.length} Tipo${resumoTiposArray.length !== 1 ? 's' : ''}`;
+        }
             
-            const resumoTiposArray = Object.entries(resumoTipos)
-                .map(([tipo, qtd]) => ({ tipo, qtd }))
-                .sort((a, b) => b.qtd - a.qtd);
-                
+        if (resumoTiposContainer) {
             resumoTiposContainer.innerHTML = '';
             if (resumoTiposArray.length === 0) {
-                 resumoTiposContainer.innerHTML = '<p class="text-center text-gemini-secondary col-span-full">Nenhuma produção no mês</p>';
+                 resumoTiposContainer.innerHTML = '<p class="text-center text-slate-400 col-span-full py-4">Nenhuma produção registrada neste período</p>';
             } else {
-                resumoTiposArray.forEach(item => {
+                resumoTiposArray.forEach((item, index) => {
+                    const color = tiposTrabalhoColors[index % tiposTrabalhoColors.length];
+                    const pct = totalPecasValue > 0 ? ((item.qtd / totalPecasValue) * 100).toFixed(0) : 0;
+                    
                     const el = document.createElement('div');
-                    el.className = 'flex justify-between items-center p-3 rounded bg-gemini-input border border-gemini-border cursor-pointer hover:bg-gray-700 transition-colors';
+                    el.className = 'group flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-white/10 hover:border-white/25 hover:bg-white/[0.04] transition-all cursor-pointer shadow-sm';
                     
-                    const typeSpan = document.createElement('span');
-                    typeSpan.className = 'font-medium text-gemini-primary truncate mr-2';
-                    typeSpan.title = item.tipo;
-                    typeSpan.textContent = item.tipo;
-                    
-                    const qtySpan = document.createElement('span');
-                    qtySpan.className = 'font-bold text-accent-purple';
-                    qtySpan.textContent = item.qtd;
-                    
-                    el.appendChild(typeSpan);
-                    el.appendChild(qtySpan);
+                    el.innerHTML = `
+                        <div class="flex items-center gap-2.5 min-w-0 pr-2">
+                            <span class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${color}; box-shadow: 0 0 8px ${color}88;"></span>
+                            <span class="font-medium text-white text-sm truncate group-hover:text-sky-300 transition-colors" title="${item.tipo}">${item.tipo}</span>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <span class="text-xs text-slate-400 font-medium">${pct}%</span>
+                            <span class="px-2.5 py-0.5 rounded-lg text-xs font-bold text-white bg-white/10 border border-white/10 group-hover:border-white/20 transition-all">${item.qtd} un.</span>
+                        </div>
+                    `;
                     
                     el.addEventListener('click', () => {
                          showWorkTypeDetails(item.tipo, producaoDoMes);
@@ -2407,6 +5088,10 @@ const generateProducaoPDF = () => {
                 });
             }
         }
+        
+        // Atualizar o gráfico de faturamento diário que faz parte da visão de Resumo
+        updateDailyRevenueChart();
+        updateComparativoAnualChart();
         
         toggleValuesVisibility();
     };
@@ -2497,22 +5182,31 @@ const generateProducaoPDF = () => {
     };
 
     const renderizarSelects = () => {
-        // Limpar todos os selects primeiro
-        const selects = [
-            filterDentistaSelect
-        ];
-        selects.forEach(select => {
-            if (select) select.innerHTML = '';
-        });
-    
-        // Adicionar as opções padrão
-        if (filterDentistaSelect) filterDentistaSelect.innerHTML = '<option value="">Selecione um dentista para ver a produção</option>';
+        // Salvar valores atuais para preservar a seleção
+        const currentFilterDentista = filterDentistaSelect ? filterDentistaSelect.value : '';
+        const currentProducaoDentista = producaoDentistaSelect ? producaoDentistaSelect.value : '';
+        const currentMainDentista = filterProducaoDentistaMain ? filterProducaoDentistaMain.value : '';
+        const currentTipo = filterProducaoTipo ? filterProducaoTipo.value : '';
+
+        // Limpar e re-popular os selects
+        if (filterDentistaSelect) {
+            filterDentistaSelect.innerHTML = '<option value="" data-i18n="placeholder_select_dentist">Selecione um dentista para ver a produção</option>';
+        }
+        if (producaoDentistaSelect) {
+            producaoDentistaSelect.innerHTML = '<option value="">Selecione um dentista...</option>';
+        }
+        if (filterProducaoDentistaMain) {
+            filterProducaoDentistaMain.innerHTML = '<option value="" data-i18n="filter_all_dentists">Todos os Dentistas</option>';
+        }
+        if (filterProducaoTipo) {
+            filterProducaoTipo.innerHTML = '<option value="" data-i18n="filter_all_types">Todos os Tipos de Trabalho</option>';
+        }
         
         // Atualizar opções nos selects de itens da produção (Main e Quick)
         const itemSelects = document.querySelectorAll('.main-producao-tipo-select, .quick-producao-tipo-select');
         itemSelects.forEach(select => {
             const currentValue = select.value;
-            select.innerHTML = '<option value="">Selecione o tipo de trabalho</option>';
+            select.innerHTML = '<option value="" data-i18n="placeholder_select_work_type">Selecione o tipo de trabalho</option>';
             (state.valores || []).forEach(valor => {
                 const option = document.createElement('option');
                 option.value = valor.tipo;
@@ -2522,24 +5216,60 @@ const generateProducaoPDF = () => {
             select.value = currentValue;
         });
 
-        // Popular selects de dentistas (Filtro) e datalist (Inputs)
+        // Popular filtro por tipos de trabalho
+        if (filterProducaoTipo) {
+            (state.valores || []).forEach(valor => {
+                const option = document.createElement('option');
+                option.value = valor.tipo;
+                option.textContent = valor.tipo;
+                filterProducaoTipo.appendChild(option);
+            });
+            if (currentTipo) filterProducaoTipo.value = currentTipo;
+        }
+
+        // Popular selects de dentistas e datalist
         const dentistasList = document.getElementById('dentistas-list');
         if (dentistasList) dentistasList.innerHTML = '';
 
         const dentistasOrdenados = [...(state.dentistas || [])].sort((a, b) => a.nome.localeCompare(b.nome));
         
         dentistasOrdenados.forEach(dentista => {
-            // Para o Select de Filtro (usa ID)
-            const optionSelect = document.createElement('option');
-            optionSelect.value = dentista.id;
-            optionSelect.textContent = dentista.nome;
-            if (filterDentistaSelect) filterDentistaSelect.appendChild(optionSelect);
+            // Select de Produção por Dentista (usa ID)
+            if (filterDentistaSelect) {
+                const optionSelect = document.createElement('option');
+                optionSelect.value = dentista.id;
+                optionSelect.textContent = dentista.nome + (dentista.clinica ? ` (${dentista.clinica})` : '');
+                filterDentistaSelect.appendChild(optionSelect);
+            }
 
-            // Para o Datalist (usa Nome)
-            const optionDatalist = document.createElement('option');
-            optionDatalist.value = dentista.nome;
-            if (dentistasList) dentistasList.appendChild(optionDatalist);
+            // Select do Formulário de Adicionar Produção (usa ID)
+            if (producaoDentistaSelect) {
+                const optionProd = document.createElement('option');
+                optionProd.value = dentista.id;
+                optionProd.textContent = dentista.nome + (dentista.clinica ? ` • ${dentista.clinica}` : '');
+                producaoDentistaSelect.appendChild(optionProd);
+            }
+
+            // Select de Filtros Gerais (usa ID)
+            if (filterProducaoDentistaMain) {
+                const optionMain = document.createElement('option');
+                optionMain.value = dentista.id;
+                optionMain.textContent = dentista.nome;
+                filterProducaoDentistaMain.appendChild(optionMain);
+            }
+
+            // Datalist de busca rápida por nome
+            if (dentistasList) {
+                const optionDatalist = document.createElement('option');
+                optionDatalist.value = dentista.nome;
+                dentistasList.appendChild(optionDatalist);
+            }
         });
+
+        // Restaurar seleções
+        if (filterDentistaSelect && currentFilterDentista) filterDentistaSelect.value = currentFilterDentista;
+        if (producaoDentistaSelect && currentProducaoDentista) producaoDentistaSelect.value = currentProducaoDentista;
+        if (filterProducaoDentistaMain && currentMainDentista) filterProducaoDentistaMain.value = currentMainDentista;
 
         // Popular datalist de pacientes
         const pacientesList = document.getElementById('pacientes-list');
@@ -2553,6 +5283,8 @@ const generateProducaoPDF = () => {
                 pacientesList.appendChild(option);
             });
         }
+
+        updateOrderPreview();
     };
 
     const renderizarListaDespesasDetalhada = () => {
@@ -2715,25 +5447,26 @@ const generateProducaoPDF = () => {
         toggleValuesVisibility();
     };
 
-	    const renderAllUIComponents = () => {
-	        renderizarDashboard();
+	    const renderAllUIComponents = (animateDashboard = true) => {
+            renderizarSelects();
+            renderDentistaQuickPills();
+	        renderizarDashboard(animateDashboard);
 	        renderizarProducaoDia();
 	        renderQuickNotesUI();
 	        renderizarProducaoPorDentista();
-        // Removed duplicate call to renderizarProducaoPorDentista();
-        renderizarListaDentistas();
-        renderizarResumoMensal();
-        renderizarAnaliseDentista();
-        renderizarListaValores();
-        renderizarSelects();
-        renderizarEstoque();
-        renderizarListaDespesasCompleta();
-        toggleValuesVisibility();
-        
-        // Atualizar idioma após renderização
-        const currentLang = localStorage.getItem('dentalflow_lang') || 'pt';
-        updateLanguage(currentLang);
-    };
+            renderizarListaDentistas();
+            renderizarResumoMensal();
+            renderizarAnaliseDentista();
+            renderizarListaValores();
+            renderizarEstoque();
+            renderizarListaDespesasCompleta();
+            toggleValuesVisibility();
+            updateOrderPreview();
+            
+            // Atualizar idioma após renderização
+            const currentLang = localStorage.getItem('dentalflow_lang') || 'pt';
+            updateLanguage(currentLang);
+        };
 
     // --- FUNÇÕES DE EDIÇÃO ---
     const startEditProducao = (id) => {
@@ -2752,24 +5485,32 @@ const generateProducaoPDF = () => {
         // Esconder botão de adicionar item no modo de edição
         formProducaoAddItemBtn.classList.add('hidden');
 
+        if (producaoDentistaSelect) {
+            producaoDentistaSelect.value = producao.dentista || (dentista ? dentista.id : '');
+        }
         producaoDentistaInput.value = dentista ? dentista.nome : '';
         producaoPacienteInput.value = producao.nomePaciente || '';
         producaoStatusSelect.value = producao.status;
         producaoObsInput.value = producao.obs || '';
         producaoDataInput.value = producao.data;
         entregaDataInput.value = producao.entrega;
-        producaoAnexoInput.value = '';
+        if (producaoAnexoInput) producaoAnexoInput.value = '';
         
         formProducaoTitle.textContent = 'Editar Produção';
         producaoSubmitBtn.textContent = 'Atualizar';
         producaoCancelBtn.classList.remove('hidden');
         
+        updateOrderPreview();
         document.getElementById('form-producao').scrollIntoView({ behavior: 'smooth' });
     };
 
     const cancelEditProducao = () => {
         producaoEditIdInput.value = '';
         formProducao.reset();
+
+        if (producaoDentistaSelect) {
+            producaoDentistaSelect.value = '';
+        }
 
         // Resetar linhas para o padrão (uma linha vazia)
         producaoItemsContainer.innerHTML = '';
@@ -2783,9 +5524,11 @@ const generateProducaoPDF = () => {
         producaoSubmitBtn.textContent = 'Adicionar';
         producaoCancelBtn.classList.add('hidden');
         
-        const hoje = new Date();
-        producaoDataInput.valueAsDate = hoje;
-        entregaDataInput.valueAsDate = hoje;
+        const hojeStr = getTodayDateString();
+        if (producaoDataInput) producaoDataInput.value = hojeStr;
+        if (entregaDataInput) entregaDataInput.value = hojeStr;
+
+        updateOrderPreview();
     };
 
     const renderizarSelectTiposTrabalhoDentista = (dentistaId) => {
@@ -3030,7 +5773,7 @@ const generateProducaoPDF = () => {
         formDespesaSubmitBtn.textContent = 'Adicionar';
         formDespesaCancelBtn.classList.add('hidden');
         
-        despesaDataInput.valueAsDate = new Date();
+        if (despesaDataInput) despesaDataInput.value = getTodayDateString();
     };
 
     const startEditEstoque = (id) => {
@@ -3067,20 +5810,24 @@ const generateProducaoPDF = () => {
         const isHidden = document.body.classList.contains('values-hidden');
         document.querySelectorAll('.monetary-value').forEach(el => {
             if (isHidden) {
-                // Se houver novo conteúdo textual (atualizado enquanto oculto), atualizamos o dataset
-                const hasNewContent = el.textContent && el.textContent.trim() !== '';
-                const originalValue = hasNewContent ? el.textContent : (el.dataset.originalValue || el.textContent);
-                
-                el.dataset.originalValue = originalValue;
-                el.textContent = ''; // O CSS fará o resto com o ::before
+                // Se houver novo conteúdo textual diferente de vazio ou máscara, salva no dataset
+                const currentText = el.textContent ? el.textContent.trim() : '';
+                if (el._targetFormattedValue) {
+                    el.dataset.originalValue = el._targetFormattedValue;
+                } else if (currentText !== '' && currentText !== '••••' && currentText !== 'R$ •••••') {
+                    el.dataset.originalValue = currentText;
+                }
+                el.textContent = ''; // Oculta o valor (CSS ::before exibe a máscara)
             } else {
+                // Ao exibir, restaura o valor original se existente e remove o dataset para não travar atualizações futuras
                 if (el.dataset.originalValue) {
                     el.textContent = el.dataset.originalValue;
+                    delete el.dataset.originalValue;
                 }
             }
         });
-        eyeIcon.classList.toggle('hidden', isHidden);
-        eyeOffIcon.classList.toggle('hidden', !isHidden);
+        if (eyeIcon) eyeIcon.classList.toggle('hidden', isHidden);
+        if (eyeOffIcon) eyeOffIcon.classList.toggle('hidden', !isHidden);
     };
 
     if(toggleValuesBtn) {
@@ -3231,22 +5978,289 @@ const generateProducaoPDF = () => {
     if (searchDentistasInput) searchDentistasInput.addEventListener('input', (e) => { state.searchTermDentistas = e.target.value; renderizarListaDentistas(); });
     if (searchEstoqueInput) searchEstoqueInput.addEventListener('input', (e) => { state.searchTermEstoque = e.target.value; renderizarEstoque(); });
     if (searchDespesasInput) searchDespesasInput.addEventListener('input', (e) => { state.searchTermDespesas = e.target.value; renderizarListaDespesasCompleta(); });
-    if (filterStatusSelect) filterStatusSelect.addEventListener('change', renderizarProducaoDia);
-    if (filterDataInicio) filterDataInicio.addEventListener('change', renderizarProducaoDia);
-    if (filterDataFim) filterDataFim.addEventListener('change', renderizarProducaoDia);
+    const handleManualFilterChange = () => {
+        state.producaoQuickFilter = null;
+        document.querySelectorAll('.btn-quick-filter').forEach(b => b.classList.remove('active'));
+        renderizarProducaoDia();
+    };
+
+    if (filterStatusSelect) filterStatusSelect.addEventListener('change', handleManualFilterChange);
+    if (filterDataInicio) filterDataInicio.addEventListener('change', handleManualFilterChange);
+    if (filterDataFim) filterDataFim.addEventListener('change', handleManualFilterChange);
+    if (filterProducaoDentistaMain) filterProducaoDentistaMain.addEventListener('change', handleManualFilterChange);
+    if (filterProducaoTipo) filterProducaoTipo.addEventListener('change', handleManualFilterChange);
+
+    // Filtros Rápidos
+    const applyProducaoQuickFilter = (mode) => {
+        state.producaoQuickFilter = mode;
+
+        document.querySelectorAll('.btn-quick-filter').forEach(b => {
+            const btnMode = b.dataset.filter || b.dataset.quickFilter;
+            if (btnMode === mode) {
+                b.classList.add('active');
+            } else {
+                b.classList.remove('active');
+            }
+        });
+
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const todayStr = getTodayDateString(today);
+
+        if (mode === 'todos') {
+            if (filterStatusSelect) filterStatusSelect.value = '';
+            if (filterDataInicio) filterDataInicio.value = '';
+            if (filterDataFim) filterDataFim.value = '';
+            if (searchProducaoInput) {
+                searchProducaoInput.value = '';
+                state.searchTermProducao = '';
+            }
+            if (filterProducaoDentistaMain) filterProducaoDentistaMain.value = '';
+            if (filterProducaoTipo) filterProducaoTipo.value = '';
+            state.producaoQuickFilter = 'todos';
+        } else if (mode === 'hoje') {
+            if (filterDataInicio) filterDataInicio.value = todayStr;
+            if (filterDataFim) filterDataFim.value = todayStr;
+            if (filterStatusSelect) filterStatusSelect.value = '';
+            if (searchProducaoInput) {
+                searchProducaoInput.value = '';
+                state.searchTermProducao = '';
+            }
+            state.producaoQuickFilter = 'hoje';
+        } else if (mode === 'semana') {
+            const dayOfWeek = today.getDay(); // 0 is Sunday
+            const diffToMonday = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
+            const monday = new Date(today);
+            monday.setDate(today.getDate() + diffToMonday);
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+
+            const startStr = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+            const endStr = `${sunday.getFullYear()}-${String(sunday.getMonth() + 1).padStart(2, '0')}-${String(sunday.getDate()).padStart(2, '0')}`;
+
+            if (filterDataInicio) filterDataInicio.value = startStr;
+            if (filterDataFim) filterDataFim.value = endStr;
+            if (filterStatusSelect) filterStatusSelect.value = '';
+        } else if (mode === 'mes') {
+            const startOfMonth = `${yyyy}-${mm}-01`;
+            const lastDay = new Date(yyyy, today.getMonth() + 1, 0).getDate();
+            const endOfMonth = `${yyyy}-${mm}-${String(lastDay).padStart(2, '0')}`;
+
+            if (filterDataInicio) filterDataInicio.value = startOfMonth;
+            if (filterDataFim) filterDataFim.value = endOfMonth;
+            if (filterStatusSelect) filterStatusSelect.value = '';
+        } else if (mode === 'pendentes') {
+            if (filterStatusSelect) filterStatusSelect.value = 'Pendente';
+            if (filterDataInicio) filterDataInicio.value = '';
+            if (filterDataFim) filterDataFim.value = '';
+        } else if (mode === 'andamento') {
+            if (filterStatusSelect) filterStatusSelect.value = 'Em Andamento';
+            if (filterDataInicio) filterDataInicio.value = '';
+            if (filterDataFim) filterDataFim.value = '';
+        } else if (mode === 'finalizados') {
+            if (filterStatusSelect) filterStatusSelect.value = 'Finalizado';
+            if (filterDataInicio) filterDataInicio.value = '';
+            if (filterDataFim) filterDataFim.value = '';
+        } else if (mode === 'atrasados') {
+            if (filterStatusSelect) filterStatusSelect.value = '';
+            if (filterDataInicio) filterDataInicio.value = '';
+            if (filterDataFim) filterDataFim.value = '';
+        }
+
+        renderizarProducaoDia();
+    };
+
+    document.querySelectorAll('.btn-quick-filter').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const mode = btn.dataset.filter || btn.dataset.quickFilter;
+            applyProducaoQuickFilter(mode);
+        });
+    });
+
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-quick-filter');
+        if (btn) {
+            e.preventDefault();
+            const mode = btn.dataset.filter || btn.dataset.quickFilter;
+            applyProducaoQuickFilter(mode);
+        }
+    });
+
+    const limparFiltrosProducao = () => {
+        if (searchProducaoInput) {
+            searchProducaoInput.value = '';
+            state.searchTermProducao = '';
+        }
+        if (filterProducaoDentistaMain) filterProducaoDentistaMain.value = '';
+        if (filterProducaoTipo) filterProducaoTipo.value = '';
+        if (filterStatusSelect) filterStatusSelect.value = '';
+
+        // Ao limpar os filtros, retorna automaticamente para "HOJE"
+        applyProducaoQuickFilter('hoje');
+    };
+
+    if (btnLimparFiltrosProducao) btnLimparFiltrosProducao.addEventListener('click', (e) => {
+        e.preventDefault();
+        limparFiltrosProducao();
+    });
+    if (btnResetFiltersInline) btnResetFiltersInline.addEventListener('click', (e) => {
+        e.preventDefault();
+        limparFiltrosProducao();
+    });
+
+    // Sincronização e atalhos do formulário Adicionar Produção
+    if (producaoDentistaSelect) {
+        producaoDentistaSelect.addEventListener('change', () => {
+            const dId = producaoDentistaSelect.value;
+            const d = (state.dentistas || []).find(dent => String(dent.id) === String(dId));
+            if (d && producaoDentistaInput) {
+                producaoDentistaInput.value = d.nome;
+            } else if (!dId && producaoDentistaInput) {
+                producaoDentistaInput.value = '';
+            }
+            updateOrderPreview();
+        });
+    }
+
+    if (producaoDentistaInput) {
+        producaoDentistaInput.addEventListener('input', () => {
+            const name = producaoDentistaInput.value.trim().toLowerCase();
+            const d = (state.dentistas || []).find(dent => dent.nome.toLowerCase() === name);
+            if (d && producaoDentistaSelect) {
+                producaoDentistaSelect.value = d.id;
+            }
+            updateOrderPreview();
+        });
+    }
+
+    const openQuickAddDentistaModal = () => {
+        const modal = document.getElementById('add-dentista-modal') || addDentistaModal;
+        if (modal) {
+            const form = document.getElementById('quick-add-dentista-form') || quickAddDentistaForm;
+            if (form) form.reset();
+            modal.classList.remove('hidden');
+            const input = document.getElementById('quick-dentista-nome-input') || quickDentistaNomeInput;
+            if (input) {
+                setTimeout(() => input.focus(), 80);
+            }
+        }
+    };
+    window.openQuickAddDentistaModal = openQuickAddDentistaModal;
+
+    if (btnQuickNewDentista) {
+        btnQuickNewDentista.addEventListener('click', (e) => {
+            e.preventDefault();
+            openQuickAddDentistaModal();
+        });
+    }
+
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('#btn-quick-new-dentist, #btn-quick-new-dentista, [data-action="quick-new-dentist"]');
+        if (btn) {
+            e.preventDefault();
+            openQuickAddDentistaModal();
+        }
+    });
+
+    if (btnNovaProducaoDentista) {
+        btnNovaProducaoDentista.addEventListener('click', () => {
+            if (filterDentistaSelect && filterDentistaSelect.value) {
+                if (producaoDentistaSelect) producaoDentistaSelect.value = filterDentistaSelect.value;
+                const d = (state.dentistas || []).find(dent => String(dent.id) === String(filterDentistaSelect.value));
+                if (d && producaoDentistaInput) producaoDentistaInput.value = d.nome;
+                updateOrderPreview();
+            }
+            const formEl = document.getElementById('form-producao');
+            if (formEl) formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
 
     // Select all logic
     if (selectAllProducaoCheckbox) {
         selectAllProducaoCheckbox.addEventListener('change', (e) => {
             const checkboxes = document.querySelectorAll('.producao-checkbox');
             checkboxes.forEach(cb => cb.checked = e.target.checked);
+            updateDentistaBatchBar();
         });
     }
 
-    // Produção por dentista
+    if (thSelectAllDentista) {
+        thSelectAllDentista.addEventListener('change', (e) => {
+            if (producaoDentistaTableBody) {
+                const checkboxes = producaoDentistaTableBody.querySelectorAll('.producao-checkbox');
+                checkboxes.forEach(cb => cb.checked = e.target.checked);
+                updateDentistaBatchBar();
+            }
+        });
+    }
+
+    // Produção por dentista: Controles avançados
     if (filterDentistaSelect) filterDentistaSelect.addEventListener('change', renderizarProducaoPorDentista);
+    if (filterDentistaPeriodo) filterDentistaPeriodo.addEventListener('change', renderizarProducaoPorDentista);
+    if (filterDentistaStatus) filterDentistaStatus.addEventListener('change', renderizarProducaoPorDentista);
+    if (searchDentistaTable) searchDentistaTable.addEventListener('input', renderizarProducaoPorDentista);
+
+    // Ações em Lote (Batch Bar)
+    if (btnBatchClear) {
+        btnBatchClear.addEventListener('click', () => {
+            if (producaoDentistaTableBody) {
+                const checkboxes = producaoDentistaTableBody.querySelectorAll('.producao-checkbox');
+                checkboxes.forEach(cb => cb.checked = false);
+            }
+            if (thSelectAllDentista) thSelectAllDentista.checked = false;
+            updateDentistaBatchBar();
+        });
+    }
+
+    if (btnBatchFinish) {
+        btnBatchFinish.addEventListener('click', async () => {
+            const checkedBoxes = producaoDentistaTableBody ? producaoDentistaTableBody.querySelectorAll('.producao-checkbox:checked') : [];
+            if (checkedBoxes.length === 0) return;
+            const ids = Array.from(checkedBoxes).map(cb => parseInt(cb.dataset.id));
+            state.producao.forEach(p => {
+                if (ids.includes(p.id)) {
+                    p.status = 'Finalizado';
+                }
+            });
+            await saveDataToFirestore();
+            showToast(`${ids.length} trabalhos marcados como Finalizado!`, 'success');
+            renderizarProducaoPorDentista();
+            renderizarProducaoDia();
+            renderizarDashboard();
+        });
+    }
+
+    if (btnBatchDelete) {
+        btnBatchDelete.addEventListener('click', async () => {
+            const checkedBoxes = producaoDentistaTableBody ? producaoDentistaTableBody.querySelectorAll('.producao-checkbox:checked') : [];
+            if (checkedBoxes.length === 0) return;
+            const confirmed = await showConfirmationModal(
+                t('modal_confirm_title'),
+                `Tem certeza que deseja excluir os ${checkedBoxes.length} trabalhos selecionados?`
+            );
+            if (confirmed) {
+                const ids = Array.from(checkedBoxes).map(cb => parseInt(cb.dataset.id));
+                state.producao = state.producao.filter(p => !ids.includes(p.id));
+                await saveDataToFirestore();
+                showToast(`${ids.length} trabalhos excluídos com sucesso!`, 'success');
+                renderizarProducaoPorDentista();
+                renderizarProducaoDia();
+                renderizarDashboard();
+            }
+        });
+    }
+
+    if (btnBatchPix) {
+        btnBatchPix.addEventListener('click', handleGerarCobrancaPix);
+    }
+    if (btnGerarPixDentista) {
+        btnGerarPixDentista.addEventListener('click', handleGerarCobrancaPix);
+    }
+
     if (producaoDentistaTableBody) {
-        producaoDentistaTableBody.addEventListener('click', async (e) => { // [MODIFICADO] Adicionado 'async'
+        producaoDentistaTableBody.addEventListener('click', async (e) => {
             const editBtn = e.target.closest('.edit-producao-btn');
             const removeBtn = e.target.closest('.remove-producao-btn');
 
@@ -3257,7 +6271,6 @@ const generateProducaoPDF = () => {
             else if (removeBtn) {
                 const producaoId = parseInt(removeBtn.dataset.id);
                 
-                // [MODIFICADO] Chamando o novo modal
                 const confirmed = await showConfirmationModal(
                     t('modal_confirm_title'), 
                     'Tem certeza que quer excluir este trabalho?'
@@ -3265,8 +6278,12 @@ const generateProducaoPDF = () => {
 
                 if (confirmed) {
                     state.producao = state.producao.filter(p => p.id !== producaoId);
-                    saveDataToFirestore();
+                    await saveDataToFirestore();
                     showToast("Produção removida com sucesso!", "success");
+                    renderizarProducaoPorDentista();
+                    renderizarProducaoDia();
+                    renderizarDashboard();
+                    renderDentistaQuickPills();
                 }
             }
         });
@@ -3334,22 +6351,129 @@ const generateProducaoPDF = () => {
     // Ações rápidas
     // --- LÓGICA DO FORMULÁRIO DE PRODUÇÃO (PRINCIPAL) ---
 
+    const calculateItemPrice = (dentistaId, tipoTrabalho, qtd = 1) => {
+        if (!tipoTrabalho) return { unitPrice: 0, totalPrice: 0 };
+        const dentista = (state.dentistas || []).find(d => String(d.id) === String(dentistaId));
+        const valorDentista = dentista ? (dentista.valores || []).find(v => v.tipo === tipoTrabalho) : null;
+        const valorGlobal = (state.valores || []).find(v => v.tipo === tipoTrabalho);
+        const unitPrice = valorDentista ? (parseFloat(valorDentista.valor) || 0) : (valorGlobal ? (parseFloat(valorGlobal.valor) || 0) : 0);
+        const quantity = parseInt(qtd) > 0 ? parseInt(qtd) : 1;
+        return {
+            unitPrice,
+            totalPrice: unitPrice * quantity
+        };
+    };
+
+    const updateOrderPreview = () => {
+        const summaryCard = document.getElementById('form-producao-summary-card') || formProducaoSummaryCard;
+        const summaryItems = document.getElementById('form-producao-summary-items') || formProducaoSummaryItems;
+        const summaryTotal = document.getElementById('form-producao-summary-total') || formProducaoSummaryTotal;
+        
+        let dentistaId = producaoDentistaSelect ? producaoDentistaSelect.value : null;
+        if (!dentistaId && producaoDentistaInput) {
+            const dName = producaoDentistaInput.value.trim().toLowerCase();
+            const dObj = (state.dentistas || []).find(d => (d.nome || '').trim().toLowerCase() === dName || String(d.id) === dName);
+            if (dObj) dentistaId = dObj.id;
+        }
+
+        const itemRows = producaoItemsContainer ? producaoItemsContainer.querySelectorAll('.main-work-item-group') : [];
+        let subtotal = 0;
+        let totalItems = 0;
+        let totalTypesCount = 0;
+        const previewItemsList = [];
+
+        itemRows.forEach(row => {
+            const select = row.querySelector('.main-producao-tipo-select');
+            const qtdInput = row.querySelector('.main-producao-qtd-input');
+            const priceBadge = row.querySelector('.item-price-preview');
+            const elementosInfo = row.querySelector('.item-elementos-info');
+            
+            const tipo = select ? select.value : '';
+            const qtd = qtdInput ? (parseInt(qtdInput.value) > 0 ? parseInt(qtdInput.value) : 1) : 1;
+            
+            if (elementosInfo) {
+                elementosInfo.textContent = `${qtd} ${qtd === 1 ? 'elemento' : 'elementos'}`;
+            }
+
+            const { unitPrice, totalPrice } = calculateItemPrice(dentistaId, tipo, qtd);
+            
+            if (priceBadge) {
+                if (unitPrice > 0 && tipo) {
+                    priceBadge.innerHTML = `<span class="text-accent-green font-semibold">${formatarMoeda(unitPrice)}/un</span> <span class="text-gemini-secondary">(${formatarMoeda(totalPrice)})</span>`;
+                    priceBadge.classList.remove('hidden');
+                } else {
+                    priceBadge.classList.add('hidden');
+                }
+            }
+
+            if (tipo && qtd > 0) {
+                subtotal += totalPrice;
+                totalItems += qtd;
+                totalTypesCount++;
+                previewItemsList.push({ tipo, qtd, unitPrice, totalPrice });
+            }
+        });
+
+        // 1. Atualizar o Resumo Dinâmico do Pedido no Formulário Principal
+        if (summaryTotal) {
+            summaryTotal.textContent = formatarMoeda(subtotal);
+        }
+
+        if (summaryItems) {
+            if (totalItems === 0) {
+                summaryItems.textContent = 'Nenhum trabalho selecionado';
+            } else {
+                summaryItems.textContent = `${totalItems} ${totalItems === 1 ? 'elemento selecionado' : 'elementos selecionados'}${totalTypesCount > 1 ? ` (${totalTypesCount} tipos)` : ''}`;
+            }
+        }
+
+        // 2. Atualizar elementos adicionais de preview se existirem
+        if (orderPreviewItems) {
+            if (previewItemsList.length === 0) {
+                orderPreviewItems.innerHTML = '<p class="text-xs text-gemini-secondary italic">Nenhum trabalho selecionado ainda.</p>';
+            } else {
+                orderPreviewItems.innerHTML = previewItemsList.map(item => `
+                    <div class="flex justify-between items-center text-xs py-1 border-b border-gemini-border/40 last:border-0">
+                        <span class="text-gemini-primary font-medium truncate max-w-[150px]">${item.tipo} <span class="text-gemini-secondary font-normal">(${item.qtd} ${item.qtd === 1 ? 'elem.' : 'elem.'})</span></span>
+                        <span class="text-accent-green font-bold">${formatarMoeda(item.totalPrice)}</span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        if (orderPreviewSubtotal) orderPreviewSubtotal.textContent = formatarMoeda(subtotal);
+        if (orderPreviewTotal) orderPreviewTotal.textContent = formatarMoeda(subtotal);
+        if (orderPreviewCount) orderPreviewCount.textContent = `${totalItems} ${totalItems === 1 ? 'elemento' : 'elementos'}`;
+    };
+
     const createMainFormItemRow = (selectedValue = '', quantity = 1) => {
         const row = document.createElement('div');
-        row.className = 'main-work-item-group flex gap-2 items-start';
+        row.className = 'main-work-item-group p-3 rounded-xl border border-gemini-border bg-gemini-input/20 space-y-2 transition-all hover:border-indigo-500/40';
+
+        const safeQuantity = parseInt(quantity) > 0 ? parseInt(quantity) : 1;
 
         row.innerHTML = `
-            <div class="flex-1">
-                 <select class="main-producao-tipo-select w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input" required>
-                    <option value="" data-i18n="placeholder_select_work_type">${t('placeholder_select_work_type')}</option>
-                </select>
+            <div class="flex gap-2 items-center">
+                <div class="flex-1 min-w-0">
+                    <select class="main-producao-tipo-select w-full p-2.5 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg text-sm font-medium mobile-optimized-input truncate focus:border-indigo-500" required>
+                        <option value="" data-i18n="placeholder_select_work_type">${t('placeholder_select_work_type')}</option>
+                    </select>
+                </div>
+                <div class="w-36 flex-shrink-0">
+                    <div class="elementos-stepper" title="Quantidade de elementos">
+                        <button type="button" class="btn-step-minus" title="Diminuir elemento">−</button>
+                        <input type="number" class="main-producao-qtd-input" value="${safeQuantity}" min="1" max="999" required title="Quantidade de elementos">
+                        <button type="button" class="btn-step-plus" title="Aumentar elemento">+</button>
+                    </div>
+                </div>
+                <button type="button" class="remove-main-item-btn p-2 text-red-400 hover:text-red-300 rounded-lg hover:bg-red-500/15 border border-transparent hover:border-red-500/25 transition-all flex-shrink-0" title="Remover trabalho">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
             </div>
-            <div class="w-24">
-                 <input type="number" class="main-producao-qtd-input w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input" placeholder="${t('placeholder_quantity')}" data-i18n-placeholder="placeholder_quantity" value="${quantity}" min="1" required>
+            <div class="flex justify-between items-center text-xs px-1">
+                <span class="item-elementos-info text-xs font-semibold text-sky-400">${safeQuantity} ${safeQuantity === 1 ? 'elemento' : 'elementos'}</span>
+                <span class="item-price-preview text-xs text-gemini-secondary hidden"></span>
             </div>
-            <button type="button" class="remove-main-item-btn p-3 text-red-400 hover:text-red-300 rounded-lg hover:bg-gray-700 transition-colors" title="Remover">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-            </button>
         `;
 
         // Populate Select
@@ -3362,6 +6486,37 @@ const generateProducaoPDF = () => {
         });
 
         if (selectedValue) select.value = selectedValue;
+
+        const qtdInput = row.querySelector('.main-producao-qtd-input');
+        const btnMinus = row.querySelector('.btn-step-minus');
+        const btnPlus = row.querySelector('.btn-step-plus');
+
+        if (btnMinus && qtdInput) {
+            btnMinus.addEventListener('click', () => {
+                let v = parseInt(qtdInput.value) || 1;
+                if (v > 1) {
+                    qtdInput.value = v - 1;
+                    qtdInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    updateOrderPreview();
+                }
+            });
+        }
+
+        if (btnPlus && qtdInput) {
+            btnPlus.addEventListener('click', () => {
+                let v = parseInt(qtdInput.value) || 1;
+                qtdInput.value = v + 1;
+                qtdInput.dispatchEvent(new Event('input', { bubbles: true }));
+                updateOrderPreview();
+            });
+        }
+
+        select.addEventListener('change', updateOrderPreview);
+        qtdInput.addEventListener('input', updateOrderPreview);
+        qtdInput.addEventListener('change', updateOrderPreview);
+        qtdInput.addEventListener('keyup', updateOrderPreview);
+
+        setTimeout(updateOrderPreview, 0);
 
         return row;
     };
@@ -3382,19 +6537,19 @@ const generateProducaoPDF = () => {
 
     const createWorkItemRow = () => {
         const row = document.createElement('div');
-        row.className = 'work-item-group flex gap-2 items-start';
+        row.className = 'work-item-group flex gap-2 items-center p-2 rounded-xl border transition-all';
         
         row.innerHTML = `
-            <div class="flex-1">
-                 <select class="quick-producao-tipo-select w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input" required>
+            <div class="flex-1 min-w-0">
+                 <select class="quick-producao-tipo-select w-full p-2.5 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg text-sm font-medium mobile-optimized-input truncate" required>
                     <option value="" data-i18n="placeholder_select_work_type">Selecione o tipo de trabalho</option>
                 </select>
             </div>
-            <div class="w-24">
-                 <input type="number" class="quick-producao-qtd-input w-full p-3 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg mobile-optimized-input" placeholder="Qtd" value="1" min="1" required>
+            <div class="w-20 flex-shrink-0">
+                 <input type="number" class="quick-producao-qtd-input w-full p-2.5 bg-gemini-input text-gemini-input border border-gemini-border rounded-lg text-sm font-bold text-center mobile-optimized-input" placeholder="Qtd" value="1" min="1" required title="Quantidade">
             </div>
-            <button type="button" class="remove-work-item-btn p-3 text-red-400 hover:text-red-300 rounded-lg hover:bg-gray-700 transition-colors" title="Remover">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            <button type="button" class="remove-work-item-btn p-2 text-red-400 hover:text-red-300 rounded-lg hover:bg-red-500/15 border border-transparent hover:border-red-500/25 transition-all flex-shrink-0" title="Remover trabalho">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
         `;
 
@@ -3430,9 +6585,9 @@ const generateProducaoPDF = () => {
         updateRemoveButtonsVisibility();
         
         // Definir datas padrão
-        const hoje = new Date();
-        quickProducaoDataInput.valueAsDate = hoje;
-        quickEntregaDataInput.valueAsDate = hoje;
+        const hojeStr = getTodayDateString();
+        if (quickProducaoDataInput) quickProducaoDataInput.value = hojeStr;
+        if (quickEntregaDataInput) quickEntregaDataInput.value = hojeStr;
         
         addProductionModal.classList.remove('hidden');
     };
@@ -3576,7 +6731,7 @@ const generateProducaoPDF = () => {
             if (addDespesaModal) {
                 quickAddDespesaForm.reset();
                 // Definir data padrão como hoje
-                quickDespesaDataInput.valueAsDate = new Date();
+                if (quickDespesaDataInput) quickDespesaDataInput.value = getTodayDateString();
                 addDespesaModal.classList.remove('hidden');
                 quickDespesaDescInput.focus();
             } else {
@@ -3633,46 +6788,74 @@ const generateProducaoPDF = () => {
     }
 
     // Listeners do Modal Adicionar Dentista
-    if (addDentistaModal) {
-        closeAddDentistaModalBtn.addEventListener('click', () => addDentistaModal.classList.add('hidden'));
-        quickAddDentistaCancelBtn.addEventListener('click', () => addDentistaModal.classList.add('hidden'));
+    const targetAddDentistaModal = document.getElementById('add-dentista-modal') || addDentistaModal;
+    const targetCloseAddDentistaModalBtn = document.getElementById('close-add-dentista-modal-btn') || closeAddDentistaModalBtn;
+    const targetQuickAddDentistaCancelBtn = document.getElementById('quick-add-dentista-cancel-btn') || quickAddDentistaCancelBtn;
+    const targetQuickAddDentistaForm = document.getElementById('quick-add-dentista-form') || quickAddDentistaForm;
 
-        quickAddDentistaForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const submitButton = e.submitter;
-            setButtonLoading(submitButton, true, 'Salvar');
-
-            const nome = quickDentistaNomeInput.value.trim();
-            if (!nome) {
-                showToast(t('toast_fill_dentist_name'));
-                setButtonLoading(submitButton, false);
-                return;
-            }
-
-            const dentistaData = {
-                id: Date.now(),
-                nome,
-                clinica: quickDentistaClinicaInput.value.trim(),
-                telefone: quickDentistaTelefoneInput.value.trim(),
-                email: quickDentistaEmailInput.value.trim(),
-                valores: []
-            };
-
-            state.dentistas.push(dentistaData);
-
-            try {
-                await saveDataToFirestore();
-                showToast(t('toast_success_dentist_add'), "success");
-                addDentistaModal.classList.add('hidden');
-                renderAllUIComponents(); // Re-renderiza a UI para mostrar o novo dentista
-            } catch (error) {
-                // Se falhar, remove o dentista que foi adicionado localmente
-                state.dentistas.pop();
-                showToast(t('toast_error_save_dentist'));
-            } finally {
-                setButtonLoading(submitButton, false);
-            }
+    if (targetAddDentistaModal) {
+        if (targetCloseAddDentistaModalBtn) {
+            targetCloseAddDentistaModalBtn.addEventListener('click', () => targetAddDentistaModal.classList.add('hidden'));
+        }
+        if (targetQuickAddDentistaCancelBtn) {
+            targetQuickAddDentistaCancelBtn.addEventListener('click', () => targetAddDentistaModal.classList.add('hidden'));
+        }
+        targetAddDentistaModal.addEventListener('click', (e) => {
+            if (e.target === targetAddDentistaModal) targetAddDentistaModal.classList.add('hidden');
         });
+
+        if (targetQuickAddDentistaForm) {
+            targetQuickAddDentistaForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const submitButton = e.submitter || document.getElementById('quick-add-dentista-submit-btn');
+                setButtonLoading(submitButton, true, 'Salvar');
+
+                const nomeInput = document.getElementById('quick-dentista-nome-input') || quickDentistaNomeInput;
+                const clinicaInput = document.getElementById('quick-dentista-clinica-input') || quickDentistaClinicaInput;
+                const telInput = document.getElementById('quick-dentista-telefone-input') || quickDentistaTelefoneInput;
+                const emailInput = document.getElementById('quick-dentista-email-input') || quickDentistaEmailInput;
+
+                const nome = nomeInput ? nomeInput.value.trim() : '';
+                if (!nome) {
+                    showToast(t('toast_fill_dentist_name'));
+                    setButtonLoading(submitButton, false);
+                    return;
+                }
+
+                const dentistaData = {
+                    id: Date.now(),
+                    nome,
+                    clinica: clinicaInput ? clinicaInput.value.trim() : '',
+                    telefone: telInput ? telInput.value.trim() : '',
+                    email: emailInput ? emailInput.value.trim() : '',
+                    valores: []
+                };
+
+                state.dentistas.push(dentistaData);
+
+                try {
+                    await saveDataToFirestore();
+                    showToast(t('toast_success_dentist_add'), "success");
+                    targetAddDentistaModal.classList.add('hidden');
+                    renderAllUIComponents(); // Re-renderiza a UI para mostrar o novo dentista
+                    
+                    // Pré-seleciona automaticamente o novo dentista no formulário de produção
+                    if (producaoDentistaSelect) {
+                        producaoDentistaSelect.value = dentistaData.id;
+                    }
+                    if (producaoDentistaInput) {
+                        producaoDentistaInput.value = dentistaData.nome;
+                    }
+                    updateOrderPreview();
+                } catch (error) {
+                    // Se falhar, remove o dentista que foi adicionado localmente
+                    state.dentistas.pop();
+                    showToast(t('toast_error_save_dentist'));
+                } finally {
+                    setButtonLoading(submitButton, false);
+                }
+            });
+        }
     }
 
     // Formulários
@@ -3989,6 +7172,7 @@ const generateProducaoPDF = () => {
             formProducaoAddItemBtn.addEventListener('click', () => {
                 producaoItemsContainer.appendChild(createMainFormItemRow());
                 updateMainRemoveButtonsVisibility();
+                updateOrderPreview();
             });
         }
 
@@ -4000,6 +7184,7 @@ const generateProducaoPDF = () => {
                     if (row) {
                         row.remove();
                         updateMainRemoveButtonsVisibility();
+                        updateOrderPreview();
                     }
                 }
             });
@@ -4010,7 +7195,7 @@ const generateProducaoPDF = () => {
             const originalButtonText = producaoSubmitBtn.textContent;
             setButtonLoading(producaoSubmitBtn, true, originalButtonText);
 
-            const file = producaoAnexoInput.files[0];
+            const file = (producaoAnexoInput && producaoAnexoInput.files) ? producaoAnexoInput.files[0] : null;
             let anexoURL = null;
 
             if (file) {
@@ -4028,8 +7213,14 @@ const generateProducaoPDF = () => {
             
             const editId = producaoEditIdInput.value ? parseInt(producaoEditIdInput.value) : null;
             
-            const dentistaNome = producaoDentistaInput.value.trim();
-            const dentistaObj = (state.dentistas || []).find(d => d.nome === dentistaNome);
+            let dentistaObj = null;
+            if (producaoDentistaSelect && producaoDentistaSelect.value) {
+                dentistaObj = (state.dentistas || []).find(d => String(d.id) === String(producaoDentistaSelect.value));
+            }
+            if (!dentistaObj && producaoDentistaInput) {
+                const dentistaNome = producaoDentistaInput.value.trim().toLowerCase();
+                dentistaObj = (state.dentistas || []).find(d => d.nome.toLowerCase() === dentistaNome || String(d.id) === dentistaNome);
+            }
             
             if (!dentistaObj) {
                 showToast(t('toast_dentist_not_found'));
@@ -4305,30 +7496,96 @@ const generateProducaoPDF = () => {
         });
     }
 
-    if(listaEntregasProximas) {
-        listaEntregasProximas.addEventListener('click', (e) => {
+    // --- CRONOGRAMA DE ENTREGAS & PRAZOS (DASHBOARD) ---
+    if (listaEntregasProximas) {
+        listaEntregasProximas.addEventListener('click', async (e) => {
             const finalizeButton = e.target.closest('.finalize-entrega-btn');
-           const header = e.target.closest('.entrega-item-header');
+            const viewInProducaoBtn = e.target.closest('.view-in-producao-btn');
+            const resetFilterBtn = e.target.closest('#btn-reset-entregas-filter');
+            const whatsappBtn = e.target.closest('.whatsapp-btn');
+            const header = e.target.closest('.entrega-item-header');
+
+            if (whatsappBtn) {
+                // Deixa o link abrir normalmente
+                return;
+            }
 
             if (finalizeButton) {
-               e.stopPropagation(); // Impede que o clique expanda o item
+                e.stopPropagation();
                 const producaoId = parseInt(finalizeButton.dataset.id);
-                const producaoIndex = state.producao.findIndex(p => p.id === producaoId);
+                const producaoIndex = (state.producao || []).findIndex(p => p.id === producaoId);
                 if (producaoIndex !== -1) {
-                    state.producao[producaoIndex].status = 'Finalizado';
-                    saveDataToFirestore();
-                    showToast(t('toast_success_production_update'), "success");
+                    const item = state.producao[producaoIndex];
+                    item.status = 'Finalizado';
+                    await saveDataToFirestore();
+                    const nome = item.nomePaciente ? `"${item.nomePaciente}"` : 'Trabalho';
+                    showToast(`Entrega de ${nome} concluída e finalizada!`, "success");
+                    renderAllUIComponents(false);
+                }
+            } else if (viewInProducaoBtn) {
+                e.stopPropagation();
+                const paciente = viewInProducaoBtn.dataset.paciente;
+                if (searchProducaoInput && paciente) {
+                    searchProducaoInput.value = paciente;
+                    state.searchTermProducao = paciente;
+                }
+                if (filterStatusSelect) filterStatusSelect.value = '';
+                if (filterDataInicio) filterDataInicio.value = '';
+                if (filterDataFim) filterDataFim.value = '';
+                if (filterProducaoDentistaMain) filterProducaoDentistaMain.value = '';
+                if (filterProducaoTipo) filterProducaoTipo.value = '';
+                state.producaoQuickFilter = 'todos';
+                renderizarProducaoDia();
+                navigateToView('view-producao');
+            } else if (resetFilterBtn) {
+                e.stopPropagation();
+                state.dashboardEntregasFilter = 'todos';
+                state.dashboardEntregasSearch = '';
+                const searchInput = document.getElementById('search-entregas-input');
+                if (searchInput) searchInput.value = '';
+                document.querySelectorAll('.btn-entregas-filter').forEach(b => {
+                    b.classList.toggle('active', b.dataset.filter === 'todos');
+                });
+                renderizarEntregasDashboard();
+            } else if (header) {
+                const container = header.closest('.entrega-item-container');
+                if (container) {
+                    const details = container.querySelector('.entrega-item-details');
+                    const icon = header.querySelector('.entrega-expand-icon');
+                    if (details) details.classList.toggle('hidden');
+                    if (icon) icon.classList.toggle('rotate-180');
                 }
             }
-           // [NOVO] Lógica para expandir
-           else if (header) {
-               const container = header.closest('.entrega-item-container');
-               const details = container.querySelector('.entrega-item-details');
-               const icon = header.querySelector('.entrega-expand-icon');
-               
-               details.classList.toggle('hidden');
-               icon.classList.toggle('rotate-180');
-           }
+        });
+    }
+
+    // Filtros por Período de Entregas no Dashboard
+    document.querySelectorAll('.btn-entregas-filter').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const filter = btn.dataset.filter || 'todos';
+            state.dashboardEntregasFilter = filter;
+            document.querySelectorAll('.btn-entregas-filter').forEach(b => {
+                b.classList.toggle('active', b.dataset.filter === filter);
+            });
+            renderizarEntregasDashboard();
+        });
+    });
+
+    // Busca de Entregas no Dashboard
+    const searchEntregasInput = document.getElementById('search-entregas-input');
+    const clearSearchEntregasBtn = document.getElementById('clear-search-entregas-btn');
+    if (searchEntregasInput) {
+        searchEntregasInput.addEventListener('input', (e) => {
+            state.dashboardEntregasSearch = e.target.value;
+            renderizarEntregasDashboard();
+        });
+    }
+    if (clearSearchEntregasBtn) {
+        clearSearchEntregasBtn.addEventListener('click', () => {
+            if (searchEntregasInput) searchEntregasInput.value = '';
+            state.dashboardEntregasSearch = '';
+            renderizarEntregasDashboard();
         });
     }
 
@@ -4391,10 +7648,10 @@ const generateProducaoPDF = () => {
         document.querySelectorAll('button[type="submit"]').forEach(button => {
             button.dataset.originalText = button.innerHTML;
         });
-        const hoje = new Date();
-        producaoDataInput.valueAsDate = hoje;
-        entregaDataInput.valueAsDate = hoje;
-        despesaDataInput.valueAsDate = hoje;
+        const hojeStr = getTodayDateString();
+        if (producaoDataInput) producaoDataInput.value = hojeStr;
+        if (entregaDataInput) entregaDataInput.value = hojeStr;
+        if (despesaDataInput) despesaDataInput.value = hojeStr;
         
         // Inicializar formulário de produção com uma linha
         if (producaoItemsContainer) {
@@ -4720,9 +7977,7 @@ const generateProducaoPDF = () => {
                 const canvas = qrContainer.querySelector('canvas');
                 if (canvas) {
                     const qrBase64 = canvas.toDataURL("image/png");
-                    // Assuming gerarPDFCobrancaPix handles everything correctly. 
-                    // This function already exists in app.js
-                    gerarPDFCobrancaPix(dentista, selectedItems, totalValor, qrBase64);
+                    gerarPDFCobrancaPix(dentista, selectedItems, totalValor, qrBase64, payload);
                     closeExportModal();
                 } else {
                     showToast('Erro ao gerar QR Code.', 'error');
