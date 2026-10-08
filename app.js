@@ -204,6 +204,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const filterActiveIndicator = document.getElementById('filter-active-indicator');
     const filterResultsBadge = document.getElementById('filter-results-badge');
     const producaoCounterBadge = document.getElementById('producao-counter-badge');
+    const btnToggleFiltrosAvancados = document.getElementById('btn-toggle-filtros-avancados');
+    const headerFiltrosAvancados = document.getElementById('header-filtros-avancados');
+    const conteudoFiltrosAvancados = document.getElementById('conteudo-filtros-avancados');
+    const btnToggleFiltrosText = document.getElementById('btn-toggle-filtros-text');
+    const btnToggleFiltrosIcon = document.getElementById('btn-toggle-filtros-icon');
+    const descFiltrosAvancados = document.getElementById('desc-filtros-avancados');
 
     // Elementos aprimorados: Produção por Dentista
     const dentistaQuickPills = document.getElementById('dentista-quick-pills');
@@ -225,7 +231,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnBatchClear = document.getElementById('btn-batch-clear');
     const thSelectAllDentista = document.getElementById('th-select-all-dentista');
     const btnGerarPixDentista = document.getElementById('btn-gerar-pix-dentista');
-    const btnNovaProducaoDentista = document.getElementById('btn-nova-producao-dentista');
+    const btnNovaProducaoDentista = document.getElementById('btn-add-producao-for-dentist') || document.getElementById('btn-nova-producao-dentista');
+    const btnToggleProducaoDentista = document.getElementById('btn-toggle-producao-dentista');
+    const headerProducaoDentista = document.getElementById('header-producao-dentista');
+    const conteudoProducaoDentista = document.getElementById('conteudo-producao-dentista');
+    const btnToggleProducaoDentistaText = document.getElementById('btn-toggle-producao-dentista-text');
+    const btnToggleProducaoDentistaIcon = document.getElementById('btn-toggle-producao-dentista-icon');
+    const descProducaoDentista = document.getElementById('desc-producao-dentista');
+    const badgeDentistaAtivo = document.getElementById('badge-dentista-ativo');
 
     // Botão para alternar Top 15 / Todos no gráfico de dentistas
     const toggleDentistaShowAllBtn = document.getElementById('toggle-dentista-show-all');
@@ -4556,51 +4569,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const renderDentistaQuickPills = () => {
-        if (!dentistaQuickPills) return;
-        dentistaQuickPills.innerHTML = '';
-
-        const currentSelectedId = filterDentistaSelect ? filterDentistaSelect.value : '';
-        const allDentistas = [...(state.dentistas || [])].sort((a, b) => a.nome.localeCompare(b.nome));
-
-        if (allDentistas.length === 0) {
-            dentistaQuickPills.innerHTML = '<span class="text-xs text-gemini-secondary italic py-1">Nenhum dentista cadastrado</span>';
-            return;
-        }
-
-        allDentistas.forEach(d => {
-            const activeWorks = (state.producao || []).filter(p => String(p.dentista) === String(d.id) && p.status !== 'Finalizado').length;
-            const isSelected = String(d.id) === String(currentSelectedId);
-
-            const pill = document.createElement('button');
-            pill.type = 'button';
-            pill.className = `flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex-shrink-0 cursor-pointer ${
-                isSelected 
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30 ring-2 ring-indigo-400/80 scale-105' 
-                    : 'bg-gemini-input/80 text-gemini-secondary hover:text-white hover:bg-gemini-input border border-gemini-border/80'
-            }`;
-
-            pill.innerHTML = `
-                <span>${d.nome}</span>
-                ${activeWorks > 0 ? `<span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isSelected ? 'bg-white text-indigo-700' : 'bg-indigo-500/25 text-indigo-300 border border-indigo-500/30'}">${activeWorks}</span>` : ''}
-            `;
-
-            pill.addEventListener('click', () => {
-                if (filterDentistaSelect) {
-                    filterDentistaSelect.value = d.id;
-                    renderizarProducaoPorDentista();
-                }
-            });
-
-            dentistaQuickPills.appendChild(pill);
-        });
+        // Função de acesso rápido a dentistas removida
     };
 
     const renderizarProducaoPorDentista = () => {
         const selectedDentistaId = filterDentistaSelect ? filterDentistaSelect.value : '';
         producaoDentistaTableBody.innerHTML = '';
-
-        // Atualizar quick pills
-        renderDentistaQuickPills();
 
         if (!selectedDentistaId) {
             // Esconder elementos específicos de dentista selecionado
@@ -4608,6 +4582,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (dentistaBatchBar) dentistaBatchBar.classList.add('hidden');
             if (exportDentistaProducaoPdfBtn) exportDentistaProducaoPdfBtn.classList.add('hidden');
             if (btnGerarPixDentista) btnGerarPixDentista.classList.add('hidden');
+            if (btnNovaProducaoDentista) btnNovaProducaoDentista.classList.add('hidden');
+            if (badgeDentistaAtivo) {
+                badgeDentistaAtivo.textContent = '';
+                badgeDentistaAtivo.classList.add('hidden');
+            }
 
             producaoDentistaTableBody.innerHTML = `
                 <tr>
@@ -4617,7 +4596,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                             </div>
                             <p class="font-bold text-gemini-primary text-base">Selecione um dentista para visualizar a produção</p>
-                            <p class="text-sm text-gemini-secondary mt-1 max-w-md">Utilize a barra de atalhos rápidos de dentistas acima ou selecione no menu suspenso.</p>
+                            <p class="text-sm text-gemini-secondary mt-1 max-w-md">Selecione um dentista no menu suspenso acima para carregar o extrato.</p>
                         </div>
                     </td>
                 </tr>
@@ -4635,6 +4614,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (dentistaKpiBar) dentistaKpiBar.classList.remove('hidden');
         if (exportDentistaProducaoPdfBtn) exportDentistaProducaoPdfBtn.classList.remove('hidden');
         if (btnGerarPixDentista) btnGerarPixDentista.classList.remove('hidden');
+        if (btnNovaProducaoDentista) btnNovaProducaoDentista.classList.remove('hidden');
+        if (badgeDentistaAtivo && dentista) {
+            badgeDentistaAtivo.textContent = dentista.nome;
+            badgeDentistaAtivo.classList.remove('hidden');
+        }
 
         // Lógica de período
         const periodoModo = filterDentistaPeriodo ? filterDentistaPeriodo.value : 'ciclo';
@@ -6101,14 +6085,107 @@ document.addEventListener('DOMContentLoaded', () => {
         applyProducaoQuickFilter('hoje');
     };
 
+    // Controle de expansão/recolhimento dos Filtros Avançados (recolhido por padrão)
+    let isFiltrosAvancadosExpanded = false;
+
+    const setFiltrosAvancadosExpanded = (expanded) => {
+        isFiltrosAvancadosExpanded = Boolean(expanded);
+        if (!conteudoFiltrosAvancados) return;
+
+        if (isFiltrosAvancadosExpanded) {
+            conteudoFiltrosAvancados.classList.remove('hidden');
+            if (btnToggleFiltrosText) btnToggleFiltrosText.textContent = 'Recolher';
+            if (btnToggleFiltrosIcon) btnToggleFiltrosIcon.classList.add('rotate-180');
+            if (btnToggleFiltrosAvancados) btnToggleFiltrosAvancados.setAttribute('aria-expanded', 'true');
+            if (descFiltrosAvancados) descFiltrosAvancados.textContent = 'Refine a listagem de produção em tempo real por múltiplos critérios';
+        } else {
+            conteudoFiltrosAvancados.classList.add('hidden');
+            if (btnToggleFiltrosText) btnToggleFiltrosText.textContent = 'Expandir';
+            if (btnToggleFiltrosIcon) btnToggleFiltrosIcon.classList.remove('rotate-180');
+            if (btnToggleFiltrosAvancados) btnToggleFiltrosAvancados.setAttribute('aria-expanded', 'false');
+            if (descFiltrosAvancados) descFiltrosAvancados.textContent = 'Clique para expandir os filtros de busca e data';
+        }
+    };
+
+    const toggleFiltrosAvancados = () => {
+        setFiltrosAvancadosExpanded(!isFiltrosAvancadosExpanded);
+    };
+
+    if (btnToggleFiltrosAvancados) {
+        btnToggleFiltrosAvancados.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleFiltrosAvancados();
+        });
+    }
+
+    if (headerFiltrosAvancados) {
+        headerFiltrosAvancados.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-limpar-filtros-producao') || e.target.closest('#btn-toggle-filtros-avancados')) {
+                return;
+            }
+            toggleFiltrosAvancados();
+        });
+    }
+
     if (btnLimparFiltrosProducao) btnLimparFiltrosProducao.addEventListener('click', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         limparFiltrosProducao();
     });
     if (btnResetFiltersInline) btnResetFiltersInline.addEventListener('click', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         limparFiltrosProducao();
     });
+
+    // Controle de expansão/recolhimento da Produção por Dentista (recolhido por padrão)
+    let isProducaoDentistaExpanded = false;
+
+    const setProducaoDentistaExpanded = (expanded) => {
+        isProducaoDentistaExpanded = Boolean(expanded);
+        if (!conteudoProducaoDentista) return;
+
+        if (isProducaoDentistaExpanded) {
+            conteudoProducaoDentista.classList.remove('hidden');
+            if (btnToggleProducaoDentistaText) btnToggleProducaoDentistaText.textContent = 'Recolher';
+            if (btnToggleProducaoDentistaIcon) btnToggleProducaoDentistaIcon.classList.add('rotate-180');
+            if (btnToggleProducaoDentista) btnToggleProducaoDentista.setAttribute('aria-expanded', 'true');
+            if (descProducaoDentista) descProducaoDentista.textContent = 'Extrato detalhado, fechamento de ciclo e faturamento individual';
+        } else {
+            conteudoProducaoDentista.classList.add('hidden');
+            if (btnToggleProducaoDentistaText) btnToggleProducaoDentistaText.textContent = 'Expandir';
+            if (btnToggleProducaoDentistaIcon) btnToggleProducaoDentistaIcon.classList.remove('rotate-180');
+            if (btnToggleProducaoDentista) btnToggleProducaoDentista.setAttribute('aria-expanded', 'false');
+            if (descProducaoDentista) descProducaoDentista.textContent = 'Clique para expandir o extrato detalhado por dentista';
+        }
+    };
+
+    const toggleProducaoDentista = () => {
+        setProducaoDentistaExpanded(!isProducaoDentistaExpanded);
+    };
+
+    if (btnToggleProducaoDentista) {
+        btnToggleProducaoDentista.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleProducaoDentista();
+        });
+    }
+
+    if (headerProducaoDentista) {
+        headerProducaoDentista.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-toggle-producao-dentista') || 
+                e.target.closest('#btn-add-producao-for-dentist') || 
+                e.target.closest('#btn-nova-producao-dentista') || 
+                e.target.closest('#btn-gerar-pix-dentista') || 
+                e.target.closest('#export-dentista-producao-pdf') ||
+                e.target.closest('button')) {
+                return;
+            }
+            toggleProducaoDentista();
+        });
+    }
 
     // Sincronização e atalhos do formulário Adicionar Produção
     if (producaoDentistaSelect) {
